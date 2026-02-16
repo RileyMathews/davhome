@@ -14,7 +14,7 @@ urlpatterns = [
         name="calendar-collection",
     ),
     path(
-        "calendars/<str:username>/<slug:slug>/<str:filename>",
+        "calendars/<str:username>/<slug:slug>/<path:filename>",
         views.calendar_object_view,
         name="calendar-object",
     ),

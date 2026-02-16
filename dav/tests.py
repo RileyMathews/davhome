@@ -276,3 +276,234 @@ class DavWriteTests(TestCase):
             "BEGIN:VCALENDAR\nBEGIN:VEVENT\nEND:VEVENT\nEND:VCALENDAR\n",
         )
         self.assertEqual(response.status_code, 400)
+
+
+class DavReportTests(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user(
+            username="owner", password="pw-test-12345"
+        )
+        self.writer = User.objects.create_user(
+            username="writer", password="pw-test-12345"
+        )
+        self.calendar = Calendar.objects.create(
+            owner=self.owner,
+            slug="family",
+            name="Family",
+            timezone="UTC",
+        )
+        CalendarShare.objects.create(
+            calendar=self.calendar,
+            user=self.writer,
+            role=CalendarShare.WRITE,
+        )
+        self.event = CalendarObject.objects.create(
+            calendar=self.calendar,
+            uid="uid-event",
+            filename="event.ics",
+            etag='"etag-event"',
+            ical_blob="BEGIN:VCALENDAR\nBEGIN:VEVENT\nUID:uid-event\nDTSTART:20260215T120000Z\nDTEND:20260215T130000Z\nEND:VEVENT\nEND:VCALENDAR\n",
+            size=120,
+        )
+        self.todo = CalendarObject.objects.create(
+            calendar=self.calendar,
+            uid="uid-todo",
+            filename="todo.ics",
+            etag='"etag-todo"',
+            ical_blob="BEGIN:VCALENDAR\nBEGIN:VTODO\nUID:uid-todo\nDTSTART:20260216\nEND:VTODO\nEND:VCALENDAR\n",
+            size=96,
+        )
+
+    def _basic_auth(self, username, password):
+        token = base64.b64encode(f"{username}:{password}".encode("utf-8")).decode(
+            "ascii"
+        )
+        return {"HTTP_AUTHORIZATION": f"Basic {token}"}
+
+    def test_calendar_multiget_returns_calendar_data(self):
+        body = f"""<?xml version=\"1.0\" encoding=\"utf-8\"?>
+<C:calendar-multiget xmlns:D=\"DAV:\" xmlns:C=\"urn:ietf:params:xml:ns:caldav\">
+  <D:prop>
+    <D:getetag/>
+    <C:calendar-data/>
+  </D:prop>
+  <D:href>/dav/calendars/{self.owner.username}/{self.calendar.slug}/{self.event.filename}</D:href>
+</C:calendar-multiget>"""
+        response = self.client.generic(
+            "REPORT",
+            f"/dav/calendars/{self.owner.username}/{self.calendar.slug}/",
+            data=body,
+            content_type="application/xml",
+            **self._basic_auth("owner", "pw-test-12345"),
+        )
+        self.assertEqual(response.status_code, 207)
+        xml_text = response.content.decode("utf-8")
+        self.assertIn(self.event.etag, xml_text)
+        self.assertIn("BEGIN:VEVENT", xml_text)
+
+    def test_calendar_query_filters_component(self):
+        body = """<?xml version=\"1.0\" encoding=\"utf-8\"?>
+<C:calendar-query xmlns:D=\"DAV:\" xmlns:C=\"urn:ietf:params:xml:ns:caldav\">
+  <D:prop>
+    <D:getetag/>
+    <C:calendar-data/>
+  </D:prop>
+  <C:filter>
+    <C:comp-filter name=\"VCALENDAR\">
+      <C:comp-filter name=\"VEVENT\" />
+    </C:comp-filter>
+  </C:filter>
+</C:calendar-query>"""
+        response = self.client.generic(
+            "REPORT",
+            f"/dav/calendars/{self.owner.username}/{self.calendar.slug}/",
+            data=body,
+            content_type="application/xml",
+            **self._basic_auth("owner", "pw-test-12345"),
+        )
+        self.assertEqual(response.status_code, 207)
+        xml_text = response.content.decode("utf-8")
+        self.assertIn(self.event.filename, xml_text)
+        self.assertNotIn(self.todo.filename, xml_text)
+
+    def test_calendar_query_time_range_limits_results(self):
+        body = """<?xml version=\"1.0\" encoding=\"utf-8\"?>
+<C:calendar-query xmlns:D=\"DAV:\" xmlns:C=\"urn:ietf:params:xml:ns:caldav\">
+  <D:prop>
+    <D:getetag/>
+    <C:calendar-data/>
+  </D:prop>
+  <C:filter>
+    <C:comp-filter name=\"VCALENDAR\">
+      <C:comp-filter name=\"VEVENT\">
+        <C:time-range start=\"20260215T110000Z\" end=\"20260215T140000Z\" />
+      </C:comp-filter>
+    </C:comp-filter>
+  </C:filter>
+</C:calendar-query>"""
+        response = self.client.generic(
+            "REPORT",
+            f"/dav/calendars/{self.owner.username}/{self.calendar.slug}/",
+            data=body,
+            content_type="application/xml",
+            **self._basic_auth("owner", "pw-test-12345"),
+        )
+        self.assertEqual(response.status_code, 207)
+        xml_text = response.content.decode("utf-8")
+        self.assertIn(self.event.filename, xml_text)
+
+    def test_report_unknown_type_returns_501(self):
+        body = """<?xml version=\"1.0\" encoding=\"utf-8\"?>
+<D:expand-property xmlns:D=\"DAV:\" />"""
+        response = self.client.generic(
+            "REPORT",
+            f"/dav/calendars/{self.owner.username}/{self.calendar.slug}/",
+            data=body,
+            content_type="application/xml",
+            **self._basic_auth("owner", "pw-test-12345"),
+        )
+        self.assertEqual(response.status_code, 501)
+
+    def test_report_supported_on_calendar_home(self):
+        body = f"""<?xml version=\"1.0\" encoding=\"utf-8\"?>
+<C:calendar-multiget xmlns:D=\"DAV:\" xmlns:C=\"urn:ietf:params:xml:ns:caldav\">
+  <D:prop>
+    <D:getetag/>
+    <C:calendar-data/>
+  </D:prop>
+  <D:href>/dav/calendars/{self.owner.username}/{self.calendar.slug}/{self.event.filename}</D:href>
+</C:calendar-multiget>"""
+        response = self.client.generic(
+            "REPORT",
+            f"/dav/calendars/{self.owner.username}/",
+            data=body,
+            content_type="application/xml",
+            **self._basic_auth("writer", "pw-test-12345"),
+        )
+        self.assertEqual(response.status_code, 207)
+        self.assertIn(self.event.filename, response.content.decode("utf-8"))
+
+
+class DavWebdavCompatibilityTests(TestCase):
+    def setUp(self):
+        self.user = User.objects.create_user(username="user01", password="user01")
+        self.calendar = Calendar.objects.create(
+            owner=self.user,
+            slug="litmus",
+            name="litmus",
+            timezone="UTC",
+        )
+
+    def _basic_auth(self):
+        token = base64.b64encode(b"user01:user01").decode("ascii")
+        return {"HTTP_AUTHORIZATION": f"Basic {token}"}
+
+    def test_generic_put_create_returns_201(self):
+        response = self.client.generic(
+            "PUT",
+            "/dav/calendars/user01/litmus/res",
+            data="simple dav payload",
+            content_type="text/plain",
+            **self._basic_auth(),
+        )
+        self.assertEqual(response.status_code, 201)
+
+        fetch = self.client.get(
+            "/dav/calendars/user01/litmus/res",
+            **self._basic_auth(),
+        )
+        self.assertEqual(fetch.status_code, 200)
+        self.assertEqual(fetch.content.decode("utf-8"), "simple dav payload")
+
+    def test_put_with_missing_parent_returns_409(self):
+        response = self.client.generic(
+            "PUT",
+            "/dav/calendars/user01/litmus/missing/res",
+            data="payload",
+            content_type="text/plain",
+            **self._basic_auth(),
+        )
+        self.assertEqual(response.status_code, 409)
+
+    def test_nested_mkcol_and_delete(self):
+        mkcol = self.client.generic(
+            "MKCOL",
+            "/dav/calendars/user01/litmus/coll/",
+            data="",
+            **self._basic_auth(),
+        )
+        self.assertEqual(mkcol.status_code, 201)
+
+        mkcol_again = self.client.generic(
+            "MKCOL",
+            "/dav/calendars/user01/litmus/coll/",
+            data="",
+            **self._basic_auth(),
+        )
+        self.assertEqual(mkcol_again.status_code, 405)
+
+        delete = self.client.generic(
+            "DELETE",
+            "/dav/calendars/user01/litmus/coll/",
+            **self._basic_auth(),
+        )
+        self.assertEqual(delete.status_code, 204)
+
+    def test_mkcol_missing_parent_returns_409(self):
+        response = self.client.generic(
+            "MKCOL",
+            "/dav/calendars/user01/litmus/nope/coll/",
+            data="",
+            **self._basic_auth(),
+        )
+        self.assertEqual(response.status_code, 409)
+
+    def test_mkcol_with_body_returns_415(self):
+        response = self.client.generic(
+            "MKCOL",
+            "/dav/calendars/user01/litmus/bodycoll/",
+            data="not allowed",
+            content_type="text/plain",
+            **self._basic_auth(),
+        )
+        self.assertEqual(response.status_code, 415)

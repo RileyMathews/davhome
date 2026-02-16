@@ -268,16 +268,93 @@ Acceptance:
 
 ### Phase 6 - Compliance Loop and Hardening
 
+#### 6.1 Litmus Unblock (Core WebDAV Semantics) [DONE!]
+
 Deliverables:
 
-- iterate on litmus/CalDAVTester failures
-- improve XML/protocol edge-case handling
-- add regression tests for each fixed compliance issue
+- accept generic DAV `PUT` payloads on litmus-tested paths
+- return RFC-correct `409 Conflict` for missing parent on `PUT` and `MKCOL`
+- implement nested `MKCOL` lifecycle semantics needed by litmus basic
+- add regression tests for each corrected status/method behavior
 
 Acceptance:
 
-- stable pass rate on chosen litmus baseline
-- stable pass rate on selected CalDAVTester suites for MVP scope
+- litmus `basic` is no longer blocked at early collection/resource creation failures
+- status code behavior for parent-missing and create paths is deterministic and covered by tests
+
+Completion notes:
+
+- litmus `basic` now passes at 100% against the current local server target
+- added regression coverage for generic DAV PUT, missing-parent conflict status, nested MKCOL lifecycle, and MKCOL-with-body rejection
+
+#### 6.2 Discovery and Header Hardening
+
+Deliverables:
+
+- normalize `OPTIONS`/`Allow`/`DAV` headers across DAV endpoints
+- tighten principal/home/calendar PROPFIND behavior:
+  - `current-user-principal`
+  - `calendar-home-set`
+  - canonical href formatting
+- ensure consistent `207 Multi-Status` + `propstat` structure
+
+Acceptance:
+
+- targeted CalDAVTester discovery/propfind suites show measurable pass-rate improvement
+- depth `0/1` discovery contracts are covered by regression tests
+
+#### 6.3 REPORT Interoperability Hardening
+
+Deliverables:
+
+- improve `calendar-multiget` and `calendar-query` edge handling:
+  - mixed valid/missing hrefs
+  - unsupported report types
+  - deterministic response ordering
+- tighten `calendar-data` behavior under requested-prop sets
+- add regression tests from observed report failures
+
+Acceptance:
+
+- report-focused CalDAVTester subset improves and stays stable across reruns
+- REPORT edge cases are covered by Django tests
+
+#### 6.4 Write-Path Compatibility Polish
+
+Deliverables:
+
+- relax over-strict iCalendar rejection where standards allow
+- re-verify `If-Match` / `If-None-Match` semantics for create/update/delete
+- ensure ETag/Last-Modified/Content-Length consistency after writes
+- add UTF-8/special-path regression tests relevant to litmus
+
+Acceptance:
+
+- write-focused litmus/CalDAVTester failures drop and shift toward advanced/deferred areas
+- preconditions and metadata semantics are test-covered and stable
+
+#### 6.5 Integration Closure and Failure Classification
+
+Deliverables:
+
+- run gated subset for stability confirmation:
+  - litmus basic
+  - CalDAVTester subset (`current-user-principal`, `propfind`, `reports`, `put`, `get`)
+- run full CalDAVTester `--all` once for classification
+- classify remaining failures into:
+  - fixed in Phase 6
+  - deferred (scheduling, CardDAV, advanced ACL, etc.)
+
+Acceptance:
+
+- reproducible baseline for MVP-scope compliance exists
+- remaining failures are explicitly categorized (no unknown bucket)
+
+#### 6.x Test Execution Policy (Phase 6)
+
+- fast loop (default): litmus basic + CalDAVTester targeted subset
+- full loop (boundary checks): full CalDAVTester `--all`
+- keep fixture setup separate from suite runs to avoid SQLite lock contention when server is live
 
 ### Phase 7 - Post-MVP Enhancements (Optional)
 
