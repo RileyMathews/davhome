@@ -131,3 +131,148 @@ class DavDiscoveryTests(TestCase):
         self.assertEqual(response.status_code, 207)
         xml_text = response.content.decode("utf-8")
         self.assertIn("404 Not Found", xml_text)
+
+
+class DavWriteTests(TestCase):
+    def setUp(self):
+        self.owner = User.objects.create_user(
+            username="owner", password="pw-test-12345"
+        )
+        self.writer = User.objects.create_user(
+            username="writer",
+            password="pw-test-12345",
+        )
+        self.reader = User.objects.create_user(
+            username="reader",
+            password="pw-test-12345",
+        )
+        self.calendar = Calendar.objects.create(
+            owner=self.owner,
+            slug="family",
+            name="Family",
+            timezone="UTC",
+        )
+        CalendarShare.objects.create(
+            calendar=self.calendar,
+            user=self.writer,
+            role=CalendarShare.WRITE,
+        )
+        CalendarShare.objects.create(
+            calendar=self.calendar,
+            user=self.reader,
+            role=CalendarShare.READ,
+        )
+
+    def _basic_auth(self, username, password):
+        token = base64.b64encode(f"{username}:{password}".encode("utf-8")).decode(
+            "ascii"
+        )
+        return {"HTTP_AUTHORIZATION": f"Basic {token}"}
+
+    def _put_event(self, username, password, filename, body, **extra):
+        return self.client.generic(
+            "PUT",
+            f"/dav/calendars/{self.owner.username}/{self.calendar.slug}/{filename}",
+            data=body,
+            content_type="text/calendar; charset=utf-8",
+            **self._basic_auth(username, password),
+            **extra,
+        )
+
+    def test_owner_put_create_returns_201(self):
+        body = "BEGIN:VCALENDAR\nBEGIN:VEVENT\nUID:event-1\nEND:VEVENT\nEND:VCALENDAR\n"
+        response = self._put_event("owner", "pw-test-12345", "event-1.ics", body)
+        self.assertEqual(response.status_code, 201)
+
+        obj = CalendarObject.objects.get(calendar=self.calendar, filename="event-1.ics")
+        self.assertEqual(obj.uid, "event-1")
+        self.assertEqual(response.headers.get("ETag"), obj.etag)
+
+    def test_write_share_can_update_with_if_match(self):
+        first = self._put_event(
+            "owner",
+            "pw-test-12345",
+            "event-2.ics",
+            "BEGIN:VCALENDAR\nBEGIN:VEVENT\nUID:event-2\nEND:VEVENT\nEND:VCALENDAR\n",
+        )
+        self.assertEqual(first.status_code, 201)
+        etag = first.headers.get("ETag")
+
+        second = self._put_event(
+            "writer",
+            "pw-test-12345",
+            "event-2.ics",
+            "BEGIN:VCALENDAR\nBEGIN:VEVENT\nUID:event-2\nSUMMARY:Updated\nEND:VEVENT\nEND:VCALENDAR\n",
+            HTTP_IF_MATCH=etag,
+        )
+        self.assertEqual(second.status_code, 204)
+
+    def test_put_rejects_stale_if_match(self):
+        self._put_event(
+            "owner",
+            "pw-test-12345",
+            "event-3.ics",
+            "BEGIN:VCALENDAR\nBEGIN:VEVENT\nUID:event-3\nEND:VEVENT\nEND:VCALENDAR\n",
+        )
+        stale = self._put_event(
+            "writer",
+            "pw-test-12345",
+            "event-3.ics",
+            "BEGIN:VCALENDAR\nBEGIN:VEVENT\nUID:event-3\nSUMMARY:Bad\nEND:VEVENT\nEND:VCALENDAR\n",
+            HTTP_IF_MATCH='"stale-etag"',
+        )
+        self.assertEqual(stale.status_code, 412)
+
+    def test_put_rejects_if_none_match_on_existing(self):
+        self._put_event(
+            "owner",
+            "pw-test-12345",
+            "event-4.ics",
+            "BEGIN:VCALENDAR\nBEGIN:VEVENT\nUID:event-4\nEND:VEVENT\nEND:VCALENDAR\n",
+        )
+        response = self._put_event(
+            "owner",
+            "pw-test-12345",
+            "event-4.ics",
+            "BEGIN:VCALENDAR\nBEGIN:VEVENT\nUID:event-4\nEND:VEVENT\nEND:VCALENDAR\n",
+            HTTP_IF_NONE_MATCH="*",
+        )
+        self.assertEqual(response.status_code, 412)
+
+    def test_read_share_cannot_put(self):
+        response = self._put_event(
+            "reader",
+            "pw-test-12345",
+            "event-5.ics",
+            "BEGIN:VCALENDAR\nBEGIN:VEVENT\nUID:event-5\nEND:VEVENT\nEND:VCALENDAR\n",
+        )
+        self.assertEqual(response.status_code, 403)
+
+    def test_write_share_can_delete(self):
+        self._put_event(
+            "owner",
+            "pw-test-12345",
+            "event-6.ics",
+            "BEGIN:VCALENDAR\nBEGIN:VEVENT\nUID:event-6\nEND:VEVENT\nEND:VCALENDAR\n",
+        )
+        response = self.client.generic(
+            "DELETE",
+            f"/dav/calendars/{self.owner.username}/{self.calendar.slug}/event-6.ics",
+            **self._basic_auth("writer", "pw-test-12345"),
+        )
+        self.assertEqual(response.status_code, 204)
+        self.assertFalse(
+            CalendarObject.objects.filter(
+                calendar=self.calendar,
+                filename="event-6.ics",
+            ).exists()
+        )
+
+    def test_put_without_uid_fails(self):
+        response = self._put_event(
+            "owner",
+            "pw-test-12345",
+            "event-7.ics",
+            "BEGIN:VCALENDAR\nBEGIN:VEVENT\nEND:VEVENT\nEND:VCALENDAR\n",
+        )
+        self.assertEqual(response.status_code, 400)

@@ -498,3 +498,2390 @@ Running post_send hooks
 auth: Post-send (#0), code is 404 (want 401), WWW-Authenticate is (none)
 req: Destroy (MKCOL /dav/litmus/).
 Running destroy hooks.
+Version string: neon 0.36.0: Library build, IPv6, libxml 2.15.1, zlib 1.3.1, OpenSSL 3.6.0 1 Oct 2025 (thread-safe).
+litmus: Parsing URI http://127.0.0.1:8000/dav/...
+******* Running test 0: begin ********
+HTTP session to http://127.0.0.1:8000 begins.
+sess: Using IP literal address for 127.0.0.1
+HTTP session to http://127.0.0.1:8000 begins.
+sess: Using IP literal address for 127.0.0.1
+auth: Create for WWW-Authenticate
+Running pre_send hooks
+Sending request headers:
+DELETE /dav/litmus/ HTTP/1.1
+User-Agent: litmus/0.17 neon/0.36.0
+Keep-Alive: 
+Connection: TE, Keep-Alive
+TE: trailers
+Host: 127.0.0.1:8000
+X-Litmus: basic: 0 (begin)
+
+Sending request-line and headers:
+req: Connecting to 127.0.0.1:8000
+Request sent; retry is 0.
+req: Line: HTTP/1.1 404 Not Found
+req: Line: Date: Mon, 16 Feb 2026 04:49:45 GMT
+req: Header: [date] = [Mon, 16 Feb 2026 04:49:45 GMT]
+req: Line: Server: WSGIServer/0.2 CPython/3.12.12
+req: Header: [server] = [WSGIServer/0.2 CPython/3.12.12]
+req: Line: Content-Type: text/html; charset=utf-8
+req: Header: [content-type] = [text/html; charset=utf-8]
+req: Line: X-Frame-Options: DENY
+req: Header: [x-frame-options] = [DENY]
+req: Line: Content-Length: 4330
+req: Header: [content-length] = [4330]
+req: Line: X-Content-Type-Options: nosniff
+req: Header: [x-content-type-options] = [nosniff]
+req: Line: Referrer-Policy: same-origin
+req: Header: [referrer-policy] = [same-origin]
+req: Line: Cross-Origin-Opener-Policy: same-origin
+req: Header: [cross-origin-opener-policy] = [same-origin]
+req: Line: 
+req: End of headers.
+Running post_headers hooks
+req: Reading 4330 bytes of response body.
+Got 3865 bytes.
+Read block (3865 bytes):
+[<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <title>Page not found at /dav/litmus/</title>
+  <meta name="robots" content="NONE,NOARCHIVE">
+  <style>
+    html * { padding:0; margin:0; }
+    body * { padding:10px 20px; }
+    body * * { padding:0; }
+    body { font-family: sans-serif; background:#eee; color:#000; }
+    body > :where(header, main, footer) { border-bottom:1px solid #ddd; }
+    h1 { font-weight:normal; margin-bottom:.4em; }
+    h1 small { font-size:60%; color:#666; font-weight:normal; }
+    table { border:none; border-collapse: collapse; width:100%; }
+    td, th { vertical-align:top; padding:2px 3px; }
+    th { width:12em; text-align:right; color:#666; padding-right:.5em; }
+    #info { background:#f6f6f6; }
+    #info ol { margin: 0.5em 4em; }
+    #info ol li { font-family: monospace; }
+    #summary { background: #ffc; }
+    #explanation { background:#eee; border-bottom: 0px none; }
+    pre.exception_value { font-family: sans-serif; color: #575757; font-size: 1.5em; margin: 10px 0 10px 0; }
+  </style>
+</head>
+<body>
+  <header id="summary">
+    <h1>Page not found <small>(404)</small></h1>
+    
+    <table class="meta">
+      <tr>
+        <th scope="row">Request Method:</th>
+        <td>DELETE</td>
+      </tr>
+      <tr>
+        <th scope="row">Request URL:</th>
+        <td>http://127.0.0.1:8000/dav/litmus/</td>
+      </tr>
+      
+    </table>
+  </header>
+
+  <main id="info">
+    
+      <p>
+      Using the URLconf defined in <code>config.urls</code>,
+      Django tried these URL patterns, in this order:
+      </p>
+      <ol>
+        
+          <li>
+            
+              <code>
+                
+                [name='home']
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                accounts/
+                
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                calendars/
+                
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                .well-known/caldav
+                [name='well-known-caldav']
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                dav/
+                
+              </code>
+            
+              <code>
+                
+                [name='root']
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                dav/
+                
+              </code>
+            
+              <code>
+                principals/&lt;str:username&gt;/
+                [name='principal']
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                dav/
+                
+              </code>
+            
+              <code>
+                calendars/&lt;str:username&gt;/
+                [name='calendar-home']
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                dav/
+                
+              </code>
+            
+              <code>
+                calendars/&lt;str:username&gt;/&lt;slug:slug&gt;/
+                [name='calendar-collection']
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                dav/
+                
+              </code>
+            
+              <code>
+                calendars/&lt;str:username&gt;/&lt;slug:slug&gt;/&lt;str:filename&gt;
+                [name='calendar-object']
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                admin/
+                
+              </code>
+  ]
+req: Reading 465 bytes of response body.
+Got 465 bytes.
+Read block (465 bytes):
+[          
+          </li>
+        
+      </ol>
+      <p>
+        
+          The current path, <code>dav/litmus/</code>,
+        
+        didn’t match any of these.
+      </p>
+    
+  </main>
+
+  <footer id="explanation">
+    <p>
+      You’re seeing this error because you have <code>DEBUG = True</code> in
+      your Django settings file. Change that to <code>False</code>, and Django
+      will display a standard 404 page.
+    </p>
+  </footer>
+</body>
+</html>
+]
+req: Reading 0 bytes of response body.
+Running post_send hooks
+auth: Post-send (#0), code is 404 (want 401), WWW-Authenticate is (none)
+req: Destroy (DELETE /dav/litmus/).
+Running destroy hooks.
+auth: Create for WWW-Authenticate
+Running pre_send hooks
+Sending request headers:
+MKCOL /dav/litmus/ HTTP/1.1
+User-Agent: litmus/0.17 neon/0.36.0
+Connection: TE
+TE: trailers
+Host: 127.0.0.1:8000
+X-Litmus: basic: 0 (begin)
+
+Sending request-line and headers:
+Request sent; retry is 1.
+req: Line: HTTP/1.1 404 Not Found
+req: Line: Date: Mon, 16 Feb 2026 04:49:45 GMT
+req: Header: [date] = [Mon, 16 Feb 2026 04:49:45 GMT]
+req: Line: Server: WSGIServer/0.2 CPython/3.12.12
+req: Header: [server] = [WSGIServer/0.2 CPython/3.12.12]
+req: Line: Content-Type: text/html; charset=utf-8
+req: Header: [content-type] = [text/html; charset=utf-8]
+req: Line: X-Frame-Options: DENY
+req: Header: [x-frame-options] = [DENY]
+req: Line: Content-Length: 4329
+req: Header: [content-length] = [4329]
+req: Line: X-Content-Type-Options: nosniff
+req: Header: [x-content-type-options] = [nosniff]
+req: Line: Referrer-Policy: same-origin
+req: Header: [referrer-policy] = [same-origin]
+req: Line: Cross-Origin-Opener-Policy: same-origin
+req: Header: [cross-origin-opener-policy] = [same-origin]
+req: Line: 
+req: End of headers.
+Running post_headers hooks
+req: Reading 4329 bytes of response body.
+Got 3828 bytes.
+Read block (3828 bytes):
+[<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <title>Page not found at /dav/litmus/</title>
+  <meta name="robots" content="NONE,NOARCHIVE">
+  <style>
+    html * { padding:0; margin:0; }
+    body * { padding:10px 20px; }
+    body * * { padding:0; }
+    body { font-family: sans-serif; background:#eee; color:#000; }
+    body > :where(header, main, footer) { border-bottom:1px solid #ddd; }
+    h1 { font-weight:normal; margin-bottom:.4em; }
+    h1 small { font-size:60%; color:#666; font-weight:normal; }
+    table { border:none; border-collapse: collapse; width:100%; }
+    td, th { vertical-align:top; padding:2px 3px; }
+    th { width:12em; text-align:right; color:#666; padding-right:.5em; }
+    #info { background:#f6f6f6; }
+    #info ol { margin: 0.5em 4em; }
+    #info ol li { font-family: monospace; }
+    #summary { background: #ffc; }
+    #explanation { background:#eee; border-bottom: 0px none; }
+    pre.exception_value { font-family: sans-serif; color: #575757; font-size: 1.5em; margin: 10px 0 10px 0; }
+  </style>
+</head>
+<body>
+  <header id="summary">
+    <h1>Page not found <small>(404)</small></h1>
+    
+    <table class="meta">
+      <tr>
+        <th scope="row">Request Method:</th>
+        <td>MKCOL</td>
+      </tr>
+      <tr>
+        <th scope="row">Request URL:</th>
+        <td>http://127.0.0.1:8000/dav/litmus/</td>
+      </tr>
+      
+    </table>
+  </header>
+
+  <main id="info">
+    
+      <p>
+      Using the URLconf defined in <code>config.urls</code>,
+      Django tried these URL patterns, in this order:
+      </p>
+      <ol>
+        
+          <li>
+            
+              <code>
+                
+                [name='home']
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                accounts/
+                
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                calendars/
+                
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                .well-known/caldav
+                [name='well-known-caldav']
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                dav/
+                
+              </code>
+            
+              <code>
+                
+                [name='root']
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                dav/
+                
+              </code>
+            
+              <code>
+                principals/&lt;str:username&gt;/
+                [name='principal']
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                dav/
+                
+              </code>
+            
+              <code>
+                calendars/&lt;str:username&gt;/
+                [name='calendar-home']
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                dav/
+                
+              </code>
+            
+              <code>
+                calendars/&lt;str:username&gt;/&lt;slug:slug&gt;/
+                [name='calendar-collection']
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                dav/
+                
+              </code>
+            
+              <code>
+                calendars/&lt;str:username&gt;/&lt;slug:slug&gt;/&lt;str:filename&gt;
+                [name='calendar-object']
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                admin/
+     ]
+req: Reading 501 bytes of response body.
+Got 501 bytes.
+Read block (501 bytes):
+[           
+              </code>
+            
+          </li>
+        
+      </ol>
+      <p>
+        
+          The current path, <code>dav/litmus/</code>,
+        
+        didn’t match any of these.
+      </p>
+    
+  </main>
+
+  <footer id="explanation">
+    <p>
+      You’re seeing this error because you have <code>DEBUG = True</code> in
+      your Django settings file. Change that to <code>False</code>, and Django
+      will display a standard 404 page.
+    </p>
+  </footer>
+</body>
+</html>
+]
+req: Reading 0 bytes of response body.
+Running post_send hooks
+auth: Post-send (#0), code is 404 (want 401), WWW-Authenticate is (none)
+req: Destroy (MKCOL /dav/litmus/).
+Running destroy hooks.
+Version string: neon 0.36.0: Library build, IPv6, libxml 2.15.1, zlib 1.3.1, OpenSSL 3.6.0 1 Oct 2025 (thread-safe).
+litmus: Parsing URI http://127.0.0.1:8000/dav/calendars/user01/...
+******* Running test 0: begin ********
+HTTP session to http://127.0.0.1:8000 begins.
+sess: Using IP literal address for 127.0.0.1
+HTTP session to http://127.0.0.1:8000 begins.
+sess: Using IP literal address for 127.0.0.1
+auth: Create for WWW-Authenticate
+Running pre_send hooks
+Sending request headers:
+DELETE /dav/calendars/user01/litmus/ HTTP/1.1
+User-Agent: litmus/0.17 neon/0.36.0
+Keep-Alive: 
+Connection: TE, Keep-Alive
+TE: trailers
+Host: 127.0.0.1:8000
+X-Litmus: basic: 0 (begin)
+
+Sending request-line and headers:
+req: Connecting to 127.0.0.1:8000
+Request sent; retry is 0.
+req: Line: HTTP/1.1 403 Forbidden
+req: Line: Date: Mon, 16 Feb 2026 04:51:50 GMT
+req: Header: [date] = [Mon, 16 Feb 2026 04:51:50 GMT]
+req: Line: Server: WSGIServer/0.2 CPython/3.12.12
+req: Header: [server] = [WSGIServer/0.2 CPython/3.12.12]
+req: Line: Content-Type: text/html; charset=utf-8
+req: Header: [content-type] = [text/html; charset=utf-8]
+req: Line: X-Frame-Options: DENY
+req: Header: [x-frame-options] = [DENY]
+req: Line: Content-Length: 2855
+req: Header: [content-length] = [2855]
+req: Line: X-Content-Type-Options: nosniff
+req: Header: [x-content-type-options] = [nosniff]
+req: Line: Referrer-Policy: same-origin
+req: Header: [referrer-policy] = [same-origin]
+req: Line: Cross-Origin-Opener-Policy: same-origin
+req: Header: [cross-origin-opener-policy] = [same-origin]
+req: Line: 
+req: End of headers.
+Running post_headers hooks
+req: Reading 2855 bytes of response body.
+Got 2855 bytes.
+Read block (2855 bytes):
+[<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <meta name="robots" content="NONE,NOARCHIVE">
+  <title>403 Forbidden</title>
+  <style>
+    html * { padding:0; margin:0; }
+    body * { padding:10px 20px; }
+    body * * { padding:0; }
+    body { font-family: sans-serif; background:#eee; color:#000; }
+    body>div { border-bottom:1px solid #ddd; }
+    h1 { font-weight:normal; margin-bottom:.4em; }
+    h1 span { font-size:60%; color:#666; font-weight:normal; }
+    #info { background:#f6f6f6; }
+    #info ul { margin: 0.5em 4em; }
+    #info p, #summary p { padding-top:10px; }
+    #summary { background: #ffc; }
+    #explanation { background:#eee; border-bottom: 0px none; }
+  </style>
+</head>
+<body>
+<div id="summary">
+  <h1>Forbidden <span>(403)</span></h1>
+  <p>CSRF verification failed. Request aborted.</p>
+
+
+  <p>You are seeing this message because this site requires a CSRF cookie when submitting forms. This cookie is required for security reasons, to ensure that your browser is not being hijacked by third parties.</p>
+  <p>If you have configured your browser to disable cookies, please re-enable them, at least for this site, or for “same-origin” requests.</p>
+
+</div>
+
+<div id="info">
+  <h2>Help</h2>
+    
+    <p>Reason given for failure:</p>
+    <pre>
+    CSRF cookie not set.
+    </pre>
+    
+
+  <p>In general, this can occur when there is a genuine Cross Site Request Forgery, or when
+  <a
+  href="https://docs.djangoproject.com/en/6.0/ref/csrf/">Django’s
+  CSRF mechanism</a> has not been used correctly.  For POST forms, you need to
+  ensure:</p>
+
+  <ul>
+    <li>Your browser is accepting cookies.</li>
+
+    <li>The view function passes a <code>request</code> to the template’s <a
+    href="https://docs.djangoproject.com/en/6.0/topics/templates/#django.template.backends.base.Template.render"><code>render</code></a>
+    method.</li>
+
+    <li>In the template, there is a <code>{% csrf_token
+    %}</code> template tag inside each POST form that
+    targets an internal URL.</li>
+
+    <li>If you are not using <code>CsrfViewMiddleware</code>, then you must use
+    <code>csrf_protect</code> on any views that use the <code>csrf_token</code>
+    template tag, as well as those that accept the POST data.</li>
+
+    <li>The form has a valid CSRF token. After logging in in another browser
+    tab or hitting the back button after a login, you may need to reload the
+    page with the form, because the token is rotated after a login.</li>
+  </ul>
+
+  <p>You’re seeing the help section of this page because you have <code>DEBUG =
+  True</code> in your Django settings file. Change that to <code>False</code>,
+  and only the initial error message will be displayed.  </p>
+
+  <p>You can customize this page using the CSRF_FAILURE_VIEW setting.</p>
+</div>
+
+</body>
+</html>
+]
+req: Reading 0 bytes of response body.
+Running post_send hooks
+auth: Post-send (#0), code is 403 (want 401), WWW-Authenticate is (none)
+req: Destroy (DELETE /dav/calendars/user01/litmus/).
+Running destroy hooks.
+auth: Create for WWW-Authenticate
+Running pre_send hooks
+Sending request headers:
+MKCOL /dav/calendars/user01/litmus/ HTTP/1.1
+User-Agent: litmus/0.17 neon/0.36.0
+Connection: TE
+TE: trailers
+Host: 127.0.0.1:8000
+X-Litmus: basic: 0 (begin)
+
+Sending request-line and headers:
+Request sent; retry is 1.
+req: Line: HTTP/1.1 403 Forbidden
+req: Line: Date: Mon, 16 Feb 2026 04:51:50 GMT
+req: Header: [date] = [Mon, 16 Feb 2026 04:51:50 GMT]
+req: Line: Server: WSGIServer/0.2 CPython/3.12.12
+req: Header: [server] = [WSGIServer/0.2 CPython/3.12.12]
+req: Line: Content-Type: text/html; charset=utf-8
+req: Header: [content-type] = [text/html; charset=utf-8]
+req: Line: X-Frame-Options: DENY
+req: Header: [x-frame-options] = [DENY]
+req: Line: Content-Length: 2855
+req: Header: [content-length] = [2855]
+req: Line: X-Content-Type-Options: nosniff
+req: Header: [x-content-type-options] = [nosniff]
+req: Line: Referrer-Policy: same-origin
+req: Header: [referrer-policy] = [same-origin]
+req: Line: Cross-Origin-Opener-Policy: same-origin
+req: Header: [cross-origin-opener-policy] = [same-origin]
+req: Line: 
+req: End of headers.
+Running post_headers hooks
+req: Reading 2855 bytes of response body.
+Got 2855 bytes.
+Read block (2855 bytes):
+[<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <meta name="robots" content="NONE,NOARCHIVE">
+  <title>403 Forbidden</title>
+  <style>
+    html * { padding:0; margin:0; }
+    body * { padding:10px 20px; }
+    body * * { padding:0; }
+    body { font-family: sans-serif; background:#eee; color:#000; }
+    body>div { border-bottom:1px solid #ddd; }
+    h1 { font-weight:normal; margin-bottom:.4em; }
+    h1 span { font-size:60%; color:#666; font-weight:normal; }
+    #info { background:#f6f6f6; }
+    #info ul { margin: 0.5em 4em; }
+    #info p, #summary p { padding-top:10px; }
+    #summary { background: #ffc; }
+    #explanation { background:#eee; border-bottom: 0px none; }
+  </style>
+</head>
+<body>
+<div id="summary">
+  <h1>Forbidden <span>(403)</span></h1>
+  <p>CSRF verification failed. Request aborted.</p>
+
+
+  <p>You are seeing this message because this site requires a CSRF cookie when submitting forms. This cookie is required for security reasons, to ensure that your browser is not being hijacked by third parties.</p>
+  <p>If you have configured your browser to disable cookies, please re-enable them, at least for this site, or for “same-origin” requests.</p>
+
+</div>
+
+<div id="info">
+  <h2>Help</h2>
+    
+    <p>Reason given for failure:</p>
+    <pre>
+    CSRF cookie not set.
+    </pre>
+    
+
+  <p>In general, this can occur when there is a genuine Cross Site Request Forgery, or when
+  <a
+  href="https://docs.djangoproject.com/en/6.0/ref/csrf/">Django’s
+  CSRF mechanism</a> has not been used correctly.  For POST forms, you need to
+  ensure:</p>
+
+  <ul>
+    <li>Your browser is accepting cookies.</li>
+
+    <li>The view function passes a <code>request</code> to the template’s <a
+    href="https://docs.djangoproject.com/en/6.0/topics/templates/#django.template.backends.base.Template.render"><code>render</code></a>
+    method.</li>
+
+    <li>In the template, there is a <code>{% csrf_token
+    %}</code> template tag inside each POST form that
+    targets an internal URL.</li>
+
+    <li>If you are not using <code>CsrfViewMiddleware</code>, then you must use
+    <code>csrf_protect</code> on any views that use the <code>csrf_token</code>
+    template tag, as well as those that accept the POST data.</li>
+
+    <li>The form has a valid CSRF token. After logging in in another browser
+    tab or hitting the back button after a login, you may need to reload the
+    page with the form, because the token is rotated after a login.</li>
+  </ul>
+
+  <p>You’re seeing the help section of this page because you have <code>DEBUG =
+  True</code> in your Django settings file. Change that to <code>False</code>,
+  and only the initial error message will be displayed.  </p>
+
+  <p>You can customize this page using the CSRF_FAILURE_VIEW setting.</p>
+</div>
+
+</body>
+</html>
+]
+req: Reading 0 bytes of response body.
+Running post_send hooks
+auth: Post-send (#0), code is 403 (want 401), WWW-Authenticate is (none)
+req: Destroy (MKCOL /dav/calendars/user01/litmus/).
+Running destroy hooks.
+Version string: neon 0.36.0: Library build, IPv6, libxml 2.15.1, zlib 1.3.1, OpenSSL 3.6.0 1 Oct 2025 (thread-safe).
+litmus: Parsing URI http://127.0.0.1:8000/dav/calendars/user01/...
+******* Running test 0: begin ********
+HTTP session to http://127.0.0.1:8000 begins.
+sess: Using IP literal address for 127.0.0.1
+HTTP session to http://127.0.0.1:8000 begins.
+sess: Using IP literal address for 127.0.0.1
+auth: Create for WWW-Authenticate
+Running pre_send hooks
+Sending request headers:
+DELETE /dav/calendars/user01/litmus/ HTTP/1.1
+User-Agent: litmus/0.17 neon/0.36.0
+Keep-Alive: 
+Connection: TE, Keep-Alive
+TE: trailers
+Host: 127.0.0.1:8000
+X-Litmus: basic: 0 (begin)
+
+Sending request-line and headers:
+req: Connecting to 127.0.0.1:8000
+Request sent; retry is 0.
+req: Line: HTTP/1.1 403 Forbidden
+req: Line: Date: Mon, 16 Feb 2026 04:54:07 GMT
+req: Header: [date] = [Mon, 16 Feb 2026 04:54:07 GMT]
+req: Line: Server: WSGIServer/0.2 CPython/3.12.12
+req: Header: [server] = [WSGIServer/0.2 CPython/3.12.12]
+req: Line: Content-Type: text/html; charset=utf-8
+req: Header: [content-type] = [text/html; charset=utf-8]
+req: Line: X-Frame-Options: DENY
+req: Header: [x-frame-options] = [DENY]
+req: Line: Content-Length: 2855
+req: Header: [content-length] = [2855]
+req: Line: X-Content-Type-Options: nosniff
+req: Header: [x-content-type-options] = [nosniff]
+req: Line: Referrer-Policy: same-origin
+req: Header: [referrer-policy] = [same-origin]
+req: Line: Cross-Origin-Opener-Policy: same-origin
+req: Header: [cross-origin-opener-policy] = [same-origin]
+req: Line: 
+req: End of headers.
+Running post_headers hooks
+req: Reading 2855 bytes of response body.
+Got 2855 bytes.
+Read block (2855 bytes):
+[<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <meta name="robots" content="NONE,NOARCHIVE">
+  <title>403 Forbidden</title>
+  <style>
+    html * { padding:0; margin:0; }
+    body * { padding:10px 20px; }
+    body * * { padding:0; }
+    body { font-family: sans-serif; background:#eee; color:#000; }
+    body>div { border-bottom:1px solid #ddd; }
+    h1 { font-weight:normal; margin-bottom:.4em; }
+    h1 span { font-size:60%; color:#666; font-weight:normal; }
+    #info { background:#f6f6f6; }
+    #info ul { margin: 0.5em 4em; }
+    #info p, #summary p { padding-top:10px; }
+    #summary { background: #ffc; }
+    #explanation { background:#eee; border-bottom: 0px none; }
+  </style>
+</head>
+<body>
+<div id="summary">
+  <h1>Forbidden <span>(403)</span></h1>
+  <p>CSRF verification failed. Request aborted.</p>
+
+
+  <p>You are seeing this message because this site requires a CSRF cookie when submitting forms. This cookie is required for security reasons, to ensure that your browser is not being hijacked by third parties.</p>
+  <p>If you have configured your browser to disable cookies, please re-enable them, at least for this site, or for “same-origin” requests.</p>
+
+</div>
+
+<div id="info">
+  <h2>Help</h2>
+    
+    <p>Reason given for failure:</p>
+    <pre>
+    CSRF cookie not set.
+    </pre>
+    
+
+  <p>In general, this can occur when there is a genuine Cross Site Request Forgery, or when
+  <a
+  href="https://docs.djangoproject.com/en/6.0/ref/csrf/">Django’s
+  CSRF mechanism</a> has not been used correctly.  For POST forms, you need to
+  ensure:</p>
+
+  <ul>
+    <li>Your browser is accepting cookies.</li>
+
+    <li>The view function passes a <code>request</code> to the template’s <a
+    href="https://docs.djangoproject.com/en/6.0/topics/templates/#django.template.backends.base.Template.render"><code>render</code></a>
+    method.</li>
+
+    <li>In the template, there is a <code>{% csrf_token
+    %}</code> template tag inside each POST form that
+    targets an internal URL.</li>
+
+    <li>If you are not using <code>CsrfViewMiddleware</code>, then you must use
+    <code>csrf_protect</code> on any views that use the <code>csrf_token</code>
+    template tag, as well as those that accept the POST data.</li>
+
+    <li>The form has a valid CSRF token. After logging in in another browser
+    tab or hitting the back button after a login, you may need to reload the
+    page with the form, because the token is rotated after a login.</li>
+  </ul>
+
+  <p>You’re seeing the help section of this page because you have <code>DEBUG =
+  True</code> in your Django settings file. Change that to <code>False</code>,
+  and only the initial error message will be displayed.  </p>
+
+  <p>You can customize this page using the CSRF_FAILURE_VIEW setting.</p>
+</div>
+
+</body>
+</html>
+]
+req: Reading 0 bytes of response body.
+Running post_send hooks
+auth: Post-send (#0), code is 403 (want 401), WWW-Authenticate is (none)
+req: Destroy (DELETE /dav/calendars/user01/litmus/).
+Running destroy hooks.
+auth: Create for WWW-Authenticate
+Running pre_send hooks
+Sending request headers:
+MKCOL /dav/calendars/user01/litmus/ HTTP/1.1
+User-Agent: litmus/0.17 neon/0.36.0
+Connection: TE
+TE: trailers
+Host: 127.0.0.1:8000
+X-Litmus: basic: 0 (begin)
+
+Sending request-line and headers:
+Request sent; retry is 1.
+req: Line: HTTP/1.1 403 Forbidden
+req: Line: Date: Mon, 16 Feb 2026 04:54:07 GMT
+req: Header: [date] = [Mon, 16 Feb 2026 04:54:07 GMT]
+req: Line: Server: WSGIServer/0.2 CPython/3.12.12
+req: Header: [server] = [WSGIServer/0.2 CPython/3.12.12]
+req: Line: Content-Type: text/html; charset=utf-8
+req: Header: [content-type] = [text/html; charset=utf-8]
+req: Line: X-Frame-Options: DENY
+req: Header: [x-frame-options] = [DENY]
+req: Line: Content-Length: 2855
+req: Header: [content-length] = [2855]
+req: Line: X-Content-Type-Options: nosniff
+req: Header: [x-content-type-options] = [nosniff]
+req: Line: Referrer-Policy: same-origin
+req: Header: [referrer-policy] = [same-origin]
+req: Line: Cross-Origin-Opener-Policy: same-origin
+req: Header: [cross-origin-opener-policy] = [same-origin]
+req: Line: 
+req: End of headers.
+Running post_headers hooks
+req: Reading 2855 bytes of response body.
+Got 2855 bytes.
+Read block (2855 bytes):
+[<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <meta name="robots" content="NONE,NOARCHIVE">
+  <title>403 Forbidden</title>
+  <style>
+    html * { padding:0; margin:0; }
+    body * { padding:10px 20px; }
+    body * * { padding:0; }
+    body { font-family: sans-serif; background:#eee; color:#000; }
+    body>div { border-bottom:1px solid #ddd; }
+    h1 { font-weight:normal; margin-bottom:.4em; }
+    h1 span { font-size:60%; color:#666; font-weight:normal; }
+    #info { background:#f6f6f6; }
+    #info ul { margin: 0.5em 4em; }
+    #info p, #summary p { padding-top:10px; }
+    #summary { background: #ffc; }
+    #explanation { background:#eee; border-bottom: 0px none; }
+  </style>
+</head>
+<body>
+<div id="summary">
+  <h1>Forbidden <span>(403)</span></h1>
+  <p>CSRF verification failed. Request aborted.</p>
+
+
+  <p>You are seeing this message because this site requires a CSRF cookie when submitting forms. This cookie is required for security reasons, to ensure that your browser is not being hijacked by third parties.</p>
+  <p>If you have configured your browser to disable cookies, please re-enable them, at least for this site, or for “same-origin” requests.</p>
+
+</div>
+
+<div id="info">
+  <h2>Help</h2>
+    
+    <p>Reason given for failure:</p>
+    <pre>
+    CSRF cookie not set.
+    </pre>
+    
+
+  <p>In general, this can occur when there is a genuine Cross Site Request Forgery, or when
+  <a
+  href="https://docs.djangoproject.com/en/6.0/ref/csrf/">Django’s
+  CSRF mechanism</a> has not been used correctly.  For POST forms, you need to
+  ensure:</p>
+
+  <ul>
+    <li>Your browser is accepting cookies.</li>
+
+    <li>The view function passes a <code>request</code> to the template’s <a
+    href="https://docs.djangoproject.com/en/6.0/topics/templates/#django.template.backends.base.Template.render"><code>render</code></a>
+    method.</li>
+
+    <li>In the template, there is a <code>{% csrf_token
+    %}</code> template tag inside each POST form that
+    targets an internal URL.</li>
+
+    <li>If you are not using <code>CsrfViewMiddleware</code>, then you must use
+    <code>csrf_protect</code> on any views that use the <code>csrf_token</code>
+    template tag, as well as those that accept the POST data.</li>
+
+    <li>The form has a valid CSRF token. After logging in in another browser
+    tab or hitting the back button after a login, you may need to reload the
+    page with the form, because the token is rotated after a login.</li>
+  </ul>
+
+  <p>You’re seeing the help section of this page because you have <code>DEBUG =
+  True</code> in your Django settings file. Change that to <code>False</code>,
+  and only the initial error message will be displayed.  </p>
+
+  <p>You can customize this page using the CSRF_FAILURE_VIEW setting.</p>
+</div>
+
+</body>
+</html>
+]
+req: Reading 0 bytes of response body.
+Running post_send hooks
+auth: Post-send (#0), code is 403 (want 401), WWW-Authenticate is (none)
+req: Destroy (MKCOL /dav/calendars/user01/litmus/).
+Running destroy hooks.
+Version string: neon 0.36.0: Library build, IPv6, libxml 2.15.1, zlib 1.3.1, OpenSSL 3.6.0 1 Oct 2025 (thread-safe).
+litmus: Parsing URI http://127.0.0.1:8000/dav/calendars/user01/...
+******* Running test 0: begin ********
+HTTP session to http://127.0.0.1:8000 begins.
+sess: Using IP literal address for 127.0.0.1
+HTTP session to http://127.0.0.1:8000 begins.
+sess: Using IP literal address for 127.0.0.1
+auth: Create for WWW-Authenticate
+Running pre_send hooks
+Sending request headers:
+DELETE /dav/calendars/user01/litmus/ HTTP/1.1
+User-Agent: litmus/0.17 neon/0.36.0
+Keep-Alive: 
+Connection: TE, Keep-Alive
+TE: trailers
+Host: 127.0.0.1:8000
+X-Litmus: basic: 0 (begin)
+
+Sending request-line and headers:
+req: Connecting to 127.0.0.1:8000
+Request sent; retry is 0.
+req: Line: HTTP/1.1 401 Unauthorized
+req: Line: Date: Mon, 16 Feb 2026 04:55:01 GMT
+req: Header: [date] = [Mon, 16 Feb 2026 04:55:01 GMT]
+req: Line: Server: WSGIServer/0.2 CPython/3.12.12
+req: Header: [server] = [WSGIServer/0.2 CPython/3.12.12]
+req: Line: Content-Type: text/html; charset=utf-8
+req: Header: [content-type] = [text/html; charset=utf-8]
+req: Line: WWW-Authenticate: Basic realm="davhome"
+req: Header: [www-authenticate] = [Basic realm="davhome"]
+req: Line: X-Frame-Options: DENY
+req: Header: [x-frame-options] = [DENY]
+req: Line: Content-Length: 0
+req: Header: [content-length] = [0]
+req: Line: Vary: Cookie
+req: Header: [vary] = [Cookie]
+req: Line: X-Content-Type-Options: nosniff
+req: Header: [x-content-type-options] = [nosniff]
+req: Line: Referrer-Policy: same-origin
+req: Header: [referrer-policy] = [same-origin]
+req: Line: Cross-Origin-Opener-Policy: same-origin
+req: Header: [cross-origin-opener-policy] = [same-origin]
+req: Line: 
+req: End of headers.
+Running post_headers hooks
+req: Reading 0 bytes of response body.
+Running post_send hooks
+auth: Post-send (#0), code is 401 (want 401), WWW-Authenticate is Basic realm="davhome"
+auth: Got challenge (code 401).
+auth: Got 'Basic' challenge.
+auth: Trying Basic challenge...
+auth: Basic auth scope is: /dav/calendars/user01/litmus/
+auth: Accepted Basic challenge.
+Running pre_send hooks
+auth: Sending 'Basic' response.
+auth: '/dav/calendars/user01/litmus/' is inside auth domain: 1.
+Sending request headers:
+DELETE /dav/calendars/user01/litmus/ HTTP/1.1
+User-Agent: litmus/0.17 neon/0.36.0
+Keep-Alive: 
+Connection: TE, Keep-Alive
+TE: trailers
+Host: 127.0.0.1:8000
+Authorization: Basic dXNlcjAxOnVzZXIwMQ==
+X-Litmus: basic: 0 (begin)
+
+Sending request-line and headers:
+Request sent; retry is 1.
+req: Line: HTTP/1.1 404 Not Found
+req: Line: Date: Mon, 16 Feb 2026 04:55:01 GMT
+req: Header: [date] = [Mon, 16 Feb 2026 04:55:01 GMT]
+req: Line: Server: WSGIServer/0.2 CPython/3.12.12
+req: Header: [server] = [WSGIServer/0.2 CPython/3.12.12]
+req: Line: Content-Type: text/html; charset=utf-8
+req: Header: [content-type] = [text/html; charset=utf-8]
+req: Line: X-Frame-Options: DENY
+req: Header: [x-frame-options] = [DENY]
+req: Line: Content-Length: 0
+req: Header: [content-length] = [0]
+req: Line: Vary: Cookie
+req: Header: [vary] = [Cookie]
+req: Line: X-Content-Type-Options: nosniff
+req: Header: [x-content-type-options] = [nosniff]
+req: Line: Referrer-Policy: same-origin
+req: Header: [referrer-policy] = [same-origin]
+req: Line: Cross-Origin-Opener-Policy: same-origin
+req: Header: [cross-origin-opener-policy] = [same-origin]
+req: Line: 
+req: End of headers.
+Running post_headers hooks
+req: Reading 0 bytes of response body.
+Running post_send hooks
+auth: Post-send (#1), code is 404 (want 401), WWW-Authenticate is (none)
+req: Destroy (DELETE /dav/calendars/user01/litmus/).
+Running destroy hooks.
+auth: Create for WWW-Authenticate
+Running pre_send hooks
+auth: Sending 'Basic' response.
+auth: '/dav/calendars/user01/litmus/' is inside auth domain: 1.
+Sending request headers:
+MKCOL /dav/calendars/user01/litmus/ HTTP/1.1
+User-Agent: litmus/0.17 neon/0.36.0
+Connection: TE
+TE: trailers
+Host: 127.0.0.1:8000
+Authorization: Basic dXNlcjAxOnVzZXIwMQ==
+X-Litmus: basic: 0 (begin)
+
+Sending request-line and headers:
+Request sent; retry is 1.
+req: Line: HTTP/1.1 201 Created
+req: Line: Date: Mon, 16 Feb 2026 04:55:02 GMT
+req: Header: [date] = [Mon, 16 Feb 2026 04:55:02 GMT]
+req: Line: Server: WSGIServer/0.2 CPython/3.12.12
+req: Header: [server] = [WSGIServer/0.2 CPython/3.12.12]
+req: Line: Content-Type: text/html; charset=utf-8
+req: Header: [content-type] = [text/html; charset=utf-8]
+req: Line: Location: /dav/calendars/user01/litmus/
+req: Header: [location] = [/dav/calendars/user01/litmus/]
+req: Line: ETag: "1771217702"
+req: Header: [etag] = ["1771217702"]
+req: Line: DAV: 1, calendar-access
+req: Header: [dav] = [1, calendar-access]
+req: Line: X-Frame-Options: DENY
+req: Header: [x-frame-options] = [DENY]
+req: Line: Content-Length: 0
+req: Header: [content-length] = [0]
+req: Line: Vary: Cookie
+req: Header: [vary] = [Cookie]
+req: Line: X-Content-Type-Options: nosniff
+req: Header: [x-content-type-options] = [nosniff]
+req: Line: Referrer-Policy: same-origin
+req: Header: [referrer-policy] = [same-origin]
+req: Line: Cross-Origin-Opener-Policy: same-origin
+req: Header: [cross-origin-opener-policy] = [same-origin]
+req: Line: 
+req: End of headers.
+Running post_headers hooks
+req: Reading 0 bytes of response body.
+Running post_send hooks
+auth: Post-send (#0), code is 201 (want 401), WWW-Authenticate is (none)
+req: Destroy (MKCOL /dav/calendars/user01/litmus/).
+Running destroy hooks.
+******* Running test 1: options ********
+auth: Create for WWW-Authenticate
+Running pre_send hooks
+auth: Sending 'Basic' response.
+auth: '/dav/calendars/user01/litmus/' is inside auth domain: 1.
+Sending request headers:
+OPTIONS /dav/calendars/user01/litmus/ HTTP/1.1
+User-Agent: litmus/0.17 neon/0.36.0
+Connection: TE
+TE: trailers
+Host: 127.0.0.1:8000
+Authorization: Basic dXNlcjAxOnVzZXIwMQ==
+X-Litmus: basic: 1 (options)
+
+Sending request-line and headers:
+Request sent; retry is 1.
+req: Line: HTTP/1.1 204 No Content
+req: Line: Date: Mon, 16 Feb 2026 04:55:02 GMT
+req: Header: [date] = [Mon, 16 Feb 2026 04:55:02 GMT]
+req: Line: Server: WSGIServer/0.2 CPython/3.12.12
+req: Header: [server] = [WSGIServer/0.2 CPython/3.12.12]
+req: Line: Content-Type: text/html; charset=utf-8
+req: Header: [content-type] = [text/html; charset=utf-8]
+req: Line: Allow: OPTIONS, PROPFIND, GET, HEAD, MKCOL, MKCALENDAR
+req: Header: [allow] = [OPTIONS, PROPFIND, GET, HEAD, MKCOL, MKCALENDAR]
+req: Line: DAV: 1, calendar-access
+req: Header: [dav] = [1, calendar-access]
+req: Line: X-Frame-Options: DENY
+req: Header: [x-frame-options] = [DENY]
+req: Line: Content-Length: 0
+req: Header: [content-length] = [0]
+req: Line: X-Content-Type-Options: nosniff
+req: Header: [x-content-type-options] = [nosniff]
+req: Line: Referrer-Policy: same-origin
+req: Header: [referrer-policy] = [same-origin]
+req: Line: Cross-Origin-Opener-Policy: same-origin
+req: Header: [cross-origin-opener-policy] = [same-origin]
+req: Line: 
+req: End of headers.
+Running post_headers hooks
+req: Reading 0 bytes of response body.
+Running post_send hooks
+auth: Post-send (#0), code is 204 (want 401), WWW-Authenticate is (none)
+Request ends, status 204 class 2xx, error line:
+204 No Content
+req: Destroy (OPTIONS /dav/calendars/user01/litmus/).
+Running destroy hooks.
+******* Running test 2: put_get ********
+auth: Create for WWW-Authenticate
+Running pre_send hooks
+auth: Sending 'Basic' response.
+auth: '/dav/calendars/user01/litmus/res' is inside auth domain: 1.
+Sending request headers:
+PUT /dav/calendars/user01/litmus/res HTTP/1.1
+User-Agent: litmus/0.17 neon/0.36.0
+Connection: TE
+TE: trailers
+Host: 127.0.0.1:8000
+Content-Length: 41
+Authorization: Basic dXNlcjAxOnVzZXIwMQ==
+X-Litmus: basic: 2 (put_get)
+
+Sending request-line and headers:
+Sending request body:
+Body block (41 bytes):
+[This is
+a test file.
+for litmus
+testing.
+]
+Request sent; retry is 1.
+req: Line: HTTP/1.1 400 Bad Request
+req: Line: Date: Mon, 16 Feb 2026 04:55:02 GMT
+req: Header: [date] = [Mon, 16 Feb 2026 04:55:02 GMT]
+req: Line: Server: WSGIServer/0.2 CPython/3.12.12
+req: Header: [server] = [WSGIServer/0.2 CPython/3.12.12]
+req: Line: Content-Type: text/plain; charset=utf-8
+req: Header: [content-type] = [text/plain; charset=utf-8]
+req: Line: X-Frame-Options: DENY
+req: Header: [x-frame-options] = [DENY]
+req: Line: Content-Length: 51
+req: Header: [content-length] = [51]
+req: Line: Vary: Cookie
+req: Header: [vary] = [Cookie]
+req: Line: X-Content-Type-Options: nosniff
+req: Header: [x-content-type-options] = [nosniff]
+req: Line: Referrer-Policy: same-origin
+req: Header: [referrer-policy] = [same-origin]
+req: Line: Cross-Origin-Opener-Policy: same-origin
+req: Header: [cross-origin-opener-policy] = [same-origin]
+req: Line: 
+req: End of headers.
+Running post_headers hooks
+req: Reading 51 bytes of response body.
+Got 51 bytes.
+Read block (51 bytes):
+[Calendar payload must contain VCALENDAR boundaries.]
+req: Reading 0 bytes of response body.
+Running post_send hooks
+auth: Post-send (#0), code is 400 (want 401), WWW-Authenticate is (none)
+Request ends, status 400 class 4xx, error line:
+400 Bad Request
+req: Destroy (PUT /dav/calendars/user01/litmus/res).
+Running destroy hooks.
+******* Running test 3: put_get_utf8_segment ********
+auth: Create for WWW-Authenticate
+Running pre_send hooks
+auth: Sending 'Basic' response.
+auth: '/dav/calendars/user01/litmus/res-%e2%82%ac' is inside auth domain: 1.
+Sending request headers:
+PUT /dav/calendars/user01/litmus/res-%e2%82%ac HTTP/1.1
+User-Agent: litmus/0.17 neon/0.36.0
+Connection: TE
+TE: trailers
+Host: 127.0.0.1:8000
+Content-Length: 41
+Authorization: Basic dXNlcjAxOnVzZXIwMQ==
+X-Litmus: basic: 3 (put_get_utf8_segment)
+
+Sending request-line and headers:
+Sending request body:
+Body block (41 bytes):
+[This is
+a test file.
+for litmus
+testing.
+]
+Request sent; retry is 1.
+req: Line: HTTP/1.1 400 Bad Request
+req: Line: Date: Mon, 16 Feb 2026 04:55:03 GMT
+req: Header: [date] = [Mon, 16 Feb 2026 04:55:03 GMT]
+req: Line: Server: WSGIServer/0.2 CPython/3.12.12
+req: Header: [server] = [WSGIServer/0.2 CPython/3.12.12]
+req: Line: Content-Type: text/plain; charset=utf-8
+req: Header: [content-type] = [text/plain; charset=utf-8]
+req: Line: X-Frame-Options: DENY
+req: Header: [x-frame-options] = [DENY]
+req: Line: Content-Length: 51
+req: Header: [content-length] = [51]
+req: Line: Vary: Cookie
+req: Header: [vary] = [Cookie]
+req: Line: X-Content-Type-Options: nosniff
+req: Header: [x-content-type-options] = [nosniff]
+req: Line: Referrer-Policy: same-origin
+req: Header: [referrer-policy] = [same-origin]
+req: Line: Cross-Origin-Opener-Policy: same-origin
+req: Header: [cross-origin-opener-policy] = [same-origin]
+req: Line: 
+req: End of headers.
+Running post_headers hooks
+req: Reading 51 bytes of response body.
+Got 51 bytes.
+Read block (51 bytes):
+[Calendar payload must contain VCALENDAR boundaries.]
+req: Reading 0 bytes of response body.
+Running post_send hooks
+auth: Post-send (#0), code is 400 (want 401), WWW-Authenticate is (none)
+Request ends, status 400 class 4xx, error line:
+400 Bad Request
+req: Destroy (PUT /dav/calendars/user01/litmus/res-%e2%82%ac).
+Running destroy hooks.
+******* Running test 4: put_no_parent ********
+auth: Create for WWW-Authenticate
+Running pre_send hooks
+auth: Sending 'Basic' response.
+auth: '/dav/calendars/user01/litmus/409me/noparent.txt' is inside auth domain: 1.
+Sending request headers:
+PUT /dav/calendars/user01/litmus/409me/noparent.txt HTTP/1.1
+User-Agent: litmus/0.17 neon/0.36.0
+Connection: TE
+TE: trailers
+Host: 127.0.0.1:8000
+Content-Length: 4
+Authorization: Basic dXNlcjAxOnVzZXIwMQ==
+X-Litmus: basic: 4 (put_no_parent)
+
+Sending request-line and headers:
+Sending request body:
+Body block (4 bytes):
+[zero]
+Request sent; retry is 1.
+req: Line: HTTP/1.1 404 Not Found
+req: Line: Date: Mon, 16 Feb 2026 04:55:03 GMT
+req: Header: [date] = [Mon, 16 Feb 2026 04:55:03 GMT]
+req: Line: Server: WSGIServer/0.2 CPython/3.12.12
+req: Header: [server] = [WSGIServer/0.2 CPython/3.12.12]
+req: Line: Content-Type: text/html; charset=utf-8
+req: Header: [content-type] = [text/html; charset=utf-8]
+req: Line: X-Frame-Options: DENY
+req: Header: [x-frame-options] = [DENY]
+req: Line: Content-Length: 4432
+req: Header: [content-length] = [4432]
+req: Line: X-Content-Type-Options: nosniff
+req: Header: [x-content-type-options] = [nosniff]
+req: Line: Referrer-Policy: same-origin
+req: Header: [referrer-policy] = [same-origin]
+req: Line: Cross-Origin-Opener-Policy: same-origin
+req: Header: [cross-origin-opener-policy] = [same-origin]
+req: Line: 
+req: End of headers.
+Running post_headers hooks
+req: Reading 4432 bytes of response body.
+Got 3828 bytes.
+Read block (3828 bytes):
+[<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <title>Page not found at /dav/calendars/user01/litmus/409me/noparent.txt</title>
+  <meta name="robots" content="NONE,NOARCHIVE">
+  <style>
+    html * { padding:0; margin:0; }
+    body * { padding:10px 20px; }
+    body * * { padding:0; }
+    body { font-family: sans-serif; background:#eee; color:#000; }
+    body > :where(header, main, footer) { border-bottom:1px solid #ddd; }
+    h1 { font-weight:normal; margin-bottom:.4em; }
+    h1 small { font-size:60%; color:#666; font-weight:normal; }
+    table { border:none; border-collapse: collapse; width:100%; }
+    td, th { vertical-align:top; padding:2px 3px; }
+    th { width:12em; text-align:right; color:#666; padding-right:.5em; }
+    #info { background:#f6f6f6; }
+    #info ol { margin: 0.5em 4em; }
+    #info ol li { font-family: monospace; }
+    #summary { background: #ffc; }
+    #explanation { background:#eee; border-bottom: 0px none; }
+    pre.exception_value { font-family: sans-serif; color: #575757; font-size: 1.5em; margin: 10px 0 10px 0; }
+  </style>
+</head>
+<body>
+  <header id="summary">
+    <h1>Page not found <small>(404)</small></h1>
+    
+    <table class="meta">
+      <tr>
+        <th scope="row">Request Method:</th>
+        <td>PUT</td>
+      </tr>
+      <tr>
+        <th scope="row">Request URL:</th>
+        <td>http://127.0.0.1:8000/dav/calendars/user01/litmus/409me/noparent.txt</td>
+      </tr>
+      
+    </table>
+  </header>
+
+  <main id="info">
+    
+      <p>
+      Using the URLconf defined in <code>config.urls</code>,
+      Django tried these URL patterns, in this order:
+      </p>
+      <ol>
+        
+          <li>
+            
+              <code>
+                
+                [name='home']
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                accounts/
+                
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                calendars/
+                
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                .well-known/caldav
+                [name='well-known-caldav']
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                dav/
+                
+              </code>
+            
+              <code>
+                
+                [name='root']
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                dav/
+                
+              </code>
+            
+              <code>
+                principals/&lt;str:username&gt;/
+                [name='principal']
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                dav/
+                
+              </code>
+            
+              <code>
+                calendars/&lt;str:username&gt;/
+                [name='calendar-home']
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                dav/
+                
+              </code>
+            
+              <code>
+                calendars/&lt;str:username&gt;/&lt;slug:slug&gt;/
+                [name='calendar-collection']
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                dav/
+                
+              </code>
+            
+              <code>
+                calendars/&lt;str:username&gt;/&lt;slug:slug&gt;/&lt;str:filename&gt;
+                [name='calendar-object']
+              </code>
+            
+          </li>
+        
+         ]
+req: Reading 604 bytes of response body.
+Got 604 bytes.
+Read block (604 bytes):
+[ <li>
+            
+              <code>
+                admin/
+                
+              </code>
+            
+          </li>
+        
+      </ol>
+      <p>
+        
+          The current path, <code>dav/calendars/user01/litmus/409me/noparent.txt</code>,
+        
+        didn’t match any of these.
+      </p>
+    
+  </main>
+
+  <footer id="explanation">
+    <p>
+      You’re seeing this error because you have <code>DEBUG = True</code> in
+      your Django settings file. Change that to <code>False</code>, and Django
+      will display a standard 404 page.
+    </p>
+  </footer>
+</body>
+</html>
+]
+req: Reading 0 bytes of response body.
+Running post_send hooks
+auth: Post-send (#0), code is 404 (want 401), WWW-Authenticate is (none)
+Request ends, status 404 class 4xx, error line:
+404 Not Found
+req: Destroy (PUT /dav/calendars/user01/litmus/409me/noparent.txt).
+Running destroy hooks.
+******* Running test 5: put_location ********
+auth: Create for WWW-Authenticate
+Running pre_send hooks
+auth: Sending 'Basic' response.
+auth: '/dav/calendars/user01/litmus/put%23test' is inside auth domain: 1.
+Sending request headers:
+DELETE /dav/calendars/user01/litmus/put%23test HTTP/1.1
+User-Agent: litmus/0.17 neon/0.36.0
+Connection: TE
+TE: trailers
+Host: 127.0.0.1:8000
+Authorization: Basic dXNlcjAxOnVzZXIwMQ==
+X-Litmus: basic: 5 (put_location)
+
+Sending request-line and headers:
+Request sent; retry is 1.
+req: Line: HTTP/1.1 404 Not Found
+req: Line: Date: Mon, 16 Feb 2026 04:55:03 GMT
+req: Header: [date] = [Mon, 16 Feb 2026 04:55:03 GMT]
+req: Line: Server: WSGIServer/0.2 CPython/3.12.12
+req: Header: [server] = [WSGIServer/0.2 CPython/3.12.12]
+req: Line: Content-Type: text/html; charset=utf-8
+req: Header: [content-type] = [text/html; charset=utf-8]
+req: Line: X-Frame-Options: DENY
+req: Header: [x-frame-options] = [DENY]
+req: Line: Content-Length: 0
+req: Header: [content-length] = [0]
+req: Line: Vary: Cookie
+req: Header: [vary] = [Cookie]
+req: Line: X-Content-Type-Options: nosniff
+req: Header: [x-content-type-options] = [nosniff]
+req: Line: Referrer-Policy: same-origin
+req: Header: [referrer-policy] = [same-origin]
+req: Line: Cross-Origin-Opener-Policy: same-origin
+req: Header: [cross-origin-opener-policy] = [same-origin]
+req: Line: 
+req: End of headers.
+Running post_headers hooks
+req: Reading 0 bytes of response body.
+Running post_send hooks
+auth: Post-send (#0), code is 404 (want 401), WWW-Authenticate is (none)
+req: Destroy (DELETE /dav/calendars/user01/litmus/put%23test).
+Running destroy hooks.
+auth: Create for WWW-Authenticate
+Running pre_send hooks
+auth: Sending 'Basic' response.
+auth: '/dav/calendars/user01/litmus/put%23test' is inside auth domain: 1.
+Sending request headers:
+PUT /dav/calendars/user01/litmus/put%23test HTTP/1.1
+User-Agent: litmus/0.17 neon/0.36.0
+Connection: TE
+TE: trailers
+Host: 127.0.0.1:8000
+Content-Length: 5
+Authorization: Basic dXNlcjAxOnVzZXIwMQ==
+X-Litmus: basic: 5 (put_location)
+
+Sending request-line and headers:
+Sending request body:
+Body block (5 bytes):
+[hello]
+Request sent; retry is 1.
+req: Line: HTTP/1.1 400 Bad Request
+req: Line: Date: Mon, 16 Feb 2026 04:55:04 GMT
+req: Header: [date] = [Mon, 16 Feb 2026 04:55:04 GMT]
+req: Line: Server: WSGIServer/0.2 CPython/3.12.12
+req: Header: [server] = [WSGIServer/0.2 CPython/3.12.12]
+req: Line: Content-Type: text/plain; charset=utf-8
+req: Header: [content-type] = [text/plain; charset=utf-8]
+req: Line: X-Frame-Options: DENY
+req: Header: [x-frame-options] = [DENY]
+req: Line: Content-Length: 51
+req: Header: [content-length] = [51]
+req: Line: Vary: Cookie
+req: Header: [vary] = [Cookie]
+req: Line: X-Content-Type-Options: nosniff
+req: Header: [x-content-type-options] = [nosniff]
+req: Line: Referrer-Policy: same-origin
+req: Header: [referrer-policy] = [same-origin]
+req: Line: Cross-Origin-Opener-Policy: same-origin
+req: Header: [cross-origin-opener-policy] = [same-origin]
+req: Line: 
+req: End of headers.
+Running post_headers hooks
+req: Reading 51 bytes of response body.
+Got 51 bytes.
+Read block (51 bytes):
+[Calendar payload must contain VCALENDAR boundaries.]
+req: Reading 0 bytes of response body.
+Running post_send hooks
+auth: Post-send (#0), code is 400 (want 401), WWW-Authenticate is (none)
+Request ends, status 400 class 4xx, error line:
+400 Bad Request
+******* Running test 6: mkcol_over_plain ********
+******* Running test 7: delete ********
+******* Running test 8: delete_null ********
+auth: Create for WWW-Authenticate
+Running pre_send hooks
+auth: Sending 'Basic' response.
+auth: '/dav/calendars/user01/litmus/404me' is inside auth domain: 1.
+Sending request headers:
+DELETE /dav/calendars/user01/litmus/404me HTTP/1.1
+User-Agent: litmus/0.17 neon/0.36.0
+Connection: TE
+TE: trailers
+Host: 127.0.0.1:8000
+Authorization: Basic dXNlcjAxOnVzZXIwMQ==
+X-Litmus: basic: 8 (delete_null)
+
+Sending request-line and headers:
+Request sent; retry is 1.
+req: Line: HTTP/1.1 404 Not Found
+req: Line: Date: Mon, 16 Feb 2026 04:55:04 GMT
+req: Header: [date] = [Mon, 16 Feb 2026 04:55:04 GMT]
+req: Line: Server: WSGIServer/0.2 CPython/3.12.12
+req: Header: [server] = [WSGIServer/0.2 CPython/3.12.12]
+req: Line: Content-Type: text/html; charset=utf-8
+req: Header: [content-type] = [text/html; charset=utf-8]
+req: Line: X-Frame-Options: DENY
+req: Header: [x-frame-options] = [DENY]
+req: Line: Content-Length: 0
+req: Header: [content-length] = [0]
+req: Line: Vary: Cookie
+req: Header: [vary] = [Cookie]
+req: Line: X-Content-Type-Options: nosniff
+req: Header: [x-content-type-options] = [nosniff]
+req: Line: Referrer-Policy: same-origin
+req: Header: [referrer-policy] = [same-origin]
+req: Line: Cross-Origin-Opener-Policy: same-origin
+req: Header: [cross-origin-opener-policy] = [same-origin]
+req: Line: 
+req: End of headers.
+Running post_headers hooks
+req: Reading 0 bytes of response body.
+Running post_send hooks
+auth: Post-send (#0), code is 404 (want 401), WWW-Authenticate is (none)
+req: Destroy (DELETE /dav/calendars/user01/litmus/404me).
+Running destroy hooks.
+******* Running test 9: delete_fragment ********
+auth: Create for WWW-Authenticate
+Running pre_send hooks
+auth: Sending 'Basic' response.
+auth: '/dav/calendars/user01/litmus/frag/' is inside auth domain: 1.
+Sending request headers:
+MKCOL /dav/calendars/user01/litmus/frag/ HTTP/1.1
+User-Agent: litmus/0.17 neon/0.36.0
+Connection: TE
+TE: trailers
+Host: 127.0.0.1:8000
+Authorization: Basic dXNlcjAxOnVzZXIwMQ==
+X-Litmus: basic: 9 (delete_fragment)
+
+Sending request-line and headers:
+Request sent; retry is 1.
+req: Line: HTTP/1.1 404 Not Found
+req: Line: Date: Mon, 16 Feb 2026 04:55:04 GMT
+req: Header: [date] = [Mon, 16 Feb 2026 04:55:04 GMT]
+req: Line: Server: WSGIServer/0.2 CPython/3.12.12
+req: Header: [server] = [WSGIServer/0.2 CPython/3.12.12]
+req: Line: Content-Type: text/html; charset=utf-8
+req: Header: [content-type] = [text/html; charset=utf-8]
+req: Line: X-Frame-Options: DENY
+req: Header: [x-frame-options] = [DENY]
+req: Line: Content-Length: 4395
+req: Header: [content-length] = [4395]
+req: Line: X-Content-Type-Options: nosniff
+req: Header: [x-content-type-options] = [nosniff]
+req: Line: Referrer-Policy: same-origin
+req: Header: [referrer-policy] = [same-origin]
+req: Line: Cross-Origin-Opener-Policy: same-origin
+req: Header: [cross-origin-opener-policy] = [same-origin]
+req: Line: 
+req: End of headers.
+Running post_headers hooks
+req: Reading 4395 bytes of response body.
+Got 3828 bytes.
+Read block (3828 bytes):
+[<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <title>Page not found at /dav/calendars/user01/litmus/frag/</title>
+  <meta name="robots" content="NONE,NOARCHIVE">
+  <style>
+    html * { padding:0; margin:0; }
+    body * { padding:10px 20px; }
+    body * * { padding:0; }
+    body { font-family: sans-serif; background:#eee; color:#000; }
+    body > :where(header, main, footer) { border-bottom:1px solid #ddd; }
+    h1 { font-weight:normal; margin-bottom:.4em; }
+    h1 small { font-size:60%; color:#666; font-weight:normal; }
+    table { border:none; border-collapse: collapse; width:100%; }
+    td, th { vertical-align:top; padding:2px 3px; }
+    th { width:12em; text-align:right; color:#666; padding-right:.5em; }
+    #info { background:#f6f6f6; }
+    #info ol { margin: 0.5em 4em; }
+    #info ol li { font-family: monospace; }
+    #summary { background: #ffc; }
+    #explanation { background:#eee; border-bottom: 0px none; }
+    pre.exception_value { font-family: sans-serif; color: #575757; font-size: 1.5em; margin: 10px 0 10px 0; }
+  </style>
+</head>
+<body>
+  <header id="summary">
+    <h1>Page not found <small>(404)</small></h1>
+    
+    <table class="meta">
+      <tr>
+        <th scope="row">Request Method:</th>
+        <td>MKCOL</td>
+      </tr>
+      <tr>
+        <th scope="row">Request URL:</th>
+        <td>http://127.0.0.1:8000/dav/calendars/user01/litmus/frag/</td>
+      </tr>
+      
+    </table>
+  </header>
+
+  <main id="info">
+    
+      <p>
+      Using the URLconf defined in <code>config.urls</code>,
+      Django tried these URL patterns, in this order:
+      </p>
+      <ol>
+        
+          <li>
+            
+              <code>
+                
+                [name='home']
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                accounts/
+                
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                calendars/
+                
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                .well-known/caldav
+                [name='well-known-caldav']
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                dav/
+                
+              </code>
+            
+              <code>
+                
+                [name='root']
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                dav/
+                
+              </code>
+            
+              <code>
+                principals/&lt;str:username&gt;/
+                [name='principal']
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                dav/
+                
+              </code>
+            
+              <code>
+                calendars/&lt;str:username&gt;/
+                [name='calendar-home']
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                dav/
+                
+              </code>
+            
+              <code>
+                calendars/&lt;str:username&gt;/&lt;slug:slug&gt;/
+                [name='calendar-collection']
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                dav/
+                
+              </code>
+            
+              <code>
+                calendars/&lt;str:username&gt;/&lt;slug:slug&gt;/&lt;str:filename&gt;
+                [name='calendar-object']
+              </code>
+            
+          </li>
+        
+          <li>
+            
+     ]
+req: Reading 567 bytes of response body.
+Got 567 bytes.
+Read block (567 bytes):
+[         <code>
+                admin/
+                
+              </code>
+            
+          </li>
+        
+      </ol>
+      <p>
+        
+          The current path, <code>dav/calendars/user01/litmus/frag/</code>,
+        
+        didn’t match any of these.
+      </p>
+    
+  </main>
+
+  <footer id="explanation">
+    <p>
+      You’re seeing this error because you have <code>DEBUG = True</code> in
+      your Django settings file. Change that to <code>False</code>, and Django
+      will display a standard 404 page.
+    </p>
+  </footer>
+</body>
+</html>
+]
+req: Reading 0 bytes of response body.
+Running post_send hooks
+auth: Post-send (#0), code is 404 (want 401), WWW-Authenticate is (none)
+req: Destroy (MKCOL /dav/calendars/user01/litmus/frag/).
+Running destroy hooks.
+******* Running test 10: mkcol ********
+auth: Create for WWW-Authenticate
+Running pre_send hooks
+auth: Sending 'Basic' response.
+auth: '/dav/calendars/user01/litmus/coll/' is inside auth domain: 1.
+Sending request headers:
+MKCOL /dav/calendars/user01/litmus/coll/ HTTP/1.1
+User-Agent: litmus/0.17 neon/0.36.0
+Connection: TE
+TE: trailers
+Host: 127.0.0.1:8000
+Authorization: Basic dXNlcjAxOnVzZXIwMQ==
+X-Litmus: basic: 10 (mkcol)
+
+Sending request-line and headers:
+Request sent; retry is 1.
+req: Line: HTTP/1.1 404 Not Found
+req: Line: Date: Mon, 16 Feb 2026 04:55:04 GMT
+req: Header: [date] = [Mon, 16 Feb 2026 04:55:04 GMT]
+req: Line: Server: WSGIServer/0.2 CPython/3.12.12
+req: Header: [server] = [WSGIServer/0.2 CPython/3.12.12]
+req: Line: Content-Type: text/html; charset=utf-8
+req: Header: [content-type] = [text/html; charset=utf-8]
+req: Line: X-Frame-Options: DENY
+req: Header: [x-frame-options] = [DENY]
+req: Line: Content-Length: 4395
+req: Header: [content-length] = [4395]
+req: Line: X-Content-Type-Options: nosniff
+req: Header: [x-content-type-options] = [nosniff]
+req: Line: Referrer-Policy: same-origin
+req: Header: [referrer-policy] = [same-origin]
+req: Line: Cross-Origin-Opener-Policy: same-origin
+req: Header: [cross-origin-opener-policy] = [same-origin]
+req: Line: 
+req: End of headers.
+Running post_headers hooks
+req: Reading 4395 bytes of response body.
+Got 3828 bytes.
+Read block (3828 bytes):
+[<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <title>Page not found at /dav/calendars/user01/litmus/coll/</title>
+  <meta name="robots" content="NONE,NOARCHIVE">
+  <style>
+    html * { padding:0; margin:0; }
+    body * { padding:10px 20px; }
+    body * * { padding:0; }
+    body { font-family: sans-serif; background:#eee; color:#000; }
+    body > :where(header, main, footer) { border-bottom:1px solid #ddd; }
+    h1 { font-weight:normal; margin-bottom:.4em; }
+    h1 small { font-size:60%; color:#666; font-weight:normal; }
+    table { border:none; border-collapse: collapse; width:100%; }
+    td, th { vertical-align:top; padding:2px 3px; }
+    th { width:12em; text-align:right; color:#666; padding-right:.5em; }
+    #info { background:#f6f6f6; }
+    #info ol { margin: 0.5em 4em; }
+    #info ol li { font-family: monospace; }
+    #summary { background: #ffc; }
+    #explanation { background:#eee; border-bottom: 0px none; }
+    pre.exception_value { font-family: sans-serif; color: #575757; font-size: 1.5em; margin: 10px 0 10px 0; }
+  </style>
+</head>
+<body>
+  <header id="summary">
+    <h1>Page not found <small>(404)</small></h1>
+    
+    <table class="meta">
+      <tr>
+        <th scope="row">Request Method:</th>
+        <td>MKCOL</td>
+      </tr>
+      <tr>
+        <th scope="row">Request URL:</th>
+        <td>http://127.0.0.1:8000/dav/calendars/user01/litmus/coll/</td>
+      </tr>
+      
+    </table>
+  </header>
+
+  <main id="info">
+    
+      <p>
+      Using the URLconf defined in <code>config.urls</code>,
+      Django tried these URL patterns, in this order:
+      </p>
+      <ol>
+        
+          <li>
+            
+              <code>
+                
+                [name='home']
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                accounts/
+                
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                calendars/
+                
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                .well-known/caldav
+                [name='well-known-caldav']
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                dav/
+                
+              </code>
+            
+              <code>
+                
+                [name='root']
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                dav/
+                
+              </code>
+            
+              <code>
+                principals/&lt;str:username&gt;/
+                [name='principal']
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                dav/
+                
+              </code>
+            
+              <code>
+                calendars/&lt;str:username&gt;/
+                [name='calendar-home']
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                dav/
+                
+              </code>
+            
+              <code>
+                calendars/&lt;str:username&gt;/&lt;slug:slug&gt;/
+                [name='calendar-collection']
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                dav/
+                
+              </code>
+            
+              <code>
+                calendars/&lt;str:username&gt;/&lt;slug:slug&gt;/&lt;str:filename&gt;
+                [name='calendar-object']
+              </code>
+            
+          </li>
+        
+          <li>
+            
+     ]
+req: Reading 567 bytes of response body.
+Got 567 bytes.
+Read block (567 bytes):
+[         <code>
+                admin/
+                
+              </code>
+            
+          </li>
+        
+      </ol>
+      <p>
+        
+          The current path, <code>dav/calendars/user01/litmus/coll/</code>,
+        
+        didn’t match any of these.
+      </p>
+    
+  </main>
+
+  <footer id="explanation">
+    <p>
+      You’re seeing this error because you have <code>DEBUG = True</code> in
+      your Django settings file. Change that to <code>False</code>, and Django
+      will display a standard 404 page.
+    </p>
+  </footer>
+</body>
+</html>
+]
+req: Reading 0 bytes of response body.
+Running post_send hooks
+auth: Post-send (#0), code is 404 (want 401), WWW-Authenticate is (none)
+req: Destroy (MKCOL /dav/calendars/user01/litmus/coll/).
+Running destroy hooks.
+******* Running test 11: mkcol_again ********
+******* Running test 12: delete_coll ********
+******* Running test 13: mkcol_no_parent ********
+auth: Create for WWW-Authenticate
+Running pre_send hooks
+auth: Sending 'Basic' response.
+auth: '/dav/calendars/user01/litmus/409me/noparent/' is inside auth domain: 1.
+Sending request headers:
+MKCOL /dav/calendars/user01/litmus/409me/noparent/ HTTP/1.1
+User-Agent: litmus/0.17 neon/0.36.0
+Connection: TE
+TE: trailers
+Host: 127.0.0.1:8000
+Authorization: Basic dXNlcjAxOnVzZXIwMQ==
+X-Litmus: basic: 13 (mkcol_no_parent)
+
+Sending request-line and headers:
+Request sent; retry is 1.
+req: Line: HTTP/1.1 404 Not Found
+req: Line: Date: Mon, 16 Feb 2026 04:55:04 GMT
+req: Header: [date] = [Mon, 16 Feb 2026 04:55:04 GMT]
+req: Line: Server: WSGIServer/0.2 CPython/3.12.12
+req: Header: [server] = [WSGIServer/0.2 CPython/3.12.12]
+req: Line: Content-Type: text/html; charset=utf-8
+req: Header: [content-type] = [text/html; charset=utf-8]
+req: Line: X-Frame-Options: DENY
+req: Header: [x-frame-options] = [DENY]
+req: Line: Content-Length: 4425
+req: Header: [content-length] = [4425]
+req: Line: X-Content-Type-Options: nosniff
+req: Header: [x-content-type-options] = [nosniff]
+req: Line: Referrer-Policy: same-origin
+req: Header: [referrer-policy] = [same-origin]
+req: Line: Cross-Origin-Opener-Policy: same-origin
+req: Header: [cross-origin-opener-policy] = [same-origin]
+req: Line: 
+req: End of headers.
+Running post_headers hooks
+req: Reading 4425 bytes of response body.
+Got 3828 bytes.
+Read block (3828 bytes):
+[<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta http-equiv="content-type" content="text/html; charset=utf-8">
+  <title>Page not found at /dav/calendars/user01/litmus/409me/noparent/</title>
+  <meta name="robots" content="NONE,NOARCHIVE">
+  <style>
+    html * { padding:0; margin:0; }
+    body * { padding:10px 20px; }
+    body * * { padding:0; }
+    body { font-family: sans-serif; background:#eee; color:#000; }
+    body > :where(header, main, footer) { border-bottom:1px solid #ddd; }
+    h1 { font-weight:normal; margin-bottom:.4em; }
+    h1 small { font-size:60%; color:#666; font-weight:normal; }
+    table { border:none; border-collapse: collapse; width:100%; }
+    td, th { vertical-align:top; padding:2px 3px; }
+    th { width:12em; text-align:right; color:#666; padding-right:.5em; }
+    #info { background:#f6f6f6; }
+    #info ol { margin: 0.5em 4em; }
+    #info ol li { font-family: monospace; }
+    #summary { background: #ffc; }
+    #explanation { background:#eee; border-bottom: 0px none; }
+    pre.exception_value { font-family: sans-serif; color: #575757; font-size: 1.5em; margin: 10px 0 10px 0; }
+  </style>
+</head>
+<body>
+  <header id="summary">
+    <h1>Page not found <small>(404)</small></h1>
+    
+    <table class="meta">
+      <tr>
+        <th scope="row">Request Method:</th>
+        <td>MKCOL</td>
+      </tr>
+      <tr>
+        <th scope="row">Request URL:</th>
+        <td>http://127.0.0.1:8000/dav/calendars/user01/litmus/409me/noparent/</td>
+      </tr>
+      
+    </table>
+  </header>
+
+  <main id="info">
+    
+      <p>
+      Using the URLconf defined in <code>config.urls</code>,
+      Django tried these URL patterns, in this order:
+      </p>
+      <ol>
+        
+          <li>
+            
+              <code>
+                
+                [name='home']
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                accounts/
+                
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                calendars/
+                
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                .well-known/caldav
+                [name='well-known-caldav']
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                dav/
+                
+              </code>
+            
+              <code>
+                
+                [name='root']
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                dav/
+                
+              </code>
+            
+              <code>
+                principals/&lt;str:username&gt;/
+                [name='principal']
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                dav/
+                
+              </code>
+            
+              <code>
+                calendars/&lt;str:username&gt;/
+                [name='calendar-home']
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                dav/
+                
+              </code>
+            
+              <code>
+                calendars/&lt;str:username&gt;/&lt;slug:slug&gt;/
+                [name='calendar-collection']
+              </code>
+            
+          </li>
+        
+          <li>
+            
+              <code>
+                dav/
+                
+              </code>
+            
+              <code>
+                calendars/&lt;str:username&gt;/&lt;slug:slug&gt;/&lt;str:filename&gt;
+                [name='calendar-object']
+              </code>
+            
+          </li>
+        
+          <li]
+req: Reading 597 bytes of response body.
+Got 597 bytes.
+Read block (597 bytes):
+[>
+            
+              <code>
+                admin/
+                
+              </code>
+            
+          </li>
+        
+      </ol>
+      <p>
+        
+          The current path, <code>dav/calendars/user01/litmus/409me/noparent/</code>,
+        
+        didn’t match any of these.
+      </p>
+    
+  </main>
+
+  <footer id="explanation">
+    <p>
+      You’re seeing this error because you have <code>DEBUG = True</code> in
+      your Django settings file. Change that to <code>False</code>, and Django
+      will display a standard 404 page.
+    </p>
+  </footer>
+</body>
+</html>
+]
+req: Reading 0 bytes of response body.
+Running post_send hooks
+auth: Post-send (#0), code is 404 (want 401), WWW-Authenticate is (none)
+req: Destroy (MKCOL /dav/calendars/user01/litmus/409me/noparent/).
+Running destroy hooks.
+******* Running test 14: mkcol_with_body ********
+auth: Create for WWW-Authenticate
+Running pre_send hooks
+auth: Sending 'Basic' response.
+auth: '/dav/calendars/user01/litmus/mkcolbody' is inside auth domain: 1.
+Sending request headers:
+MKCOL /dav/calendars/user01/litmus/mkcolbody HTTP/1.1
+User-Agent: litmus/0.17 neon/0.36.0
+Connection: TE
+TE: trailers
+Host: 127.0.0.1:8000
+Content-Type: xzy-foo/bar-512
+Content-Length: 8
+Authorization: Basic dXNlcjAxOnVzZXIwMQ==
+X-Litmus: basic: 14 (mkcol_with_body)
+
+Sending request-line and headers:
+Sending request body:
+Body block (8 bytes):
+[afafafaf]
+Request sent; retry is 1.
+req: Line: HTTP/1.1 404 Not Found
+req: Line: Date: Mon, 16 Feb 2026 04:55:05 GMT
+req: Header: [date] = [Mon, 16 Feb 2026 04:55:05 GMT]
+req: Line: Server: WSGIServer/0.2 CPython/3.12.12
+req: Header: [server] = [WSGIServer/0.2 CPython/3.12.12]
+req: Line: Content-Type: text/html; charset=utf-8
+req: Header: [content-type] = [text/html; charset=utf-8]
+req: Line: X-Frame-Options: DENY
+req: Header: [x-frame-options] = [DENY]
+req: Line: Content-Length: 0
+req: Header: [content-length] = [0]
+req: Line: Vary: Cookie
+req: Header: [vary] = [Cookie]
+req: Line: X-Content-Type-Options: nosniff
+req: Header: [x-content-type-options] = [nosniff]
+req: Line: Referrer-Policy: same-origin
+req: Header: [referrer-policy] = [same-origin]
+req: Line: Cross-Origin-Opener-Policy: same-origin
+req: Header: [cross-origin-opener-policy] = [same-origin]
+req: Line: 
+req: End of headers.
+Running post_headers hooks
+req: Reading 0 bytes of response body.
+Running post_send hooks
+auth: Post-send (#0), code is 404 (want 401), WWW-Authenticate is (none)
+Request ends, status 404 class 4xx, error line:
+404 Not Found
+******* Running test 15: finish ********
+sess: Destroying session (connected=1).
+sess: Closing connection.
+sess: Connection closed.

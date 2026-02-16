@@ -1,7 +1,9 @@
+# pyright: reportAttributeAccessIssue=false
+
 from django.contrib.auth.models import User
 
 from calendars.models import Calendar, CalendarObject
-from calendars.permissions import can_view_calendar
+from calendars.permissions import can_view_calendar, can_write_calendar
 
 
 def get_principal(username):
@@ -19,6 +21,18 @@ def get_calendar_for_user(user, username, slug):
 
     if not can_view_calendar(calendar, user):
         return None
+
+    return calendar
+
+
+def get_calendar_for_write_user(user, username, slug):
+    try:
+        calendar = Calendar.objects.get(owner__username=username, slug=slug)
+    except Calendar.DoesNotExist:
+        return None
+
+    if not can_write_calendar(calendar, user):
+        return False
 
     return calendar
 

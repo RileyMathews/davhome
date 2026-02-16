@@ -225,7 +225,7 @@ Acceptance:
 - shared users see appropriate calendars and actions by role
 - role checks enforced in UI and server-side form handling
 
-### Phase 3 - DAV Discovery and Read Path
+### Phase 3 - DAV Discovery and Read Path [DONE!]
 
 Deliverables:
 
