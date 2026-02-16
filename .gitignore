@@ -1,0 +1,15 @@
+*.pyc
+*.sqlite3
+**/dist
+staticfiles
+node_modules
+.parcel-cache
+.env.secret
+ops_scripts/.envrc.secret
+ops_scripts/dumpfile
+.pytest_cache
+__pycache__
+media
+*.egg-info/
+.DS_Store
+.encryption-password
