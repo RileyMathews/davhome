@@ -19,10 +19,13 @@ from django.contrib import admin
 from django.urls import include, path
 
 from accounts.views import home
+from dav.views import well_known_caldav
 
 urlpatterns = [
     path("", home, name="home"),
     path("accounts/", include("accounts.urls")),
     path("calendars/", include("calendars.urls")),
+    path(".well-known/caldav", well_known_caldav, name="well-known-caldav"),
+    path("dav/", include("dav.urls")),
     path("admin/", admin.site.urls),
 ]
