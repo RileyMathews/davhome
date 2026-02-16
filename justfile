@@ -9,7 +9,12 @@ litmus-test:
 	nix develop path:.#litmus -c litmus "http://127.0.0.1:8000/dav/calendars/user01/" "user01" "user01"
 
 caldavtester-test-suite:
-	nix develop path:.#caldavtester -c bash -lc 'cd caldavtester-lab && ./bootstrap.sh >/dev/null && source ./.env-py2.sh && cd ccs-caldavtester && python2 testcaldav.py --all'
+	# Default implementation-loop suite: supported CalDAV subset only.
+	nix develop path:.#caldavtester -c bash -lc 'cd caldavtester-lab && ./bootstrap.sh >/dev/null && source ./.env-py2.sh && cd ccs-caldavtester && python2 testcaldav.py CalDAV/current-user-principal.xml CalDAV/propfind.xml CalDAV/put.xml CalDAV/get.xml CalDAV/delete.xml CalDAV/conditional.xml CalDAV/reports.xml CalDAV/recurrenceput.xml CalDAV/floating.xml CalDAV/timezoneservice.xml CalDAV/timezonestdservice.xml CalDAV/implicitallday.xml CalDAV/implicittodo.xml'
+
+caldavtester-full-suite:
+	# Full --all suite is for explicit overnight diagnostics only.
+	nix develop path:.#caldavtester -c bash -lc 'set -euo pipefail; cd caldavtester-lab && ./bootstrap.sh >/dev/null && source ./.env-py2.sh && cd ccs-caldavtester && mkdir -p ../../logs && LOG=../../logs/caldavtester-full-$(date +%Y%m%d-%H%M%S).log && python2 testcaldav.py --all 2>&1 | tee "$LOG"; echo "Saved full-suite log: $LOG"'
 
 integration-test:
 	just litmus-test

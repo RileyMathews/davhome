@@ -33,5 +33,26 @@
     {% else %}
       <p>No shared calendars yet.</p>
     {% endif %}
+
+    <h2>Pending invitations</h2>
+    {% if pending_invites %}
+      <ul>
+        {% for invite in pending_invites %}
+          <li>
+            {{ invite.calendar.name }} from {{ invite.calendar.owner.username }}
+            <form method="post" action="{% url 'calendars:invite-accept' invite.id %}" style="display:inline; margin-left:0.5rem;">
+              {% csrf_token %}
+              <button type="submit">Accept</button>
+            </form>
+            <form method="post" action="{% url 'calendars:invite-decline' invite.id %}" style="display:inline; margin-left:0.5rem;">
+              {% csrf_token %}
+              <button type="submit">Decline</button>
+            </form>
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>No pending invitations.</p>
+    {% endif %}
   </section>
 {% endblock %}

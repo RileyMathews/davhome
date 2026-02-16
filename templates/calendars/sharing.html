@@ -19,6 +19,11 @@
         {% for share in shares %}
           <li>
             <strong>{{ share.user.username }}</strong>
+            {% if share.accepted_at %}
+              <em>(accepted)</em>
+            {% else %}
+              <em>(pending)</em>
+            {% endif %}
             <form method="post" action="{% url 'calendars:share-update' calendar.id share.id %}" style="display:inline; margin-left:0.5rem;">
               {% csrf_token %}
               <select name="role">

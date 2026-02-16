@@ -5,6 +5,7 @@ from xml.etree import ElementTree as ET
 
 from django.contrib.auth.models import User
 from django.test import TestCase
+from django.utils import timezone
 
 from calendars.models import Calendar, CalendarObject, CalendarShare
 
@@ -28,6 +29,7 @@ class DavDiscoveryTests(TestCase):
             calendar=self.calendar,
             user=self.member,
             role=CalendarShare.READ,
+            accepted_at=timezone.now(),
         )
         self.object = CalendarObject.objects.create(
             calendar=self.calendar,
@@ -221,11 +223,13 @@ class DavWriteTests(TestCase):
             calendar=self.calendar,
             user=self.writer,
             role=CalendarShare.WRITE,
+            accepted_at=timezone.now(),
         )
         CalendarShare.objects.create(
             calendar=self.calendar,
             user=self.reader,
             role=CalendarShare.READ,
+            accepted_at=timezone.now(),
         )
 
     def _basic_auth(self, username, password):
@@ -388,6 +392,7 @@ class DavReportTests(TestCase):
             calendar=self.calendar,
             user=self.writer,
             role=CalendarShare.WRITE,
+            accepted_at=timezone.now(),
         )
         self.event = CalendarObject.objects.create(
             calendar=self.calendar,

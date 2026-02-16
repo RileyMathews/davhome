@@ -8,7 +8,7 @@ def calendars_for_user(user):
 
 
 def _share_for_user(calendar, user):
-    return calendar.shares.filter(user=user).first()
+    return calendar.shares.filter(user=user, accepted_at__isnull=False).first()
 
 
 def can_view_calendar(calendar, user):

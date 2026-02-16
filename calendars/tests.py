@@ -4,6 +4,7 @@ from django.test import TestCase
 from django.contrib.auth.models import User
 from django.db import IntegrityError
 from django.urls import reverse
+from django.utils import timezone
 
 from .models import Calendar, CalendarObject, CalendarShare
 
@@ -76,11 +77,13 @@ class CalendarViewTests(TestCase):
             calendar=self.calendar,
             user=self.reader,
             role=CalendarShare.READ,
+            accepted_at=timezone.now(),
         )
         CalendarShare.objects.create(
             calendar=self.calendar,
             user=self.admin,
             role=CalendarShare.ADMIN,
+            accepted_at=timezone.now(),
         )
 
     def test_calendar_list_requires_auth(self):
@@ -138,6 +141,13 @@ class CalendarViewTests(TestCase):
                 role=CalendarShare.WRITE,
             ).exists()
         )
+        self.assertTrue(
+            CalendarShare.objects.filter(
+                calendar=self.calendar,
+                user=self.other,
+                accepted_at__isnull=True,
+            ).exists()
+        )
 
     def test_cannot_share_with_owner(self):
         self.client.login(username="owner", password="pw-test-12345")
@@ -163,3 +173,41 @@ class CalendarViewTests(TestCase):
         )
         share.refresh_from_db()
         self.assertEqual(share.role, CalendarShare.WRITE)
+
+    def test_pending_invite_not_in_shared_list_until_accept(self):
+        CalendarShare.objects.create(
+            calendar=self.calendar,
+            user=self.other,
+            role=CalendarShare.READ,
+        )
+        self.client.login(username="other", password="pw-test-12345")
+        response = self.client.get(reverse("calendars:list"))
+        self.assertNotContains(response, "Family by owner")
+        self.assertContains(response, "Pending invitations")
+
+    def test_user_can_accept_invite(self):
+        invite = CalendarShare.objects.create(
+            calendar=self.calendar,
+            user=self.other,
+            role=CalendarShare.READ,
+        )
+        self.client.login(username="other", password="pw-test-12345")
+        response = self.client.post(
+            reverse("calendars:invite-accept", args=[invite.id])
+        )
+        self.assertRedirects(response, reverse("calendars:list"))
+        invite.refresh_from_db()
+        self.assertIsNotNone(invite.accepted_at)
+
+    def test_user_can_decline_invite(self):
+        invite = CalendarShare.objects.create(
+            calendar=self.calendar,
+            user=self.other,
+            role=CalendarShare.READ,
+        )
+        self.client.login(username="other", password="pw-test-12345")
+        response = self.client.post(
+            reverse("calendars:invite-decline", args=[invite.id])
+        )
+        self.assertRedirects(response, reverse("calendars:list"))
+        self.assertFalse(CalendarShare.objects.filter(id=invite.id).exists())
