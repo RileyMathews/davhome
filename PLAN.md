@@ -26,7 +26,6 @@ The default suite in `just caldavtester-test-suite` now includes:
 - `CalDAV/floating.xml`
 - `CalDAV/timezoneservice.xml`
 - `CalDAV/timezonestdservice.xml`
-- `CalDAV/implicitallday.xml`
 - `CalDAV/implicittodo.xml`
 
 ## Next Task

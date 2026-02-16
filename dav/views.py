@@ -237,51 +237,192 @@ def _first_ical_line_value(ical_text, key):
     return match.group(1).strip()
 
 
-def _parse_calendar_query_filter(root):
-    filter_elem = root.find(qname(NS_CALDAV, "filter"))
-    if filter_elem is None:
-        return {"component": None, "start": None, "end": None}
-
-    component = None
-    start = None
-    end = None
-
-    for comp in filter_elem.findall(f".//{qname(NS_CALDAV, 'comp-filter')}"):
-        name = (comp.get("name") or "").upper()
-        if name and name != "VCALENDAR":
-            component = name
-        time_range = comp.find(qname(NS_CALDAV, "time-range"))
-        if time_range is not None:
-            start = _parse_ical_datetime(time_range.get("start"))
-            end = _parse_ical_datetime(time_range.get("end"))
-
-    return {"component": component, "start": start, "end": end}
+def _unfold_ical(ical_text):
+    return re.sub(r"\r?\n[ \t]", "", ical_text)
 
 
-def _object_matches_query(obj, query_filter):
-    component = query_filter["component"]
-    if component == "VEVENT" and "BEGIN:VEVENT" not in obj.ical_blob:
+def _extract_component_blocks(ical_text, component_name):
+    pattern = rf"BEGIN:{re.escape(component_name)}\r?\n(.*?)\r?\nEND:{re.escape(component_name)}"
+    matches = re.finditer(pattern, ical_text, flags=re.DOTALL | re.IGNORECASE)
+    return [match.group(0) for match in matches]
+
+
+def _property_lines(component_text, property_name):
+    lines = component_text.replace("\r\n", "\n").split("\n")
+    prefix = f"{property_name.upper()}"
+    result = []
+    for line in lines:
+        if not line:
+            continue
+        upper = line.upper()
+        if upper.startswith(prefix + ":") or upper.startswith(prefix + ";"):
+            result.append(line)
+    return result
+
+
+def _parse_property_params(prop_line):
+    head = prop_line.split(":", 1)[0]
+    parts = head.split(";")
+    params = {}
+    for part in parts[1:]:
+        if "=" not in part:
+            continue
+        key, value = part.split("=", 1)
+        params.setdefault(key.upper(), []).append(value)
+    return params
+
+
+def _text_match(value, matcher):
+    if value is None:
         return False
-    if component == "VTODO" and "BEGIN:VTODO" not in obj.ical_blob:
-        return False
+    text = matcher.text or ""
+    negate = (matcher.get("negate-condition") or "").lower() == "yes"
+    coll = (matcher.get("collation") or "i;ascii-casemap").lower()
 
-    if query_filter["start"] is None and query_filter["end"] is None:
+    left = value
+    right = text
+    if coll == "i;ascii-casemap":
+        left = left.lower()
+        right = right.lower()
+
+    ok = right in left
+    return (not ok) if negate else ok
+
+
+def _matches_param_filter(prop_lines, param_filter):
+    param_name = (param_filter.get("name") or "").upper()
+    if not param_name:
         return True
 
-    event_start = _parse_ical_datetime(_first_ical_line_value(obj.ical_blob, "DTSTART"))
-    event_end = _parse_ical_datetime(_first_ical_line_value(obj.ical_blob, "DTEND"))
+    is_not_defined = param_filter.find(qname(NS_CALDAV, "is-not-defined")) is not None
+    text_match = param_filter.find(qname(NS_CALDAV, "text-match"))
 
+    params_present = []
+    for line in prop_lines:
+        params = _parse_property_params(line)
+        values = params.get(param_name, [])
+        params_present.extend(values)
+
+    if is_not_defined:
+        return len(params_present) == 0
+
+    if text_match is None:
+        return len(params_present) > 0
+
+    if not params_present:
+        negate = (text_match.get("negate-condition") or "").lower() == "yes"
+        return negate
+
+    return any(_text_match(value, text_match) for value in params_present)
+
+
+def _matches_prop_filter(component_text, prop_filter):
+    prop_name = (prop_filter.get("name") or "").upper()
+    if not prop_name:
+        return True
+
+    lines = _property_lines(component_text, prop_name)
+    is_not_defined = prop_filter.find(qname(NS_CALDAV, "is-not-defined")) is not None
+    text_matches = prop_filter.findall(qname(NS_CALDAV, "text-match"))
+    param_filters = prop_filter.findall(qname(NS_CALDAV, "param-filter"))
+
+    if is_not_defined:
+        return len(lines) == 0
+
+    if not lines:
+        return False
+
+    if text_matches:
+        values = [line.split(":", 1)[1] if ":" in line else "" for line in lines]
+        for matcher in text_matches:
+            if not any(_text_match(value, matcher) for value in values):
+                return False
+
+    for param_filter in param_filters:
+        if not _matches_param_filter(lines, param_filter):
+            return False
+
+    return True
+
+
+def _matches_time_range(component_text, time_range):
+    start = _parse_ical_datetime(time_range.get("start"))
+    end = _parse_ical_datetime(time_range.get("end"))
+
+    event_start = _parse_ical_datetime(
+        _first_ical_line_value(component_text, "DTSTART")
+    )
+    event_end = _parse_ical_datetime(_first_ical_line_value(component_text, "DTEND"))
+    due = _parse_ical_datetime(_first_ical_line_value(component_text, "DUE"))
+
+    if event_start is None:
+        event_start = due
     if event_start is None:
         return True
     if event_end is None:
-        event_end = event_start
+        event_end = due or event_start
 
-    if query_filter["start"] is not None and event_end < query_filter["start"]:
+    if start is not None and event_end < start:
         return False
-    if query_filter["end"] is not None and event_start > query_filter["end"]:
+    if end is not None and event_start > end:
         return False
-
     return True
+
+
+def _matches_comp_filter(context_text, comp_filter):
+    name = (comp_filter.get("name") or "").upper()
+    if not name:
+        return True
+
+    if name == "VCALENDAR":
+        candidates = [context_text]
+    else:
+        candidates = _extract_component_blocks(context_text, name)
+
+    is_not_defined = comp_filter.find(qname(NS_CALDAV, "is-not-defined")) is not None
+    if is_not_defined:
+        return len(candidates) == 0
+
+    if not candidates:
+        return False
+
+    child_comp_filters = comp_filter.findall(qname(NS_CALDAV, "comp-filter"))
+    prop_filters = comp_filter.findall(qname(NS_CALDAV, "prop-filter"))
+    time_range = comp_filter.find(qname(NS_CALDAV, "time-range"))
+
+    for candidate in candidates:
+        if time_range is not None and not _matches_time_range(candidate, time_range):
+            continue
+
+        if any(
+            not _matches_prop_filter(candidate, prop_filter)
+            for prop_filter in prop_filters
+        ):
+            continue
+
+        if any(
+            not _matches_comp_filter(candidate, child_comp_filter)
+            for child_comp_filter in child_comp_filters
+        ):
+            continue
+
+        return True
+
+    return False
+
+
+def _parse_calendar_query_filter(root):
+    filter_elem = root.find(qname(NS_CALDAV, "filter"))
+    if filter_elem is None:
+        return None
+    return filter_elem.find(qname(NS_CALDAV, "comp-filter"))
+
+
+def _object_matches_query(obj, query_filter):
+    if query_filter is None:
+        return True
+    unfolded = _unfold_ical(obj.ical_blob)
+    return _matches_comp_filter(unfolded, query_filter)
 
 
 def _calendar_data_prop(ical_blob):
@@ -304,10 +445,12 @@ def _not_allowed(allowed):
     return _dav_common_headers(response)
 
 
-def _xml_response(status, body):
+def _xml_response(status, body, headers=None):
     response = HttpResponse(
         body, status=status, content_type="application/xml; charset=utf-8"
     )
+    for key, value in (headers or {}).items():
+        response[key] = value
     return _dav_common_headers(response)
 
 
@@ -449,7 +592,7 @@ def _if_modified_since_not_modified(request, timestamp):
         return False
     if date.tzinfo is None:
         date = date.replace(tzinfo=datetime_timezone.utc)
-    return timestamp <= date.timestamp()
+    return int(timestamp) <= int(date.timestamp())
 
 
 def _conditional_not_modified(request, etag, timestamp):
@@ -973,7 +1116,7 @@ def calendar_collection_view(request, username, slug):
         if user != owner:
             return HttpResponse(status=403)
 
-        if request.body:
+        if request.method == "MKCOL" and request.body:
             return HttpResponse(status=415)
 
         existing = Calendar.objects.filter(owner=owner, slug=slug).first()  # type: ignore[attr-defined]
@@ -1023,6 +1166,14 @@ def calendar_collection_view(request, username, slug):
     if request.method != "PROPFIND":
         return _not_allowed(allowed)
 
+    propfind_etag = _etag_for_calendar(calendar)
+    propfind_timestamp = calendar.updated_at.timestamp()
+    if _conditional_not_modified(request, propfind_etag, propfind_timestamp):
+        response = HttpResponse(status=304)
+        response["ETag"] = propfind_etag
+        response["Last-Modified"] = http_date(propfind_timestamp)
+        return _dav_common_headers(response)
+
     parsed, parse_error = _parse_propfind_payload(request)
     if parse_error is not None:
         return parse_error
@@ -1048,7 +1199,14 @@ def calendar_collection_view(request, username, slug):
             href = f"/dav/calendars/{username}/{calendar.slug}/{obj.filename}"
             responses.append(response_with_props(href, obj_ok, obj_missing))
 
-    return _xml_response(207, multistatus_document(responses))
+    return _xml_response(
+        207,
+        multistatus_document(responses),
+        {
+            "ETag": propfind_etag,
+            "Last-Modified": http_date(propfind_timestamp),
+        },
+    )
 
 
 @csrf_exempt
@@ -1123,7 +1281,7 @@ def calendar_object_view(request, username, slug, filename):
         parent_path, _leaf = _split_filename_path(filename)
 
         if request.method in ("MKCOL", "MKCALENDAR"):
-            if request.body:
+            if request.method == "MKCOL" and request.body:
                 return HttpResponse(status=415)
             if not _collection_exists(writable, parent_path):
                 return HttpResponse(status=409)

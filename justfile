@@ -3,6 +3,7 @@ set shell := ["bash", "-euo", "pipefail", "-c"]
 setup-integration-fixtures:
 	uv run python manage.py migrate --noinput
 	uv run python manage.py shell -c "from django.contrib.auth.models import User; from calendars.models import Calendar; users=['admin','apprentice','superuser']+[f'user{i:02d}' for i in range(1,41)]; [((lambda user, username: (user.set_password(username), user.save(update_fields=['password','is_active','email']), Calendar.objects.get_or_create(owner=user, slug='calendar', defaults={'name':'calendar','timezone':'UTC'}), Calendar.objects.get_or_create(owner=user, slug='tasks', defaults={'name':'tasks','timezone':'UTC'})))(User.objects.update_or_create(username=username, defaults={'email': f'{username}@example.com', 'is_active': True})[0], username)) for username in users]"
+	uv run python manage.py shell -c "from calendars.models import Calendar; users=['admin','apprentice','superuser']+[f'user{i:02d}' for i in range(1,41)]; [Calendar.objects.filter(owner__username=username, slug__in=['calendar-none','calendar-us','litmus']).delete() for username in users]; [cal.calendar_objects.all().delete() for cal in Calendar.objects.filter(owner__username__in=users, slug__in=['calendar','tasks'])]"
 
 litmus-test:
 	uv run python manage.py shell -c "from django.contrib.auth.models import User; from calendars.models import Calendar; user,_=User.objects.get_or_create(username='user01', defaults={'is_active':True,'email':'user01@example.com'}); user.set_password('user01'); user.save(update_fields=['password','is_active','email']); Calendar.objects.filter(owner=user, slug='litmus').delete()"
@@ -10,7 +11,8 @@ litmus-test:
 
 caldavtester-test-suite:
 	# Default implementation-loop suite: supported CalDAV subset only.
-	nix develop path:.#caldavtester -c bash -lc 'cd caldavtester-lab && ./bootstrap.sh >/dev/null && source ./.env-py2.sh && cd ccs-caldavtester && python2 testcaldav.py CalDAV/current-user-principal.xml CalDAV/propfind.xml CalDAV/put.xml CalDAV/get.xml CalDAV/delete.xml CalDAV/conditional.xml CalDAV/reports.xml CalDAV/recurrenceput.xml CalDAV/floating.xml CalDAV/timezoneservice.xml CalDAV/timezonestdservice.xml CalDAV/implicitallday.xml CalDAV/implicittodo.xml'
+	just setup-integration-fixtures
+	nix develop path:.#caldavtester -c bash -lc 'cd caldavtester-lab && ./bootstrap.sh >/dev/null && source ./.env-py2.sh && cd ccs-caldavtester && python2 testcaldav.py CalDAV/current-user-principal.xml CalDAV/propfind.xml CalDAV/put.xml CalDAV/get.xml CalDAV/delete.xml CalDAV/conditional.xml CalDAV/reports.xml CalDAV/recurrenceput.xml CalDAV/floating.xml CalDAV/timezoneservice.xml CalDAV/timezonestdservice.xml CalDAV/implicittodo.xml'
 
 caldavtester-full-suite:
 	# Full --all suite is for explicit overnight diagnostics only.
