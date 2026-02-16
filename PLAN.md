@@ -312,7 +312,7 @@ Completion notes:
   - `CalDAV/current-user-principal.xml` (6/6)
   - `CalDAV/propfind.xml` (33/33)
 
-#### 6.3 REPORT Interoperability Hardening
+#### 6.3 REPORT Interoperability Hardening [DONE!]
 
 Deliverables:
 
@@ -327,6 +327,21 @@ Acceptance:
 
 - report-focused CalDAVTester subset improves and stays stable across reruns
 - REPORT edge cases are covered by Django tests
+
+Completion notes:
+
+- fixed REPORT startup blockers by ensuring task calendars exist in integration fixtures
+- added REPORT interoperability fixes for:
+  - multiget missing-resource behavior (`404` response status per href)
+  - href canonicalization/lookup across `username`, `users`, and `__uids__` path styles
+  - DAV capability header now advertises `calendar-query-extended`
+- added Django regression coverage for REPORT edge cases:
+  - missing href in multiget
+  - `__uids__` href style on query results
+- targeted `CalDAV/reports.xml` shows significant improvement:
+  - start section now runs
+  - OPTIONS and multiget suites are green
+  - remaining failures are concentrated in advanced query/filter/time-range/recurrence semantics and free-busy behavior
 
 #### 6.4 Write-Path Compatibility Polish
 

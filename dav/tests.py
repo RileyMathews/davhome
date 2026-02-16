@@ -460,6 +460,62 @@ class DavReportTests(TestCase):
         self.assertEqual(response.status_code, 207)
         self.assertIn(self.event.filename, response.content.decode("utf-8"))
 
+    def test_multiget_missing_href_returns_response_404_status(self):
+        body = """<?xml version=\"1.0\" encoding=\"utf-8\"?>
+<C:calendar-multiget xmlns:D=\"DAV:\" xmlns:C=\"urn:ietf:params:xml:ns:caldav\">
+  <D:prop>
+    <D:getetag/>
+  </D:prop>
+  <D:href>/dav/calendars/owner/family/missing.ics</D:href>
+</C:calendar-multiget>"""
+        response = self.client.generic(
+            "REPORT",
+            f"/dav/calendars/{self.owner.username}/{self.calendar.slug}/",
+            data=body,
+            content_type="application/xml",
+            **self._basic_auth("owner", "pw-test-12345"),
+        )
+        self.assertEqual(response.status_code, 207)
+        self.assertIn("404 Not Found", response.content.decode("utf-8"))
+
+    def test_query_uses_uids_href_style_when_requested_on_uids_path(self):
+        user01 = User.objects.create_user(username="user01", password="user01")
+        calendar = Calendar.objects.create(
+            owner=user01,
+            slug="family",
+            name="Family",
+            timezone="UTC",
+        )
+        CalendarObject.objects.create(
+            calendar=calendar,
+            uid="uid-u1",
+            filename="u1.ics",
+            etag='"etag-u1"',
+            ical_blob="BEGIN:VCALENDAR\nBEGIN:VEVENT\nUID:uid-u1\nDTSTART:20260215T120000Z\nEND:VEVENT\nEND:VCALENDAR\n",
+            size=100,
+        )
+
+        body = """<?xml version=\"1.0\" encoding=\"utf-8\"?>
+<C:calendar-query xmlns:D=\"DAV:\" xmlns:C=\"urn:ietf:params:xml:ns:caldav\">
+  <D:prop>
+    <D:getetag/>
+    <C:calendar-data/>
+  </D:prop>
+</C:calendar-query>"""
+        response = self.client.generic(
+            "REPORT",
+            "/dav/calendars/__uids__/10000000-0000-0000-0000-000000000001/family/",
+            data=body,
+            content_type="application/xml",
+            **self._basic_auth("user01", "user01"),
+        )
+        self.assertEqual(response.status_code, 207)
+        xml_text = response.content.decode("utf-8")
+        self.assertIn(
+            "/dav/calendars/__uids__/10000000-0000-0000-0000-000000000001/family/",
+            xml_text,
+        )
+
 
 class DavWebdavCompatibilityTests(TestCase):
     def setUp(self):

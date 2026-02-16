@@ -54,6 +54,13 @@ def response_with_props(href, ok_props, missing_props=None):
     return response
 
 
+def response_with_status(href, status):
+    response = ET.Element(qname(NS_DAV, "response"))
+    href_element(response, href)
+    status_element(response, status)
+    return response
+
+
 def parse_requested_properties(request_body):
     if not request_body:
         return None

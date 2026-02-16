@@ -29,6 +29,7 @@ from .xml import (
     multistatus_document,
     parse_propfind_request,
     qname,
+    response_with_status,
     response_with_props,
 )
 
@@ -245,7 +246,7 @@ def _report_unknown_type():
 
 
 def _dav_common_headers(response):
-    response["DAV"] = "1, calendar-access"
+    response["DAV"] = "1, calendar-access, calendar-query-extended"
     return response
 
 
@@ -746,23 +747,50 @@ def _visible_calendars_for_home(owner, user):
     return [calendar for calendar in calendars if can_view_calendar(calendar, user)]
 
 
+def _report_href_style(request_path):
+    if "/calendars/__uids__/" in request_path:
+        return "uids"
+    if "/calendars/users/" in request_path:
+        return "users"
+    return "username"
+
+
+def _object_href_for_style(calendar, obj, style):
+    if style == "uids":
+        guid = _dav_guid_for_username(calendar.owner.username)
+        if guid is not None:
+            return f"/dav/calendars/__uids__/{guid}/{calendar.slug}/{obj.filename}"
+
+    if style == "users":
+        return f"/dav/calendars/users/{calendar.owner.username}/{calendar.slug}/{obj.filename}"
+
+    return f"/dav/calendars/{calendar.owner.username}/{calendar.slug}/{obj.filename}"
+
+
+def _all_object_hrefs(calendar, obj):
+    hrefs = {
+        f"/dav/calendars/{calendar.owner.username}/{calendar.slug}/{obj.filename}",
+        f"/dav/calendars/users/{calendar.owner.username}/{calendar.slug}/{obj.filename}",
+    }
+    guid = _dav_guid_for_username(calendar.owner.username)
+    if guid is not None:
+        hrefs.add(f"/dav/calendars/__uids__/{guid}/{calendar.slug}/{obj.filename}")
+    return hrefs
+
+
 def _responses_for_multiget(calendars, requested, hrefs):
     responses = []
     by_path = {}
     for calendar in calendars:
         for obj in calendar.calendar_objects.all():
-            href = f"/dav/calendars/{calendar.owner.username}/{calendar.slug}/{obj.filename}"
-            by_path[href] = obj
+            for href in _all_object_hrefs(calendar, obj):
+                by_path[href] = obj
 
     for href in hrefs:
         normalized = _normalize_href_path(href)
         obj = by_path.get(normalized)
         if obj is None:
-            responses.append(
-                response_with_props(
-                    normalized, [], [ET.Element(qname(NS_DAV, "getetag"))]
-                )
-            )
+            responses.append(response_with_status(normalized, "404 Not Found"))
             continue
 
         obj_map = _build_prop_map_for_object(obj)
@@ -772,15 +800,16 @@ def _responses_for_multiget(calendars, requested, hrefs):
     return responses
 
 
-def _responses_for_calendar_query(calendars, requested, query_filter):
+def _responses_for_calendar_query(calendars, requested, query_filter, request_path):
     responses = []
+    style = _report_href_style(request_path)
     for calendar in calendars:
         for obj in calendar.calendar_objects.all():
             if not _object_matches_query(obj, query_filter):
                 continue
             obj_map = _build_prop_map_for_object(obj)
             ok, missing = _select_props(obj_map, requested)
-            href = f"/dav/calendars/{calendar.owner.username}/{calendar.slug}/{obj.filename}"
+            href = _object_href_for_style(calendar, obj, style)
             responses.append(response_with_props(href, ok, missing))
     return responses
 
@@ -799,7 +828,12 @@ def _handle_report(calendars, request):
 
     if root.tag == qname(NS_CALDAV, "calendar-query"):
         query_filter = _parse_calendar_query_filter(root)
-        responses = _responses_for_calendar_query(calendars, requested, query_filter)
+        responses = _responses_for_calendar_query(
+            calendars,
+            requested,
+            query_filter,
+            request.path,
+        )
         return _xml_response(207, multistatus_document(responses))
 
     return _report_unknown_type()
