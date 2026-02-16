@@ -149,6 +149,34 @@ class DavDiscoveryTests(TestCase):
         self.assertIn("BEGIN:VCALENDAR", response.content.decode("utf-8"))
         self.assertEqual(response.headers.get("ETag"), self.object.etag)
 
+    def test_collection_conditional_get_returns_304(self):
+        first = self.client.get(
+            f"/dav/calendars/{self.owner.username}/{self.calendar.slug}/",
+            **self._basic_auth("owner", "pw-test-12345"),
+        )
+        self.assertEqual(first.status_code, 200)
+
+        second = self.client.get(
+            f"/dav/calendars/{self.owner.username}/{self.calendar.slug}/",
+            HTTP_IF_NONE_MATCH=first.headers.get("ETag"),
+            **self._basic_auth("owner", "pw-test-12345"),
+        )
+        self.assertEqual(second.status_code, 304)
+
+    def test_home_conditional_get_returns_304(self):
+        first = self.client.get(
+            f"/dav/calendars/{self.owner.username}/",
+            **self._basic_auth("owner", "pw-test-12345"),
+        )
+        self.assertEqual(first.status_code, 200)
+
+        second = self.client.get(
+            f"/dav/calendars/{self.owner.username}/",
+            HTTP_IF_NONE_MATCH=first.headers.get("ETag"),
+            **self._basic_auth("owner", "pw-test-12345"),
+        )
+        self.assertEqual(second.status_code, 304)
+
     def test_propfind_requested_unknown_prop_returns_404_propstat(self):
         body = """<?xml version=\"1.0\" encoding=\"utf-8\"?>
 <D:propfind xmlns:D=\"DAV:\">
@@ -313,6 +341,33 @@ class DavWriteTests(TestCase):
             "BEGIN:VCALENDAR\nBEGIN:VEVENT\nEND:VEVENT\nEND:VCALENDAR\n",
         )
         self.assertEqual(response.status_code, 400)
+
+    def test_put_preserves_content_type_parameters(self):
+        response = self.client.generic(
+            "PUT",
+            f"/dav/calendars/{self.owner.username}/{self.calendar.slug}/ctype.ics",
+            data="BEGIN:VCALENDAR\nBEGIN:VEVENT\nUID:ctype\nEND:VEVENT\nEND:VCALENDAR\n",
+            content_type="text/calendar; charset=utf-8",
+            **self._basic_auth("owner", "pw-test-12345"),
+        )
+        self.assertEqual(response.status_code, 201)
+        obj = CalendarObject.objects.get(calendar=self.calendar, filename="ctype.ics")
+        self.assertEqual(obj.content_type, "text/calendar;charset=utf-8")
+
+    def test_put_deduplicates_duplicate_valarms(self):
+        ical = (
+            "BEGIN:VCALENDAR\n"
+            "BEGIN:VEVENT\n"
+            "UID:dupe-1\n"
+            "BEGIN:VALARM\nACTION:DISPLAY\nDESCRIPTION:Test\nTRIGGER:-PT10M\nEND:VALARM\n"
+            "BEGIN:VALARM\nACTION:DISPLAY\nDESCRIPTION:Test\nTRIGGER:-PT10M\nEND:VALARM\n"
+            "END:VEVENT\n"
+            "END:VCALENDAR\n"
+        )
+        response = self._put_event("owner", "pw-test-12345", "dupe.ics", ical)
+        self.assertEqual(response.status_code, 201)
+        obj = CalendarObject.objects.get(calendar=self.calendar, filename="dupe.ics")
+        self.assertEqual(obj.ical_blob.count("BEGIN:VALARM"), 1)
 
 
 class DavReportTests(TestCase):

@@ -343,7 +343,7 @@ Completion notes:
   - OPTIONS and multiget suites are green
   - remaining failures are concentrated in advanced query/filter/time-range/recurrence semantics and free-busy behavior
 
-#### 6.4 Write-Path Compatibility Polish
+#### 6.4 Write-Path Compatibility Polish [DONE!]
 
 Deliverables:
 
@@ -356,6 +356,18 @@ Acceptance:
 
 - write-focused litmus/CalDAVTester failures drop and shift toward advanced/deferred areas
 - preconditions and metadata semantics are test-covered and stable
+
+Completion notes:
+
+- normalized stored content-type values to preserve request parameters (e.g. `text/calendar;charset=utf-8`)
+- added duplicate VALARM deduplication for iCalendar writes, matching declared server behavior
+- added conditional GET handling (`If-None-Match`, `If-Modified-Since`) for calendar homes and collections with stable `ETag`/`Last-Modified`
+- updated integration fixtures to create both `calendar` and `tasks` collections for test users
+- updated declared feature flags to better reflect implemented capabilities (disabled `directory listing`)
+- targeted CalDAVTester write/read results improved:
+  - `CalDAV/put.xml` now fully green for runnable tests
+  - `CalDAV/get.xml` now green for non-directory-listing portions (collection/home listing suites intentionally ignored)
+- litmus `basic` remains stable at 100% pass
 
 #### 6.5 Integration Closure and Failure Classification
 

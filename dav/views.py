@@ -3,6 +3,7 @@
 import hashlib
 import re
 from datetime import datetime, timezone as datetime_timezone
+from email.utils import parsedate_to_datetime
 from urllib.parse import quote, urlparse
 from xml.etree import ElementTree as ET
 
@@ -134,6 +135,54 @@ def _is_ical_resource(filename, content_type):
     if content_type and "text/calendar" in content_type.lower():
         return True
     return False
+
+
+def _normalize_content_type(raw):
+    value = (raw or "application/octet-stream").strip()
+    return value.replace("; ", ";")
+
+
+def _dedupe_duplicate_alarms(ical_text):
+    lines = ical_text.splitlines()
+    result = []
+    seen_alarm_blocks = set()
+    collecting = False
+    alarm_lines = []
+    in_event_like = False
+
+    for line in lines:
+        stripped = line.rstrip("\r")
+        upper = stripped.upper()
+
+        if upper in ("BEGIN:VEVENT", "BEGIN:VTODO"):
+            in_event_like = True
+            result.append(stripped)
+            continue
+
+        if upper in ("END:VEVENT", "END:VTODO"):
+            in_event_like = False
+            result.append(stripped)
+            continue
+
+        if in_event_like and upper == "BEGIN:VALARM":
+            collecting = True
+            alarm_lines = [stripped]
+            continue
+
+        if collecting:
+            alarm_lines.append(stripped)
+            if upper == "END:VALARM":
+                block = "\n".join(alarm_lines)
+                if block not in seen_alarm_blocks:
+                    seen_alarm_blocks.add(block)
+                    result.extend(alarm_lines)
+                collecting = False
+                alarm_lines = []
+            continue
+
+        result.append(stripped)
+
+    return "\r\n".join(result) + "\r\n"
 
 
 def _parse_xml_body(payload):
@@ -378,6 +427,53 @@ def _propfind_finite_depth_error():
         content_type="application/xml; charset=utf-8",
     )
     return _dav_common_headers(response)
+
+
+def _if_none_match_matches(request, etag):
+    header = request.headers.get("If-None-Match")
+    if not header:
+        return False
+    values = _if_match_values(header)
+    return "*" in values or etag in values
+
+
+def _if_modified_since_not_modified(request, timestamp):
+    header = request.headers.get("If-Modified-Since")
+    if not header:
+        return False
+    try:
+        date = parsedate_to_datetime(header)
+    except (TypeError, ValueError):
+        return False
+    if date is None:
+        return False
+    if date.tzinfo is None:
+        date = date.replace(tzinfo=datetime_timezone.utc)
+    return timestamp <= date.timestamp()
+
+
+def _conditional_not_modified(request, etag, timestamp):
+    if _if_none_match_matches(request, etag):
+        return True
+    if _if_modified_since_not_modified(request, timestamp):
+        return True
+    return False
+
+
+def _home_etag_and_timestamp(owner, user):
+    calendars = _visible_calendars_for_home(owner, user)
+    if not calendars:
+        ts = owner.date_joined.timestamp()
+        return '"home-empty"', ts
+
+    parts = [
+        f"{calendar.slug}:{int(calendar.updated_at.timestamp())}"
+        for calendar in calendars
+    ]
+    parts.sort()
+    digest = hashlib.sha256("|".join(parts).encode("utf-8")).hexdigest()
+    ts = max(calendar.updated_at.timestamp() for calendar in calendars)
+    return f'"{digest}"', ts
 
 
 def _parse_propfind_payload(request):
@@ -645,13 +741,23 @@ def calendar_home_view(request, username):
     if owner is None:
         return HttpResponse(status=404)
 
+    home_etag, home_timestamp = _home_etag_and_timestamp(owner, user)
+
     if request.method in ("GET", "HEAD"):
+        if _conditional_not_modified(request, home_etag, home_timestamp):
+            response = HttpResponse(status=304)
+            response["ETag"] = home_etag
+            response["Last-Modified"] = http_date(home_timestamp)
+            return _dav_common_headers(response)
+
         if request.method == "HEAD":
             response = HttpResponse(status=200)
         else:
             response = HttpResponse(
                 "Calendar home", content_type="text/plain; charset=utf-8"
             )
+        response["ETag"] = home_etag
+        response["Last-Modified"] = http_date(home_timestamp)
         return _dav_common_headers(response)
 
     calendars = _visible_calendars_for_home(owner, user)
@@ -892,6 +998,14 @@ def calendar_collection_view(request, username, slug):
         return HttpResponse(status=404)
 
     if request.method in ("GET", "HEAD"):
+        calendar_etag = _etag_for_calendar(calendar)
+        calendar_timestamp = calendar.updated_at.timestamp()
+        if _conditional_not_modified(request, calendar_etag, calendar_timestamp):
+            response = HttpResponse(status=304)
+            response["ETag"] = calendar_etag
+            response["Last-Modified"] = http_date(calendar_timestamp)
+            return _dav_common_headers(response)
+
         if request.method == "HEAD":
             response = HttpResponse(status=200)
         else:
@@ -899,7 +1013,8 @@ def calendar_collection_view(request, username, slug):
                 f"Calendar {calendar.name}",
                 content_type="text/plain; charset=utf-8",
             )
-        response["ETag"] = _etag_for_calendar(calendar)
+        response["ETag"] = calendar_etag
+        response["Last-Modified"] = http_date(calendar_timestamp)
         return _dav_common_headers(response)
 
     if request.method == "REPORT":
@@ -1060,7 +1175,8 @@ def calendar_object_view(request, username, slug, filename):
         if not _collection_exists(writable, parent_path):
             return HttpResponse(status=409)
 
-        content_type = request.content_type or "application/octet-stream"
+        raw_content_type = request.META.get("CONTENT_TYPE") or request.content_type
+        content_type = _normalize_content_type(raw_content_type)
         if _is_ical_resource(filename, content_type):
             parsed, error = _validate_ical_payload(request.body)
         else:
@@ -1074,7 +1190,10 @@ def calendar_object_view(request, username, slug, filename):
             return HttpResponse(status=400)
 
         now = timezone.now()
-        payload = request.body
+        payload_text = parsed["text"]
+        if _is_ical_resource(filename, content_type):
+            payload_text = _dedupe_duplicate_alarms(payload_text)
+        payload = payload_text.encode("utf-8")
         etag = _generate_strong_etag(payload)
         object_uid = parsed["uid"] or f"dav:{filename}"
         status_code = 204
@@ -1083,7 +1202,7 @@ def calendar_object_view(request, username, slug, filename):
                 uid=object_uid,
                 filename=filename,
                 etag=etag,
-                ical_blob=parsed["text"],
+                ical_blob=payload_text,
                 content_type=content_type,
                 size=len(payload),
             )
@@ -1091,7 +1210,7 @@ def calendar_object_view(request, username, slug, filename):
         else:
             existing.uid = object_uid
             existing.etag = etag
-            existing.ical_blob = parsed["text"]
+            existing.ical_blob = payload_text
             existing.content_type = content_type
             existing.size = len(payload)
             existing.updated_at = now
