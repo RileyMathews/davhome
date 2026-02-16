@@ -1,0 +1,37 @@
+{% extends "base.html" %}
+
+{% block title %}Calendars | Davhome{% endblock %}
+
+{% block content %}
+  <section class="card">
+    <h1>Calendars</h1>
+    <p><a href="{% url 'calendars:create' %}">Create calendar</a></p>
+
+    <h2>My calendars</h2>
+    {% if owned_calendars %}
+      <ul>
+        {% for calendar in owned_calendars %}
+          <li>
+            <a href="{% url 'calendars:edit' calendar.id %}">{{ calendar.name }}</a>
+            ({{ calendar.slug }})
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>No owned calendars yet.</p>
+    {% endif %}
+
+    <h2>Shared with me</h2>
+    {% if shared_calendars %}
+      <ul>
+        {% for calendar in shared_calendars %}
+          <li>
+            {{ calendar.name }} by {{ calendar.owner.username }}
+          </li>
+        {% endfor %}
+      </ul>
+    {% else %}
+      <p>No shared calendars yet.</p>
+    {% endif %}
+  </section>
+{% endblock %}

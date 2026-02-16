@@ -197,7 +197,7 @@ Acceptance:
 - migrations apply cleanly
 - test runner executes
 
-### Phase 1 - Accounts and Basic UI Shell
+### Phase 1 - Accounts and Basic UI Shell [DONE!]
 
 Deliverables:
 
@@ -210,7 +210,7 @@ Acceptance:
 - user can register, sign in, sign out
 - anonymous users are redirected appropriately
 
-### Phase 2 - Calendar and Sharing Domain
+### Phase 2 - Calendar and Sharing Domain [DONE!]
 
 Deliverables:
 
