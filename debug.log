@@ -7346,3 +7346,1212 @@ Running post_send hooks
 auth: Post-send (#0), code is 405 (want 401), WWW-Authenticate is (none)
 req: Destroy (MKCOL /dav/calendars/user01/litmus/).
 Running destroy hooks.
+Version string: neon 0.36.0: Library build, IPv6, libxml 2.15.1, zlib 1.3.1, OpenSSL 3.6.0 1 Oct 2025 (thread-safe).
+litmus: Parsing URI http://127.0.0.1:8000/dav/calendars/user01/...
+******* Running test 0: begin ********
+HTTP session to http://127.0.0.1:8000 begins.
+sess: Using IP literal address for 127.0.0.1
+HTTP session to http://127.0.0.1:8000 begins.
+sess: Using IP literal address for 127.0.0.1
+auth: Create for WWW-Authenticate
+Running pre_send hooks
+Sending request headers:
+DELETE /dav/calendars/user01/litmus/ HTTP/1.1
+User-Agent: litmus/0.17 neon/0.36.0
+Keep-Alive: 
+Connection: TE, Keep-Alive
+TE: trailers
+Host: 127.0.0.1:8000
+X-Litmus: basic: 0 (begin)
+
+Sending request-line and headers:
+req: Connecting to 127.0.0.1:8000
+Request sent; retry is 0.
+req: Line: HTTP/1.1 401 Unauthorized
+req: Line: Date: Mon, 16 Feb 2026 05:35:46 GMT
+req: Header: [date] = [Mon, 16 Feb 2026 05:35:46 GMT]
+req: Line: Server: WSGIServer/0.2 CPython/3.12.12
+req: Header: [server] = [WSGIServer/0.2 CPython/3.12.12]
+req: Line: Content-Type: text/html; charset=utf-8
+req: Header: [content-type] = [text/html; charset=utf-8]
+req: Line: WWW-Authenticate: Basic realm="davhome"
+req: Header: [www-authenticate] = [Basic realm="davhome"]
+req: Line: X-Frame-Options: DENY
+req: Header: [x-frame-options] = [DENY]
+req: Line: Content-Length: 0
+req: Header: [content-length] = [0]
+req: Line: Vary: Cookie
+req: Header: [vary] = [Cookie]
+req: Line: X-Content-Type-Options: nosniff
+req: Header: [x-content-type-options] = [nosniff]
+req: Line: Referrer-Policy: same-origin
+req: Header: [referrer-policy] = [same-origin]
+req: Line: Cross-Origin-Opener-Policy: same-origin
+req: Header: [cross-origin-opener-policy] = [same-origin]
+req: Line: 
+req: End of headers.
+Running post_headers hooks
+req: Reading 0 bytes of response body.
+Running post_send hooks
+auth: Post-send (#0), code is 401 (want 401), WWW-Authenticate is Basic realm="davhome"
+auth: Got challenge (code 401).
+auth: Got 'Basic' challenge.
+auth: Trying Basic challenge...
+auth: Basic auth scope is: /dav/calendars/user01/litmus/
+auth: Accepted Basic challenge.
+Running pre_send hooks
+auth: Sending 'Basic' response.
+auth: '/dav/calendars/user01/litmus/' is inside auth domain: 1.
+Sending request headers:
+DELETE /dav/calendars/user01/litmus/ HTTP/1.1
+User-Agent: litmus/0.17 neon/0.36.0
+Keep-Alive: 
+Connection: TE, Keep-Alive
+TE: trailers
+Host: 127.0.0.1:8000
+Authorization: Basic dXNlcjAxOnVzZXIwMQ==
+X-Litmus: basic: 0 (begin)
+
+Sending request-line and headers:
+Request sent; retry is 1.
+req: Line: HTTP/1.1 404 Not Found
+req: Line: Date: Mon, 16 Feb 2026 05:35:47 GMT
+req: Header: [date] = [Mon, 16 Feb 2026 05:35:47 GMT]
+req: Line: Server: WSGIServer/0.2 CPython/3.12.12
+req: Header: [server] = [WSGIServer/0.2 CPython/3.12.12]
+req: Line: Content-Type: text/html; charset=utf-8
+req: Header: [content-type] = [text/html; charset=utf-8]
+req: Line: X-Frame-Options: DENY
+req: Header: [x-frame-options] = [DENY]
+req: Line: Content-Length: 0
+req: Header: [content-length] = [0]
+req: Line: Vary: Cookie
+req: Header: [vary] = [Cookie]
+req: Line: X-Content-Type-Options: nosniff
+req: Header: [x-content-type-options] = [nosniff]
+req: Line: Referrer-Policy: same-origin
+req: Header: [referrer-policy] = [same-origin]
+req: Line: Cross-Origin-Opener-Policy: same-origin
+req: Header: [cross-origin-opener-policy] = [same-origin]
+req: Line: 
+req: End of headers.
+Running post_headers hooks
+req: Reading 0 bytes of response body.
+Running post_send hooks
+auth: Post-send (#1), code is 404 (want 401), WWW-Authenticate is (none)
+req: Destroy (DELETE /dav/calendars/user01/litmus/).
+Running destroy hooks.
+auth: Create for WWW-Authenticate
+Running pre_send hooks
+auth: Sending 'Basic' response.
+auth: '/dav/calendars/user01/litmus/' is inside auth domain: 1.
+Sending request headers:
+MKCOL /dav/calendars/user01/litmus/ HTTP/1.1
+User-Agent: litmus/0.17 neon/0.36.0
+Connection: TE
+TE: trailers
+Host: 127.0.0.1:8000
+Authorization: Basic dXNlcjAxOnVzZXIwMQ==
+X-Litmus: basic: 0 (begin)
+
+Sending request-line and headers:
+Request sent; retry is 1.
+req: Line: HTTP/1.1 201 Created
+req: Line: Date: Mon, 16 Feb 2026 05:35:47 GMT
+req: Header: [date] = [Mon, 16 Feb 2026 05:35:47 GMT]
+req: Line: Server: WSGIServer/0.2 CPython/3.12.12
+req: Header: [server] = [WSGIServer/0.2 CPython/3.12.12]
+req: Line: Content-Type: text/html; charset=utf-8
+req: Header: [content-type] = [text/html; charset=utf-8]
+req: Line: Location: /dav/calendars/user01/litmus/
+req: Header: [location] = [/dav/calendars/user01/litmus/]
+req: Line: ETag: "1771220147"
+req: Header: [etag] = ["1771220147"]
+req: Line: DAV: 1, calendar-access
+req: Header: [dav] = [1, calendar-access]
+req: Line: X-Frame-Options: DENY
+req: Header: [x-frame-options] = [DENY]
+req: Line: Content-Length: 0
+req: Header: [content-length] = [0]
+req: Line: Vary: Cookie
+req: Header: [vary] = [Cookie]
+req: Line: X-Content-Type-Options: nosniff
+req: Header: [x-content-type-options] = [nosniff]
+req: Line: Referrer-Policy: same-origin
+req: Header: [referrer-policy] = [same-origin]
+req: Line: Cross-Origin-Opener-Policy: same-origin
+req: Header: [cross-origin-opener-policy] = [same-origin]
+req: Line: 
+req: End of headers.
+Running post_headers hooks
+req: Reading 0 bytes of response body.
+Running post_send hooks
+auth: Post-send (#0), code is 201 (want 401), WWW-Authenticate is (none)
+req: Destroy (MKCOL /dav/calendars/user01/litmus/).
+Running destroy hooks.
+******* Running test 1: options ********
+auth: Create for WWW-Authenticate
+Running pre_send hooks
+auth: Sending 'Basic' response.
+auth: '/dav/calendars/user01/litmus/' is inside auth domain: 1.
+Sending request headers:
+OPTIONS /dav/calendars/user01/litmus/ HTTP/1.1
+User-Agent: litmus/0.17 neon/0.36.0
+Connection: TE
+TE: trailers
+Host: 127.0.0.1:8000
+Authorization: Basic dXNlcjAxOnVzZXIwMQ==
+X-Litmus: basic: 1 (options)
+
+Sending request-line and headers:
+Request sent; retry is 1.
+req: Line: HTTP/1.1 204 No Content
+req: Line: Date: Mon, 16 Feb 2026 05:35:47 GMT
+req: Header: [date] = [Mon, 16 Feb 2026 05:35:47 GMT]
+req: Line: Server: WSGIServer/0.2 CPython/3.12.12
+req: Header: [server] = [WSGIServer/0.2 CPython/3.12.12]
+req: Line: Content-Type: text/html; charset=utf-8
+req: Header: [content-type] = [text/html; charset=utf-8]
+req: Line: Allow: OPTIONS, PROPFIND, GET, HEAD, REPORT, MKCOL, MKCALENDAR
+req: Header: [allow] = [OPTIONS, PROPFIND, GET, HEAD, REPORT, MKCOL, MKCALENDAR]
+req: Line: DAV: 1, calendar-access
+req: Header: [dav] = [1, calendar-access]
+req: Line: X-Frame-Options: DENY
+req: Header: [x-frame-options] = [DENY]
+req: Line: Content-Length: 0
+req: Header: [content-length] = [0]
+req: Line: X-Content-Type-Options: nosniff
+req: Header: [x-content-type-options] = [nosniff]
+req: Line: Referrer-Policy: same-origin
+req: Header: [referrer-policy] = [same-origin]
+req: Line: Cross-Origin-Opener-Policy: same-origin
+req: Header: [cross-origin-opener-policy] = [same-origin]
+req: Line: 
+req: End of headers.
+Running post_headers hooks
+req: Reading 0 bytes of response body.
+Running post_send hooks
+auth: Post-send (#0), code is 204 (want 401), WWW-Authenticate is (none)
+Request ends, status 204 class 2xx, error line:
+204 No Content
+req: Destroy (OPTIONS /dav/calendars/user01/litmus/).
+Running destroy hooks.
+******* Running test 2: put_get ********
+auth: Create for WWW-Authenticate
+Running pre_send hooks
+auth: Sending 'Basic' response.
+auth: '/dav/calendars/user01/litmus/res' is inside auth domain: 1.
+Sending request headers:
+PUT /dav/calendars/user01/litmus/res HTTP/1.1
+User-Agent: litmus/0.17 neon/0.36.0
+Connection: TE
+TE: trailers
+Host: 127.0.0.1:8000
+Content-Length: 41
+Authorization: Basic dXNlcjAxOnVzZXIwMQ==
+X-Litmus: basic: 2 (put_get)
+
+Sending request-line and headers:
+Sending request body:
+Body block (41 bytes):
+[This is
+a test file.
+for litmus
+testing.
+]
+Request sent; retry is 1.
+req: Line: HTTP/1.1 201 Created
+req: Line: Date: Mon, 16 Feb 2026 05:35:48 GMT
+req: Header: [date] = [Mon, 16 Feb 2026 05:35:48 GMT]
+req: Line: Server: WSGIServer/0.2 CPython/3.12.12
+req: Header: [server] = [WSGIServer/0.2 CPython/3.12.12]
+req: Line: Content-Type: text/html; charset=utf-8
+req: Header: [content-type] = [text/html; charset=utf-8]
+req: Line: ETag: "e87b634ed0538fda0886a9094d853af9a6eab0754e2721ba292f243919eadf14"
+req: Header: [etag] = ["e87b634ed0538fda0886a9094d853af9a6eab0754e2721ba292f243919eadf14"]
+req: Line: Last-Modified: Mon, 16 Feb 2026 05:35:48 GMT
+req: Header: [last-modified] = [Mon, 16 Feb 2026 05:35:48 GMT]
+req: Line: Location: /dav/calendars/user01/litmus/res
+req: Header: [location] = [/dav/calendars/user01/litmus/res]
+req: Line: DAV: 1, calendar-access
+req: Header: [dav] = [1, calendar-access]
+req: Line: X-Frame-Options: DENY
+req: Header: [x-frame-options] = [DENY]
+req: Line: Content-Length: 0
+req: Header: [content-length] = [0]
+req: Line: Vary: Cookie
+req: Header: [vary] = [Cookie]
+req: Line: X-Content-Type-Options: nosniff
+req: Header: [x-content-type-options] = [nosniff]
+req: Line: Referrer-Policy: same-origin
+req: Header: [referrer-policy] = [same-origin]
+req: Line: Cross-Origin-Opener-Policy: same-origin
+req: Header: [cross-origin-opener-policy] = [same-origin]
+req: Line: 
+req: End of headers.
+Running post_headers hooks
+req: Reading 0 bytes of response body.
+Running post_send hooks
+auth: Post-send (#0), code is 201 (want 401), WWW-Authenticate is (none)
+Request ends, status 201 class 2xx, error line:
+201 Created
+req: Destroy (PUT /dav/calendars/user01/litmus/res).
+Running destroy hooks.
+auth: Create for WWW-Authenticate
+Running pre_send hooks
+auth: Sending 'Basic' response.
+auth: '/dav/calendars/user01/litmus/res' is inside auth domain: 1.
+Sending request headers:
+GET /dav/calendars/user01/litmus/res HTTP/1.1
+User-Agent: litmus/0.17 neon/0.36.0
+Connection: TE
+TE: trailers
+Host: 127.0.0.1:8000
+Authorization: Basic dXNlcjAxOnVzZXIwMQ==
+X-Litmus: basic: 2 (put_get)
+
+Sending request-line and headers:
+Request sent; retry is 1.
+req: Line: HTTP/1.1 200 OK
+req: Line: Date: Mon, 16 Feb 2026 05:35:48 GMT
+req: Header: [date] = [Mon, 16 Feb 2026 05:35:48 GMT]
+req: Line: Server: WSGIServer/0.2 CPython/3.12.12
+req: Header: [server] = [WSGIServer/0.2 CPython/3.12.12]
+req: Line: Content-Type: text/plain
+req: Header: [content-type] = [text/plain]
+req: Line: ETag: "e87b634ed0538fda0886a9094d853af9a6eab0754e2721ba292f243919eadf14"
+req: Header: [etag] = ["e87b634ed0538fda0886a9094d853af9a6eab0754e2721ba292f243919eadf14"]
+req: Line: Last-Modified: Mon, 16 Feb 2026 05:35:48 GMT
+req: Header: [last-modified] = [Mon, 16 Feb 2026 05:35:48 GMT]
+req: Line: Content-Length: 41
+req: Header: [content-length] = [41]
+req: Line: DAV: 1, calendar-access
+req: Header: [dav] = [1, calendar-access]
+req: Line: X-Frame-Options: DENY
+req: Header: [x-frame-options] = [DENY]
+req: Line: Vary: Cookie
+req: Header: [vary] = [Cookie]
+req: Line: X-Content-Type-Options: nosniff
+req: Header: [x-content-type-options] = [nosniff]
+req: Line: Referrer-Policy: same-origin
+req: Header: [referrer-policy] = [same-origin]
+req: Line: Cross-Origin-Opener-Policy: same-origin
+req: Header: [cross-origin-opener-policy] = [same-origin]
+req: Line: 
+req: End of headers.
+Running post_headers hooks
+req: Reading 41 bytes of response body.
+Got 41 bytes.
+Read block (41 bytes):
+[This is
+a test file.
+for litmus
+testing.
+]
+req: Reading 0 bytes of response body.
+Running post_send hooks
+auth: Post-send (#0), code is 200 (want 401), WWW-Authenticate is (none)
+req: Destroy (GET /dav/calendars/user01/litmus/res).
+Running destroy hooks.
+******* Running test 3: put_get_utf8_segment ********
+auth: Create for WWW-Authenticate
+Running pre_send hooks
+auth: Sending 'Basic' response.
+auth: '/dav/calendars/user01/litmus/res-%e2%82%ac' is inside auth domain: 1.
+Sending request headers:
+PUT /dav/calendars/user01/litmus/res-%e2%82%ac HTTP/1.1
+User-Agent: litmus/0.17 neon/0.36.0
+Connection: TE
+TE: trailers
+Host: 127.0.0.1:8000
+Content-Length: 41
+Authorization: Basic dXNlcjAxOnVzZXIwMQ==
+X-Litmus: basic: 3 (put_get_utf8_segment)
+
+Sending request-line and headers:
+Sending request body:
+Body block (41 bytes):
+[This is
+a test file.
+for litmus
+testing.
+]
+Request sent; retry is 1.
+req: Line: HTTP/1.1 201 Created
+req: Line: Date: Mon, 16 Feb 2026 05:35:49 GMT
+req: Header: [date] = [Mon, 16 Feb 2026 05:35:49 GMT]
+req: Line: Server: WSGIServer/0.2 CPython/3.12.12
+req: Header: [server] = [WSGIServer/0.2 CPython/3.12.12]
+req: Line: Content-Type: text/html; charset=utf-8
+req: Header: [content-type] = [text/html; charset=utf-8]
+req: Line: ETag: "e87b634ed0538fda0886a9094d853af9a6eab0754e2721ba292f243919eadf14"
+req: Header: [etag] = ["e87b634ed0538fda0886a9094d853af9a6eab0754e2721ba292f243919eadf14"]
+req: Line: Last-Modified: Mon, 16 Feb 2026 05:35:49 GMT
+req: Header: [last-modified] = [Mon, 16 Feb 2026 05:35:49 GMT]
+req: Line: Location: /dav/calendars/user01/litmus/res-%E2%82%AC
+req: Header: [location] = [/dav/calendars/user01/litmus/res-%E2%82%AC]
+req: Line: DAV: 1, calendar-access
+req: Header: [dav] = [1, calendar-access]
+req: Line: X-Frame-Options: DENY
+req: Header: [x-frame-options] = [DENY]
+req: Line: Content-Length: 0
+req: Header: [content-length] = [0]
+req: Line: Vary: Cookie
+req: Header: [vary] = [Cookie]
+req: Line: X-Content-Type-Options: nosniff
+req: Header: [x-content-type-options] = [nosniff]
+req: Line: Referrer-Policy: same-origin
+req: Header: [referrer-policy] = [same-origin]
+req: Line: Cross-Origin-Opener-Policy: same-origin
+req: Header: [cross-origin-opener-policy] = [same-origin]
+req: Line: 
+req: End of headers.
+Running post_headers hooks
+req: Reading 0 bytes of response body.
+Running post_send hooks
+auth: Post-send (#0), code is 201 (want 401), WWW-Authenticate is (none)
+Request ends, status 201 class 2xx, error line:
+201 Created
+req: Destroy (PUT /dav/calendars/user01/litmus/res-%e2%82%ac).
+Running destroy hooks.
+auth: Create for WWW-Authenticate
+Running pre_send hooks
+auth: Sending 'Basic' response.
+auth: '/dav/calendars/user01/litmus/res-%e2%82%ac' is inside auth domain: 1.
+Sending request headers:
+GET /dav/calendars/user01/litmus/res-%e2%82%ac HTTP/1.1
+User-Agent: litmus/0.17 neon/0.36.0
+Connection: TE
+TE: trailers
+Host: 127.0.0.1:8000
+Authorization: Basic dXNlcjAxOnVzZXIwMQ==
+X-Litmus: basic: 3 (put_get_utf8_segment)
+
+Sending request-line and headers:
+Request sent; retry is 1.
+req: Line: HTTP/1.1 200 OK
+req: Line: Date: Mon, 16 Feb 2026 05:35:49 GMT
+req: Header: [date] = [Mon, 16 Feb 2026 05:35:49 GMT]
+req: Line: Server: WSGIServer/0.2 CPython/3.12.12
+req: Header: [server] = [WSGIServer/0.2 CPython/3.12.12]
+req: Line: Content-Type: text/plain
+req: Header: [content-type] = [text/plain]
+req: Line: ETag: "e87b634ed0538fda0886a9094d853af9a6eab0754e2721ba292f243919eadf14"
+req: Header: [etag] = ["e87b634ed0538fda0886a9094d853af9a6eab0754e2721ba292f243919eadf14"]
+req: Line: Last-Modified: Mon, 16 Feb 2026 05:35:49 GMT
+req: Header: [last-modified] = [Mon, 16 Feb 2026 05:35:49 GMT]
+req: Line: Content-Length: 41
+req: Header: [content-length] = [41]
+req: Line: DAV: 1, calendar-access
+req: Header: [dav] = [1, calendar-access]
+req: Line: X-Frame-Options: DENY
+req: Header: [x-frame-options] = [DENY]
+req: Line: Vary: Cookie
+req: Header: [vary] = [Cookie]
+req: Line: X-Content-Type-Options: nosniff
+req: Header: [x-content-type-options] = [nosniff]
+req: Line: Referrer-Policy: same-origin
+req: Header: [referrer-policy] = [same-origin]
+req: Line: Cross-Origin-Opener-Policy: same-origin
+req: Header: [cross-origin-opener-policy] = [same-origin]
+req: Line: 
+req: End of headers.
+Running post_headers hooks
+req: Reading 41 bytes of response body.
+Got 41 bytes.
+Read block (41 bytes):
+[This is
+a test file.
+for litmus
+testing.
+]
+req: Reading 0 bytes of response body.
+Running post_send hooks
+auth: Post-send (#0), code is 200 (want 401), WWW-Authenticate is (none)
+req: Destroy (GET /dav/calendars/user01/litmus/res-%e2%82%ac).
+Running destroy hooks.
+******* Running test 4: put_no_parent ********
+auth: Create for WWW-Authenticate
+Running pre_send hooks
+auth: Sending 'Basic' response.
+auth: '/dav/calendars/user01/litmus/409me/noparent.txt' is inside auth domain: 1.
+Sending request headers:
+PUT /dav/calendars/user01/litmus/409me/noparent.txt HTTP/1.1
+User-Agent: litmus/0.17 neon/0.36.0
+Connection: TE
+TE: trailers
+Host: 127.0.0.1:8000
+Content-Length: 4
+Authorization: Basic dXNlcjAxOnVzZXIwMQ==
+X-Litmus: basic: 4 (put_no_parent)
+
+Sending request-line and headers:
+Sending request body:
+Body block (4 bytes):
+[zero]
+Request sent; retry is 1.
+req: Line: HTTP/1.1 409 Conflict
+req: Line: Date: Mon, 16 Feb 2026 05:35:49 GMT
+req: Header: [date] = [Mon, 16 Feb 2026 05:35:49 GMT]
+req: Line: Server: WSGIServer/0.2 CPython/3.12.12
+req: Header: [server] = [WSGIServer/0.2 CPython/3.12.12]
+req: Line: Content-Type: text/html; charset=utf-8
+req: Header: [content-type] = [text/html; charset=utf-8]
+req: Line: X-Frame-Options: DENY
+req: Header: [x-frame-options] = [DENY]
+req: Line: Content-Length: 0
+req: Header: [content-length] = [0]
+req: Line: Vary: Cookie
+req: Header: [vary] = [Cookie]
+req: Line: X-Content-Type-Options: nosniff
+req: Header: [x-content-type-options] = [nosniff]
+req: Line: Referrer-Policy: same-origin
+req: Header: [referrer-policy] = [same-origin]
+req: Line: Cross-Origin-Opener-Policy: same-origin
+req: Header: [cross-origin-opener-policy] = [same-origin]
+req: Line: 
+req: End of headers.
+Running post_headers hooks
+req: Reading 0 bytes of response body.
+Running post_send hooks
+auth: Post-send (#0), code is 409 (want 401), WWW-Authenticate is (none)
+Request ends, status 409 class 4xx, error line:
+409 Conflict
+req: Destroy (PUT /dav/calendars/user01/litmus/409me/noparent.txt).
+Running destroy hooks.
+******* Running test 5: put_location ********
+auth: Create for WWW-Authenticate
+Running pre_send hooks
+auth: Sending 'Basic' response.
+auth: '/dav/calendars/user01/litmus/put%23test' is inside auth domain: 1.
+Sending request headers:
+DELETE /dav/calendars/user01/litmus/put%23test HTTP/1.1
+User-Agent: litmus/0.17 neon/0.36.0
+Connection: TE
+TE: trailers
+Host: 127.0.0.1:8000
+Authorization: Basic dXNlcjAxOnVzZXIwMQ==
+X-Litmus: basic: 5 (put_location)
+
+Sending request-line and headers:
+Request sent; retry is 1.
+req: Line: HTTP/1.1 404 Not Found
+req: Line: Date: Mon, 16 Feb 2026 05:35:50 GMT
+req: Header: [date] = [Mon, 16 Feb 2026 05:35:50 GMT]
+req: Line: Server: WSGIServer/0.2 CPython/3.12.12
+req: Header: [server] = [WSGIServer/0.2 CPython/3.12.12]
+req: Line: Content-Type: text/html; charset=utf-8
+req: Header: [content-type] = [text/html; charset=utf-8]
+req: Line: X-Frame-Options: DENY
+req: Header: [x-frame-options] = [DENY]
+req: Line: Content-Length: 0
+req: Header: [content-length] = [0]
+req: Line: Vary: Cookie
+req: Header: [vary] = [Cookie]
+req: Line: X-Content-Type-Options: nosniff
+req: Header: [x-content-type-options] = [nosniff]
+req: Line: Referrer-Policy: same-origin
+req: Header: [referrer-policy] = [same-origin]
+req: Line: Cross-Origin-Opener-Policy: same-origin
+req: Header: [cross-origin-opener-policy] = [same-origin]
+req: Line: 
+req: End of headers.
+Running post_headers hooks
+req: Reading 0 bytes of response body.
+Running post_send hooks
+auth: Post-send (#0), code is 404 (want 401), WWW-Authenticate is (none)
+req: Destroy (DELETE /dav/calendars/user01/litmus/put%23test).
+Running destroy hooks.
+auth: Create for WWW-Authenticate
+Running pre_send hooks
+auth: Sending 'Basic' response.
+auth: '/dav/calendars/user01/litmus/put%23test' is inside auth domain: 1.
+Sending request headers:
+PUT /dav/calendars/user01/litmus/put%23test HTTP/1.1
+User-Agent: litmus/0.17 neon/0.36.0
+Connection: TE
+TE: trailers
+Host: 127.0.0.1:8000
+Content-Length: 5
+Authorization: Basic dXNlcjAxOnVzZXIwMQ==
+X-Litmus: basic: 5 (put_location)
+
+Sending request-line and headers:
+Sending request body:
+Body block (5 bytes):
+[hello]
+Request sent; retry is 1.
+req: Line: HTTP/1.1 201 Created
+req: Line: Date: Mon, 16 Feb 2026 05:35:50 GMT
+req: Header: [date] = [Mon, 16 Feb 2026 05:35:50 GMT]
+req: Line: Server: WSGIServer/0.2 CPython/3.12.12
+req: Header: [server] = [WSGIServer/0.2 CPython/3.12.12]
+req: Line: Content-Type: text/html; charset=utf-8
+req: Header: [content-type] = [text/html; charset=utf-8]
+req: Line: ETag: "2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"
+req: Header: [etag] = ["2cf24dba5fb0a30e26e83b2ac5b9e29e1b161e5c1fa7425e73043362938b9824"]
+req: Line: Last-Modified: Mon, 16 Feb 2026 05:35:50 GMT
+req: Header: [last-modified] = [Mon, 16 Feb 2026 05:35:50 GMT]
+req: Line: Location: /dav/calendars/user01/litmus/put%23test
+req: Header: [location] = [/dav/calendars/user01/litmus/put%23test]
+req: Line: DAV: 1, calendar-access
+req: Header: [dav] = [1, calendar-access]
+req: Line: X-Frame-Options: DENY
+req: Header: [x-frame-options] = [DENY]
+req: Line: Content-Length: 0
+req: Header: [content-length] = [0]
+req: Line: Vary: Cookie
+req: Header: [vary] = [Cookie]
+req: Line: X-Content-Type-Options: nosniff
+req: Header: [x-content-type-options] = [nosniff]
+req: Line: Referrer-Policy: same-origin
+req: Header: [referrer-policy] = [same-origin]
+req: Line: Cross-Origin-Opener-Policy: same-origin
+req: Header: [cross-origin-opener-policy] = [same-origin]
+req: Line: 
+req: End of headers.
+Running post_headers hooks
+req: Reading 0 bytes of response body.
+Running post_send hooks
+auth: Post-send (#0), code is 201 (want 401), WWW-Authenticate is (none)
+Request ends, status 201 class 2xx, error line:
+201 Created
+req: Destroy (PUT /dav/calendars/user01/litmus/put%23test).
+Running destroy hooks.
+******* Running test 6: mkcol_over_plain ********
+auth: Create for WWW-Authenticate
+Running pre_send hooks
+auth: Sending 'Basic' response.
+auth: '/dav/calendars/user01/litmus/res-%e2%82%ac/' is inside auth domain: 1.
+Sending request headers:
+MKCOL /dav/calendars/user01/litmus/res-%e2%82%ac/ HTTP/1.1
+User-Agent: litmus/0.17 neon/0.36.0
+Connection: TE
+TE: trailers
+Host: 127.0.0.1:8000
+Authorization: Basic dXNlcjAxOnVzZXIwMQ==
+X-Litmus: basic: 6 (mkcol_over_plain)
+
+Sending request-line and headers:
+Request sent; retry is 1.
+req: Line: HTTP/1.1 405 Method Not Allowed
+req: Line: Date: Mon, 16 Feb 2026 05:35:51 GMT
+req: Header: [date] = [Mon, 16 Feb 2026 05:35:51 GMT]
+req: Line: Server: WSGIServer/0.2 CPython/3.12.12
+req: Header: [server] = [WSGIServer/0.2 CPython/3.12.12]
+req: Line: Content-Type: text/html; charset=utf-8
+req: Header: [content-type] = [text/html; charset=utf-8]
+req: Line: X-Frame-Options: DENY
+req: Header: [x-frame-options] = [DENY]
+req: Line: Content-Length: 0
+req: Header: [content-length] = [0]
+req: Line: Vary: Cookie
+req: Header: [vary] = [Cookie]
+req: Line: X-Content-Type-Options: nosniff
+req: Header: [x-content-type-options] = [nosniff]
+req: Line: Referrer-Policy: same-origin
+req: Header: [referrer-policy] = [same-origin]
+req: Line: Cross-Origin-Opener-Policy: same-origin
+req: Header: [cross-origin-opener-policy] = [same-origin]
+req: Line: 
+req: End of headers.
+Running post_headers hooks
+req: Reading 0 bytes of response body.
+Running post_send hooks
+auth: Post-send (#0), code is 405 (want 401), WWW-Authenticate is (none)
+req: Destroy (MKCOL /dav/calendars/user01/litmus/res-%e2%82%ac/).
+Running destroy hooks.
+******* Running test 7: delete ********
+auth: Create for WWW-Authenticate
+Running pre_send hooks
+auth: Sending 'Basic' response.
+auth: '/dav/calendars/user01/litmus/res-%e2%82%ac' is inside auth domain: 1.
+Sending request headers:
+DELETE /dav/calendars/user01/litmus/res-%e2%82%ac HTTP/1.1
+User-Agent: litmus/0.17 neon/0.36.0
+Connection: TE
+TE: trailers
+Host: 127.0.0.1:8000
+Authorization: Basic dXNlcjAxOnVzZXIwMQ==
+X-Litmus: basic: 7 (delete)
+
+Sending request-line and headers:
+Request sent; retry is 1.
+req: Line: HTTP/1.1 204 No Content
+req: Line: Date: Mon, 16 Feb 2026 05:35:51 GMT
+req: Header: [date] = [Mon, 16 Feb 2026 05:35:51 GMT]
+req: Line: Server: WSGIServer/0.2 CPython/3.12.12
+req: Header: [server] = [WSGIServer/0.2 CPython/3.12.12]
+req: Line: Content-Type: text/html; charset=utf-8
+req: Header: [content-type] = [text/html; charset=utf-8]
+req: Line: DAV: 1, calendar-access
+req: Header: [dav] = [1, calendar-access]
+req: Line: X-Frame-Options: DENY
+req: Header: [x-frame-options] = [DENY]
+req: Line: Content-Length: 0
+req: Header: [content-length] = [0]
+req: Line: Vary: Cookie
+req: Header: [vary] = [Cookie]
+req: Line: X-Content-Type-Options: nosniff
+req: Header: [x-content-type-options] = [nosniff]
+req: Line: Referrer-Policy: same-origin
+req: Header: [referrer-policy] = [same-origin]
+req: Line: Cross-Origin-Opener-Policy: same-origin
+req: Header: [cross-origin-opener-policy] = [same-origin]
+req: Line: 
+req: End of headers.
+Running post_headers hooks
+req: Reading 0 bytes of response body.
+Running post_send hooks
+auth: Post-send (#0), code is 204 (want 401), WWW-Authenticate is (none)
+req: Destroy (DELETE /dav/calendars/user01/litmus/res-%e2%82%ac).
+Running destroy hooks.
+******* Running test 8: delete_null ********
+auth: Create for WWW-Authenticate
+Running pre_send hooks
+auth: Sending 'Basic' response.
+auth: '/dav/calendars/user01/litmus/404me' is inside auth domain: 1.
+Sending request headers:
+DELETE /dav/calendars/user01/litmus/404me HTTP/1.1
+User-Agent: litmus/0.17 neon/0.36.0
+Connection: TE
+TE: trailers
+Host: 127.0.0.1:8000
+Authorization: Basic dXNlcjAxOnVzZXIwMQ==
+X-Litmus: basic: 8 (delete_null)
+
+Sending request-line and headers:
+Request sent; retry is 1.
+req: Line: HTTP/1.1 404 Not Found
+req: Line: Date: Mon, 16 Feb 2026 05:35:52 GMT
+req: Header: [date] = [Mon, 16 Feb 2026 05:35:52 GMT]
+req: Line: Server: WSGIServer/0.2 CPython/3.12.12
+req: Header: [server] = [WSGIServer/0.2 CPython/3.12.12]
+req: Line: Content-Type: text/html; charset=utf-8
+req: Header: [content-type] = [text/html; charset=utf-8]
+req: Line: X-Frame-Options: DENY
+req: Header: [x-frame-options] = [DENY]
+req: Line: Content-Length: 0
+req: Header: [content-length] = [0]
+req: Line: Vary: Cookie
+req: Header: [vary] = [Cookie]
+req: Line: X-Content-Type-Options: nosniff
+req: Header: [x-content-type-options] = [nosniff]
+req: Line: Referrer-Policy: same-origin
+req: Header: [referrer-policy] = [same-origin]
+req: Line: Cross-Origin-Opener-Policy: same-origin
+req: Header: [cross-origin-opener-policy] = [same-origin]
+req: Line: 
+req: End of headers.
+Running post_headers hooks
+req: Reading 0 bytes of response body.
+Running post_send hooks
+auth: Post-send (#0), code is 404 (want 401), WWW-Authenticate is (none)
+req: Destroy (DELETE /dav/calendars/user01/litmus/404me).
+Running destroy hooks.
+******* Running test 9: delete_fragment ********
+auth: Create for WWW-Authenticate
+Running pre_send hooks
+auth: Sending 'Basic' response.
+auth: '/dav/calendars/user01/litmus/frag/' is inside auth domain: 1.
+Sending request headers:
+MKCOL /dav/calendars/user01/litmus/frag/ HTTP/1.1
+User-Agent: litmus/0.17 neon/0.36.0
+Connection: TE
+TE: trailers
+Host: 127.0.0.1:8000
+Authorization: Basic dXNlcjAxOnVzZXIwMQ==
+X-Litmus: basic: 9 (delete_fragment)
+
+Sending request-line and headers:
+Request sent; retry is 1.
+req: Line: HTTP/1.1 201 Created
+req: Line: Date: Mon, 16 Feb 2026 05:35:52 GMT
+req: Header: [date] = [Mon, 16 Feb 2026 05:35:52 GMT]
+req: Line: Server: WSGIServer/0.2 CPython/3.12.12
+req: Header: [server] = [WSGIServer/0.2 CPython/3.12.12]
+req: Line: Content-Type: text/html; charset=utf-8
+req: Header: [content-type] = [text/html; charset=utf-8]
+req: Line: Location: /dav/calendars/user01/litmus/frag/
+req: Header: [location] = [/dav/calendars/user01/litmus/frag/]
+req: Line: DAV: 1, calendar-access
+req: Header: [dav] = [1, calendar-access]
+req: Line: X-Frame-Options: DENY
+req: Header: [x-frame-options] = [DENY]
+req: Line: Content-Length: 0
+req: Header: [content-length] = [0]
+req: Line: Vary: Cookie
+req: Header: [vary] = [Cookie]
+req: Line: X-Content-Type-Options: nosniff
+req: Header: [x-content-type-options] = [nosniff]
+req: Line: Referrer-Policy: same-origin
+req: Header: [referrer-policy] = [same-origin]
+req: Line: Cross-Origin-Opener-Policy: same-origin
+req: Header: [cross-origin-opener-policy] = [same-origin]
+req: Line: 
+req: End of headers.
+Running post_headers hooks
+req: Reading 0 bytes of response body.
+Running post_send hooks
+auth: Post-send (#0), code is 201 (want 401), WWW-Authenticate is (none)
+req: Destroy (MKCOL /dav/calendars/user01/litmus/frag/).
+Running destroy hooks.
+auth: Create for WWW-Authenticate
+Running pre_send hooks
+auth: Sending 'Basic' response.
+auth: '/dav/calendars/user01/litmus/frag/' is inside auth domain: 1.
+Sending request headers:
+DELETE /dav/calendars/user01/litmus/frag/#ment HTTP/1.1
+User-Agent: litmus/0.17 neon/0.36.0
+Connection: TE
+TE: trailers
+Host: 127.0.0.1:8000
+Authorization: Basic dXNlcjAxOnVzZXIwMQ==
+X-Litmus: basic: 9 (delete_fragment)
+
+Sending request-line and headers:
+Request sent; retry is 1.
+req: Line: HTTP/1.1 404 Not Found
+req: Line: Date: Mon, 16 Feb 2026 05:35:52 GMT
+req: Header: [date] = [Mon, 16 Feb 2026 05:35:52 GMT]
+req: Line: Server: WSGIServer/0.2 CPython/3.12.12
+req: Header: [server] = [WSGIServer/0.2 CPython/3.12.12]
+req: Line: Content-Type: text/html; charset=utf-8
+req: Header: [content-type] = [text/html; charset=utf-8]
+req: Line: X-Frame-Options: DENY
+req: Header: [x-frame-options] = [DENY]
+req: Line: Content-Length: 0
+req: Header: [content-length] = [0]
+req: Line: Vary: Cookie
+req: Header: [vary] = [Cookie]
+req: Line: X-Content-Type-Options: nosniff
+req: Header: [x-content-type-options] = [nosniff]
+req: Line: Referrer-Policy: same-origin
+req: Header: [referrer-policy] = [same-origin]
+req: Line: Cross-Origin-Opener-Policy: same-origin
+req: Header: [cross-origin-opener-policy] = [same-origin]
+req: Line: 
+req: End of headers.
+Running post_headers hooks
+req: Reading 0 bytes of response body.
+Running post_send hooks
+auth: Post-send (#0), code is 404 (want 401), WWW-Authenticate is (none)
+req: Destroy (DELETE /dav/calendars/user01/litmus/frag/#ment).
+Running destroy hooks.
+auth: Create for WWW-Authenticate
+Running pre_send hooks
+auth: Sending 'Basic' response.
+auth: '/dav/calendars/user01/litmus/frag/' is inside auth domain: 1.
+Sending request headers:
+DELETE /dav/calendars/user01/litmus/frag/ HTTP/1.1
+User-Agent: litmus/0.17 neon/0.36.0
+Connection: TE
+TE: trailers
+Host: 127.0.0.1:8000
+Authorization: Basic dXNlcjAxOnVzZXIwMQ==
+X-Litmus: basic: 9 (delete_fragment)
+
+Sending request-line and headers:
+Request sent; retry is 1.
+req: Line: HTTP/1.1 204 No Content
+req: Line: Date: Mon, 16 Feb 2026 05:35:53 GMT
+req: Header: [date] = [Mon, 16 Feb 2026 05:35:53 GMT]
+req: Line: Server: WSGIServer/0.2 CPython/3.12.12
+req: Header: [server] = [WSGIServer/0.2 CPython/3.12.12]
+req: Line: Content-Type: text/html; charset=utf-8
+req: Header: [content-type] = [text/html; charset=utf-8]
+req: Line: DAV: 1, calendar-access
+req: Header: [dav] = [1, calendar-access]
+req: Line: X-Frame-Options: DENY
+req: Header: [x-frame-options] = [DENY]
+req: Line: Content-Length: 0
+req: Header: [content-length] = [0]
+req: Line: Vary: Cookie
+req: Header: [vary] = [Cookie]
+req: Line: X-Content-Type-Options: nosniff
+req: Header: [x-content-type-options] = [nosniff]
+req: Line: Referrer-Policy: same-origin
+req: Header: [referrer-policy] = [same-origin]
+req: Line: Cross-Origin-Opener-Policy: same-origin
+req: Header: [cross-origin-opener-policy] = [same-origin]
+req: Line: 
+req: End of headers.
+Running post_headers hooks
+req: Reading 0 bytes of response body.
+Running post_send hooks
+auth: Post-send (#0), code is 204 (want 401), WWW-Authenticate is (none)
+req: Destroy (DELETE /dav/calendars/user01/litmus/frag/).
+Running destroy hooks.
+******* Running test 10: mkcol ********
+auth: Create for WWW-Authenticate
+Running pre_send hooks
+auth: Sending 'Basic' response.
+auth: '/dav/calendars/user01/litmus/coll/' is inside auth domain: 1.
+Sending request headers:
+MKCOL /dav/calendars/user01/litmus/coll/ HTTP/1.1
+User-Agent: litmus/0.17 neon/0.36.0
+Connection: TE
+TE: trailers
+Host: 127.0.0.1:8000
+Authorization: Basic dXNlcjAxOnVzZXIwMQ==
+X-Litmus: basic: 10 (mkcol)
+
+Sending request-line and headers:
+Request sent; retry is 1.
+req: Line: HTTP/1.1 201 Created
+req: Line: Date: Mon, 16 Feb 2026 05:35:53 GMT
+req: Header: [date] = [Mon, 16 Feb 2026 05:35:53 GMT]
+req: Line: Server: WSGIServer/0.2 CPython/3.12.12
+req: Header: [server] = [WSGIServer/0.2 CPython/3.12.12]
+req: Line: Content-Type: text/html; charset=utf-8
+req: Header: [content-type] = [text/html; charset=utf-8]
+req: Line: Location: /dav/calendars/user01/litmus/coll/
+req: Header: [location] = [/dav/calendars/user01/litmus/coll/]
+req: Line: DAV: 1, calendar-access
+req: Header: [dav] = [1, calendar-access]
+req: Line: X-Frame-Options: DENY
+req: Header: [x-frame-options] = [DENY]
+req: Line: Content-Length: 0
+req: Header: [content-length] = [0]
+req: Line: Vary: Cookie
+req: Header: [vary] = [Cookie]
+req: Line: X-Content-Type-Options: nosniff
+req: Header: [x-content-type-options] = [nosniff]
+req: Line: Referrer-Policy: same-origin
+req: Header: [referrer-policy] = [same-origin]
+req: Line: Cross-Origin-Opener-Policy: same-origin
+req: Header: [cross-origin-opener-policy] = [same-origin]
+req: Line: 
+req: End of headers.
+Running post_headers hooks
+req: Reading 0 bytes of response body.
+Running post_send hooks
+auth: Post-send (#0), code is 201 (want 401), WWW-Authenticate is (none)
+req: Destroy (MKCOL /dav/calendars/user01/litmus/coll/).
+Running destroy hooks.
+******* Running test 11: mkcol_again ********
+auth: Create for WWW-Authenticate
+Running pre_send hooks
+auth: Sending 'Basic' response.
+auth: '/dav/calendars/user01/litmus/coll/' is inside auth domain: 1.
+Sending request headers:
+MKCOL /dav/calendars/user01/litmus/coll/ HTTP/1.1
+User-Agent: litmus/0.17 neon/0.36.0
+Connection: TE
+TE: trailers
+Host: 127.0.0.1:8000
+Authorization: Basic dXNlcjAxOnVzZXIwMQ==
+X-Litmus: basic: 11 (mkcol_again)
+
+Sending request-line and headers:
+Request sent; retry is 1.
+req: Line: HTTP/1.1 405 Method Not Allowed
+req: Line: Date: Mon, 16 Feb 2026 05:35:54 GMT
+req: Header: [date] = [Mon, 16 Feb 2026 05:35:54 GMT]
+req: Line: Server: WSGIServer/0.2 CPython/3.12.12
+req: Header: [server] = [WSGIServer/0.2 CPython/3.12.12]
+req: Line: Content-Type: text/html; charset=utf-8
+req: Header: [content-type] = [text/html; charset=utf-8]
+req: Line: X-Frame-Options: DENY
+req: Header: [x-frame-options] = [DENY]
+req: Line: Content-Length: 0
+req: Header: [content-length] = [0]
+req: Line: Vary: Cookie
+req: Header: [vary] = [Cookie]
+req: Line: X-Content-Type-Options: nosniff
+req: Header: [x-content-type-options] = [nosniff]
+req: Line: Referrer-Policy: same-origin
+req: Header: [referrer-policy] = [same-origin]
+req: Line: Cross-Origin-Opener-Policy: same-origin
+req: Header: [cross-origin-opener-policy] = [same-origin]
+req: Line: 
+req: End of headers.
+Running post_headers hooks
+req: Reading 0 bytes of response body.
+Running post_send hooks
+auth: Post-send (#0), code is 405 (want 401), WWW-Authenticate is (none)
+req: Destroy (MKCOL /dav/calendars/user01/litmus/coll/).
+Running destroy hooks.
+******* Running test 12: delete_coll ********
+auth: Create for WWW-Authenticate
+Running pre_send hooks
+auth: Sending 'Basic' response.
+auth: '/dav/calendars/user01/litmus/coll/' is inside auth domain: 1.
+Sending request headers:
+DELETE /dav/calendars/user01/litmus/coll/ HTTP/1.1
+User-Agent: litmus/0.17 neon/0.36.0
+Connection: TE
+TE: trailers
+Host: 127.0.0.1:8000
+Authorization: Basic dXNlcjAxOnVzZXIwMQ==
+X-Litmus: basic: 12 (delete_coll)
+
+Sending request-line and headers:
+Request sent; retry is 1.
+req: Line: HTTP/1.1 204 No Content
+req: Line: Date: Mon, 16 Feb 2026 05:35:54 GMT
+req: Header: [date] = [Mon, 16 Feb 2026 05:35:54 GMT]
+req: Line: Server: WSGIServer/0.2 CPython/3.12.12
+req: Header: [server] = [WSGIServer/0.2 CPython/3.12.12]
+req: Line: Content-Type: text/html; charset=utf-8
+req: Header: [content-type] = [text/html; charset=utf-8]
+req: Line: DAV: 1, calendar-access
+req: Header: [dav] = [1, calendar-access]
+req: Line: X-Frame-Options: DENY
+req: Header: [x-frame-options] = [DENY]
+req: Line: Content-Length: 0
+req: Header: [content-length] = [0]
+req: Line: Vary: Cookie
+req: Header: [vary] = [Cookie]
+req: Line: X-Content-Type-Options: nosniff
+req: Header: [x-content-type-options] = [nosniff]
+req: Line: Referrer-Policy: same-origin
+req: Header: [referrer-policy] = [same-origin]
+req: Line: Cross-Origin-Opener-Policy: same-origin
+req: Header: [cross-origin-opener-policy] = [same-origin]
+req: Line: 
+req: End of headers.
+Running post_headers hooks
+req: Reading 0 bytes of response body.
+Running post_send hooks
+auth: Post-send (#0), code is 204 (want 401), WWW-Authenticate is (none)
+req: Destroy (DELETE /dav/calendars/user01/litmus/coll/).
+Running destroy hooks.
+******* Running test 13: mkcol_no_parent ********
+auth: Create for WWW-Authenticate
+Running pre_send hooks
+auth: Sending 'Basic' response.
+auth: '/dav/calendars/user01/litmus/409me/noparent/' is inside auth domain: 1.
+Sending request headers:
+MKCOL /dav/calendars/user01/litmus/409me/noparent/ HTTP/1.1
+User-Agent: litmus/0.17 neon/0.36.0
+Connection: TE
+TE: trailers
+Host: 127.0.0.1:8000
+Authorization: Basic dXNlcjAxOnVzZXIwMQ==
+X-Litmus: basic: 13 (mkcol_no_parent)
+
+Sending request-line and headers:
+Request sent; retry is 1.
+req: Line: HTTP/1.1 409 Conflict
+req: Line: Date: Mon, 16 Feb 2026 05:35:55 GMT
+req: Header: [date] = [Mon, 16 Feb 2026 05:35:55 GMT]
+req: Line: Server: WSGIServer/0.2 CPython/3.12.12
+req: Header: [server] = [WSGIServer/0.2 CPython/3.12.12]
+req: Line: Content-Type: text/html; charset=utf-8
+req: Header: [content-type] = [text/html; charset=utf-8]
+req: Line: X-Frame-Options: DENY
+req: Header: [x-frame-options] = [DENY]
+req: Line: Content-Length: 0
+req: Header: [content-length] = [0]
+req: Line: Vary: Cookie
+req: Header: [vary] = [Cookie]
+req: Line: X-Content-Type-Options: nosniff
+req: Header: [x-content-type-options] = [nosniff]
+req: Line: Referrer-Policy: same-origin
+req: Header: [referrer-policy] = [same-origin]
+req: Line: Cross-Origin-Opener-Policy: same-origin
+req: Header: [cross-origin-opener-policy] = [same-origin]
+req: Line: 
+req: End of headers.
+Running post_headers hooks
+req: Reading 0 bytes of response body.
+Running post_send hooks
+auth: Post-send (#0), code is 409 (want 401), WWW-Authenticate is (none)
+req: Destroy (MKCOL /dav/calendars/user01/litmus/409me/noparent/).
+Running destroy hooks.
+******* Running test 14: mkcol_with_body ********
+auth: Create for WWW-Authenticate
+Running pre_send hooks
+auth: Sending 'Basic' response.
+auth: '/dav/calendars/user01/litmus/mkcolbody' is inside auth domain: 1.
+Sending request headers:
+MKCOL /dav/calendars/user01/litmus/mkcolbody HTTP/1.1
+User-Agent: litmus/0.17 neon/0.36.0
+Connection: TE
+TE: trailers
+Host: 127.0.0.1:8000
+Content-Type: xzy-foo/bar-512
+Content-Length: 8
+Authorization: Basic dXNlcjAxOnVzZXIwMQ==
+X-Litmus: basic: 14 (mkcol_with_body)
+
+Sending request-line and headers:
+Sending request body:
+Body block (8 bytes):
+[afafafaf]
+Request sent; retry is 1.
+req: Line: HTTP/1.1 415 Unsupported Media Type
+req: Line: Date: Mon, 16 Feb 2026 05:35:55 GMT
+req: Header: [date] = [Mon, 16 Feb 2026 05:35:55 GMT]
+req: Line: Server: WSGIServer/0.2 CPython/3.12.12
+req: Header: [server] = [WSGIServer/0.2 CPython/3.12.12]
+req: Line: Content-Type: text/html; charset=utf-8
+req: Header: [content-type] = [text/html; charset=utf-8]
+req: Line: X-Frame-Options: DENY
+req: Header: [x-frame-options] = [DENY]
+req: Line: Content-Length: 0
+req: Header: [content-length] = [0]
+req: Line: Vary: Cookie
+req: Header: [vary] = [Cookie]
+req: Line: X-Content-Type-Options: nosniff
+req: Header: [x-content-type-options] = [nosniff]
+req: Line: Referrer-Policy: same-origin
+req: Header: [referrer-policy] = [same-origin]
+req: Line: Cross-Origin-Opener-Policy: same-origin
+req: Header: [cross-origin-opener-policy] = [same-origin]
+req: Line: 
+req: End of headers.
+Running post_headers hooks
+req: Reading 0 bytes of response body.
+Running post_send hooks
+auth: Post-send (#0), code is 415 (want 401), WWW-Authenticate is (none)
+Request ends, status 415 class 4xx, error line:
+415 Unsupported Media Type
+req: Destroy (MKCOL /dav/calendars/user01/litmus/mkcolbody).
+Running destroy hooks.
+******* Running test 15: finish ********
+sess: Destroying session (connected=1).
+sess: Closing connection.
+sess: Connection closed.
+Version string: neon 0.36.0: Library build, IPv6, libxml 2.15.1, zlib 1.3.1, OpenSSL 3.6.0 1 Oct 2025 (thread-safe).
+litmus: Parsing URI http://127.0.0.1:8000/dav/calendars/user01/...
+******* Running test 0: begin ********
+HTTP session to http://127.0.0.1:8000 begins.
+sess: Using IP literal address for 127.0.0.1
+HTTP session to http://127.0.0.1:8000 begins.
+sess: Using IP literal address for 127.0.0.1
+auth: Create for WWW-Authenticate
+Running pre_send hooks
+Sending request headers:
+DELETE /dav/calendars/user01/litmus/ HTTP/1.1
+User-Agent: litmus/0.17 neon/0.36.0
+Keep-Alive: 
+Connection: TE, Keep-Alive
+TE: trailers
+Host: 127.0.0.1:8000
+X-Litmus: copymove: 0 (begin)
+
+Sending request-line and headers:
+req: Connecting to 127.0.0.1:8000
+Request sent; retry is 0.
+req: Line: HTTP/1.1 401 Unauthorized
+req: Line: Date: Mon, 16 Feb 2026 05:35:55 GMT
+req: Header: [date] = [Mon, 16 Feb 2026 05:35:55 GMT]
+req: Line: Server: WSGIServer/0.2 CPython/3.12.12
+req: Header: [server] = [WSGIServer/0.2 CPython/3.12.12]
+req: Line: Content-Type: text/html; charset=utf-8
+req: Header: [content-type] = [text/html; charset=utf-8]
+req: Line: WWW-Authenticate: Basic realm="davhome"
+req: Header: [www-authenticate] = [Basic realm="davhome"]
+req: Line: X-Frame-Options: DENY
+req: Header: [x-frame-options] = [DENY]
+req: Line: Content-Length: 0
+req: Header: [content-length] = [0]
+req: Line: Vary: Cookie
+req: Header: [vary] = [Cookie]
+req: Line: X-Content-Type-Options: nosniff
+req: Header: [x-content-type-options] = [nosniff]
+req: Line: Referrer-Policy: same-origin
+req: Header: [referrer-policy] = [same-origin]
+req: Line: Cross-Origin-Opener-Policy: same-origin
+req: Header: [cross-origin-opener-policy] = [same-origin]
+req: Line: 
+req: End of headers.
+Running post_headers hooks
+req: Reading 0 bytes of response body.
+Running post_send hooks
+auth: Post-send (#0), code is 401 (want 401), WWW-Authenticate is Basic realm="davhome"
+auth: Got challenge (code 401).
+auth: Got 'Basic' challenge.
+auth: Trying Basic challenge...
+auth: Basic auth scope is: /dav/calendars/user01/litmus/
+auth: Accepted Basic challenge.
+Running pre_send hooks
+auth: Sending 'Basic' response.
+auth: '/dav/calendars/user01/litmus/' is inside auth domain: 1.
+Sending request headers:
+DELETE /dav/calendars/user01/litmus/ HTTP/1.1
+User-Agent: litmus/0.17 neon/0.36.0
+Keep-Alive: 
+Connection: TE, Keep-Alive
+TE: trailers
+Host: 127.0.0.1:8000
+Authorization: Basic dXNlcjAxOnVzZXIwMQ==
+X-Litmus: copymove: 0 (begin)
+
+Sending request-line and headers:
+Request sent; retry is 1.
+req: Line: HTTP/1.1 405 Method Not Allowed
+req: Line: Date: Mon, 16 Feb 2026 05:35:56 GMT
+req: Header: [date] = [Mon, 16 Feb 2026 05:35:56 GMT]
+req: Line: Server: WSGIServer/0.2 CPython/3.12.12
+req: Header: [server] = [WSGIServer/0.2 CPython/3.12.12]
+req: Line: Content-Type: text/html; charset=utf-8
+req: Header: [content-type] = [text/html; charset=utf-8]
+req: Line: Allow: OPTIONS, PROPFIND, GET, HEAD, REPORT, MKCOL, MKCALENDAR
+req: Header: [allow] = [OPTIONS, PROPFIND, GET, HEAD, REPORT, MKCOL, MKCALENDAR]
+req: Line: DAV: 1, calendar-access
+req: Header: [dav] = [1, calendar-access]
+req: Line: X-Frame-Options: DENY
+req: Header: [x-frame-options] = [DENY]
+req: Line: Content-Length: 0
+req: Header: [content-length] = [0]
+req: Line: Vary: Cookie
+req: Header: [vary] = [Cookie]
+req: Line: X-Content-Type-Options: nosniff
+req: Header: [x-content-type-options] = [nosniff]
+req: Line: Referrer-Policy: same-origin
+req: Header: [referrer-policy] = [same-origin]
+req: Line: Cross-Origin-Opener-Policy: same-origin
+req: Header: [cross-origin-opener-policy] = [same-origin]
+req: Line: 
+req: End of headers.
+Running post_headers hooks
+req: Reading 0 bytes of response body.
+Running post_send hooks
+auth: Post-send (#1), code is 405 (want 401), WWW-Authenticate is (none)
+req: Destroy (DELETE /dav/calendars/user01/litmus/).
+Running destroy hooks.
+auth: Create for WWW-Authenticate
+Running pre_send hooks
+auth: Sending 'Basic' response.
+auth: '/dav/calendars/user01/litmus/' is inside auth domain: 1.
+Sending request headers:
+MKCOL /dav/calendars/user01/litmus/ HTTP/1.1
+User-Agent: litmus/0.17 neon/0.36.0
+Connection: TE
+TE: trailers
+Host: 127.0.0.1:8000
+Authorization: Basic dXNlcjAxOnVzZXIwMQ==
+X-Litmus: copymove: 0 (begin)
+
+Sending request-line and headers:
+Request sent; retry is 1.
+req: Line: HTTP/1.1 405 Method Not Allowed
+req: Line: Date: Mon, 16 Feb 2026 05:35:56 GMT
+req: Header: [date] = [Mon, 16 Feb 2026 05:35:56 GMT]
+req: Line: Server: WSGIServer/0.2 CPython/3.12.12
+req: Header: [server] = [WSGIServer/0.2 CPython/3.12.12]
+req: Line: Content-Type: text/html; charset=utf-8
+req: Header: [content-type] = [text/html; charset=utf-8]
+req: Line: X-Frame-Options: DENY
+req: Header: [x-frame-options] = [DENY]
+req: Line: Content-Length: 0
+req: Header: [content-length] = [0]
+req: Line: Vary: Cookie
+req: Header: [vary] = [Cookie]
+req: Line: X-Content-Type-Options: nosniff
+req: Header: [x-content-type-options] = [nosniff]
+req: Line: Referrer-Policy: same-origin
+req: Header: [referrer-policy] = [same-origin]
+req: Line: Cross-Origin-Opener-Policy: same-origin
+req: Header: [cross-origin-opener-policy] = [same-origin]
+req: Line: 
+req: End of headers.
+Running post_headers hooks
+req: Reading 0 bytes of response body.
+Running post_send hooks
+auth: Post-send (#0), code is 405 (want 401), WWW-Authenticate is (none)
+req: Destroy (MKCOL /dav/calendars/user01/litmus/).
+Running destroy hooks.

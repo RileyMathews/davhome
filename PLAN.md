@@ -287,7 +287,7 @@ Completion notes:
 - litmus `basic` now passes at 100% against the current local server target
 - added regression coverage for generic DAV PUT, missing-parent conflict status, nested MKCOL lifecycle, and MKCOL-with-body rejection
 
-#### 6.2 Discovery and Header Hardening
+#### 6.2 Discovery and Header Hardening [DONE!]
 
 Deliverables:
 
@@ -302,6 +302,15 @@ Acceptance:
 
 - targeted CalDAVTester discovery/propfind suites show measurable pass-rate improvement
 - depth `0/1` discovery contracts are covered by regression tests
+
+Completion notes:
+
+- added DAV alias routes for principal and calendar trees (`users` and `__uids__` forms)
+- updated `current-user-principal` and `calendar-home-set` href behavior to align with CalDAVTester expectations
+- implemented proper PROPFIND depth handling with finite-depth error responses
+- targeted CalDAVTester suites now pass:
+  - `CalDAV/current-user-principal.xml` (6/6)
+  - `CalDAV/propfind.xml` (33/33)
 
 #### 6.3 REPORT Interoperability Hardening
 

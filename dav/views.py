@@ -27,7 +27,7 @@ from .xml import (
     NS_CS,
     NS_DAV,
     multistatus_document,
-    parse_requested_properties,
+    parse_propfind_request,
     qname,
     response_with_props,
 )
@@ -265,7 +265,24 @@ def _build_prop_map_for_root(user):
     def current_user_principal():
         elem = ET.Element(qname(NS_DAV, "current-user-principal"))
         href = ET.SubElement(elem, qname(NS_DAV, "href"))
-        href.text = f"/dav/principals/{user.username}/"
+        href.text = _principal_href_for_user(user)
+        return elem
+
+    return {
+        qname(NS_DAV, "resourcetype"): lambda: ET.Element(
+            qname(NS_DAV, "resourcetype")
+        ),
+        qname(NS_DAV, "displayname"): lambda: _text_prop(
+            NS_DAV, "displayname", "davhome"
+        ),
+        qname(NS_DAV, "current-user-principal"): current_user_principal,
+    }
+
+
+def _build_prop_map_for_root_unauthenticated():
+    def current_user_principal():
+        elem = ET.Element(qname(NS_DAV, "current-user-principal"))
+        ET.SubElement(elem, qname(NS_DAV, "unauthenticated"))
         return elem
 
     return {
@@ -320,18 +337,74 @@ def _require_dav_user(request):
     return user, None
 
 
+def _dav_guid_for_username(username):
+    match = re.fullmatch(r"user(\d{2})", username)
+    if match is None:
+        return None
+    return f"10000000-0000-0000-0000-000000000{int(match.group(1)):03d}"
+
+
+def _dav_username_for_guid(guid):
+    match = re.fullmatch(r"10000000-0000-0000-0000-000000000(\d{3})", guid)
+    if match is None:
+        return None
+    index = int(match.group(1))
+    if index < 1 or index > 99:
+        return None
+    return f"user{index:02d}"
+
+
+def _principal_href_for_user(user):
+    guid = _dav_guid_for_username(user.username)
+    if guid is None:
+        return f"/dav/principals/users/{user.username}/"
+    return f"/dav/principals/__uids__/{guid}/"
+
+
+def _calendar_home_href_for_user(user):
+    guid = _dav_guid_for_username(user.username)
+    if guid is None:
+        return f"/dav/calendars/users/{user.username}/"
+    return f"/dav/calendars/__uids__/{guid}/"
+
+
+def _propfind_finite_depth_error():
+    error = ET.Element(qname(NS_DAV, "error"))
+    ET.SubElement(error, qname(NS_DAV, "propfind-finite-depth"))
+    response = HttpResponse(
+        ET.tostring(error, encoding="utf-8", xml_declaration=True),
+        status=403,
+        content_type="application/xml; charset=utf-8",
+    )
+    return _dav_common_headers(response)
+
+
+def _parse_propfind_payload(request):
+    parsed = parse_propfind_request(request.body)
+    if "error" in parsed:
+        return None, HttpResponse(status=400)
+
+    depth = request.headers.get("Depth", "infinity")
+    if depth == "infinity":
+        return None, _propfind_finite_depth_error()
+    if depth not in ("0", "1"):
+        return None, HttpResponse(status=400)
+
+    return parsed, None
+
+
 @csrf_exempt
 def dav_root(request):
+    allowed = ["OPTIONS", "PROPFIND", "GET", "HEAD"]
     if request.method == "OPTIONS":
         response = HttpResponse(status=204)
-        response["Allow"] = "OPTIONS, PROPFIND, GET, HEAD"
+        response["Allow"] = ", ".join(allowed)
         return _dav_common_headers(response)
 
-    user, auth_response = _require_dav_user(request)
-    if auth_response is not None:
-        return auth_response
-
     if request.method in ("GET", "HEAD"):
+        user = get_dav_user(request)
+        if user is None:
+            return unauthorized_response()
         if request.method == "HEAD":
             response = HttpResponse(status=200)
         else:
@@ -341,20 +414,29 @@ def dav_root(request):
         return _dav_common_headers(response)
 
     if request.method != "PROPFIND":
-        return _not_allowed(["OPTIONS", "PROPFIND", "GET", "HEAD"])
+        return _not_allowed(allowed)
 
-    depth = request.headers.get("Depth", "0")
-    if depth not in ("0", "1"):
+    parsed, parse_error = _parse_propfind_payload(request)
+    if parse_error is not None:
+        return parse_error
+
+    user = get_dav_user(request)
+    if user is None:
+        prop_map = _build_prop_map_for_root_unauthenticated()
+    else:
+        prop_map = _build_prop_map_for_root(user)
+
+    depth = request.headers.get("Depth", "infinity")
+    if parsed is None:
         return HttpResponse(status=400)
 
-    requested = parse_requested_properties(request.body)
-    prop_map = _build_prop_map_for_root(user)
+    requested = parsed["requested"] if parsed["mode"] == "prop" else None
     root_ok, root_missing = _select_props(prop_map, requested)
     responses = [response_with_props("/dav/", root_ok, root_missing)]
 
-    if depth == "1":
-        principal_href = f"/dav/principals/{user.username}/"
-        home_href = f"/dav/calendars/{user.username}/"
+    if depth == "1" and user is not None:
+        principal_href = _principal_href_for_user(user)
+        home_href = _calendar_home_href_for_user(user)
 
         principal_map = _build_prop_map_for_principal(user, user)
         principal_ok, principal_missing = _select_props(principal_map, requested)
@@ -373,13 +455,13 @@ def _build_prop_map_for_principal(auth_user, principal_user):
     def current_user_principal():
         elem = ET.Element(qname(NS_DAV, "current-user-principal"))
         href = ET.SubElement(elem, qname(NS_DAV, "href"))
-        href.text = f"/dav/principals/{auth_user.username}/"
+        href.text = _principal_href_for_user(auth_user)
         return elem
 
     def calendar_home_set():
         elem = ET.Element(qname(NS_CALDAV, "calendar-home-set"))
         href = ET.SubElement(elem, qname(NS_DAV, "href"))
-        href.text = f"/dav/calendars/{principal_user.username}/"
+        href.text = _calendar_home_href_for_user(principal_user)
         return elem
 
     return {
@@ -398,9 +480,10 @@ def _build_prop_map_for_principal(auth_user, principal_user):
 
 @csrf_exempt
 def principal_view(request, username):
+    allowed = ["OPTIONS", "PROPFIND", "GET", "HEAD"]
     if request.method == "OPTIONS":
         response = HttpResponse(status=204)
-        response["Allow"] = "OPTIONS, PROPFIND, GET, HEAD"
+        response["Allow"] = ", ".join(allowed)
         return _dav_common_headers(response)
 
     user, auth_response = _require_dav_user(request)
@@ -424,13 +507,15 @@ def principal_view(request, username):
         return _dav_common_headers(response)
 
     if request.method != "PROPFIND":
-        return _not_allowed(["OPTIONS", "PROPFIND", "GET", "HEAD"])
+        return _not_allowed(allowed)
 
-    depth = request.headers.get("Depth", "0")
-    if depth not in ("0", "1"):
+    parsed, parse_error = _parse_propfind_payload(request)
+    if parse_error is not None:
+        return parse_error
+    if parsed is None:
         return HttpResponse(status=400)
 
-    requested = parse_requested_properties(request.body)
+    requested = parsed["requested"] if parsed["mode"] == "prop" else None
     principal_map = _build_prop_map_for_principal(user, principal)
     ok, missing = _select_props(principal_map, requested)
     responses = [
@@ -440,10 +525,38 @@ def principal_view(request, username):
     return _xml_response(207, multistatus_document(responses))
 
 
+@csrf_exempt
+def principal_uid_view(request, guid):
+    username = _dav_username_for_guid(guid)
+    if username is None:
+        return HttpResponse(status=404)
+    return principal_view(request, username)
+
+
+@csrf_exempt
+def principals_collection_view(request):
+    return _collection_view(request, "/dav/principals/", "principals")
+
+
+@csrf_exempt
+def principals_users_collection_view(request):
+    return _collection_view(request, "/dav/principals/users/", "users")
+
+
+@csrf_exempt
+def principal_users_view(request, username):
+    return principal_view(request, username)
+
+
 def _build_prop_map_for_calendar_home(owner):
     return {
         qname(NS_DAV, "resourcetype"): lambda: _resourcetype_prop(
             (NS_DAV, "collection")
+        ),
+        qname(NS_DAV, "getcontentlength"): lambda: _text_prop(
+            NS_DAV,
+            "getcontentlength",
+            "",
         ),
         qname(NS_DAV, "displayname"): lambda: _text_prop(
             NS_DAV,
@@ -451,6 +564,68 @@ def _build_prop_map_for_calendar_home(owner):
             f"{owner.username} calendars",
         ),
     }
+
+
+def _build_prop_map_for_collection(display_name):
+    def current_user_principal_for_requester(auth_user):
+        elem = ET.Element(qname(NS_DAV, "current-user-principal"))
+        href = ET.SubElement(elem, qname(NS_DAV, "href"))
+        href.text = _principal_href_for_user(auth_user)
+        return elem
+
+    return {
+        qname(NS_DAV, "resourcetype"): lambda: _resourcetype_prop(
+            (NS_DAV, "collection")
+        ),
+        qname(NS_DAV, "displayname"): lambda: _text_prop(
+            NS_DAV, "displayname", display_name
+        ),
+        qname(NS_DAV, "current-user-principal"): current_user_principal_for_requester,
+    }
+
+
+def _collection_view(request, href, display_name):
+    allowed = ["OPTIONS", "PROPFIND", "GET", "HEAD"]
+    if request.method == "OPTIONS":
+        response = HttpResponse(status=204)
+        response["Allow"] = ", ".join(allowed)
+        return _dav_common_headers(response)
+
+    user, auth_response = _require_dav_user(request)
+    if auth_response is not None:
+        return auth_response
+
+    if request.method in ("GET", "HEAD"):
+        if request.method == "HEAD":
+            response = HttpResponse(status=200)
+        else:
+            response = HttpResponse(
+                "Collection", content_type="text/plain; charset=utf-8"
+            )
+        return _dav_common_headers(response)
+
+    if request.method != "PROPFIND":
+        return _not_allowed(allowed)
+
+    parsed, parse_error = _parse_propfind_payload(request)
+    if parse_error is not None:
+        return parse_error
+    if parsed is None:
+        return HttpResponse(status=400)
+
+    prop_map = _build_prop_map_for_collection(display_name)
+    resolved_map = {}
+    for key, builder in prop_map.items():
+        if key == qname(NS_DAV, "current-user-principal"):
+            resolved_map[key] = lambda b=builder: b(user)
+        else:
+            resolved_map[key] = builder
+
+    requested = parsed["requested"] if parsed["mode"] == "prop" else None
+    ok, missing = _select_props(resolved_map, requested)
+    return _xml_response(
+        207, multistatus_document([response_with_props(href, ok, missing)])
+    )
 
 
 @csrf_exempt
@@ -486,11 +661,14 @@ def calendar_home_view(request, username):
     if request.method != "PROPFIND":
         return _not_allowed(allowed)
 
-    depth = request.headers.get("Depth", "0")
-    if depth not in ("0", "1"):
+    parsed, parse_error = _parse_propfind_payload(request)
+    if parse_error is not None:
+        return parse_error
+    if parsed is None:
         return HttpResponse(status=400)
 
-    requested = parse_requested_properties(request.body)
+    depth = request.headers.get("Depth", "infinity")
+    requested = parsed["requested"] if parsed["mode"] == "prop" else None
     home_map = _build_prop_map_for_calendar_home(owner)
     home_ok, home_missing = _select_props(home_map, requested)
     responses = [
@@ -507,11 +685,44 @@ def calendar_home_view(request, username):
     return _xml_response(207, multistatus_document(responses))
 
 
+@csrf_exempt
+def calendars_collection_view(request):
+    return _collection_view(request, "/dav/calendars/", "calendars")
+
+
+@csrf_exempt
+def calendars_uids_collection_view(request):
+    return _collection_view(request, "/dav/calendars/__uids__/", "uid calendars")
+
+
+@csrf_exempt
+def calendars_users_collection_view(request):
+    return _collection_view(request, "/dav/calendars/users/", "user calendars")
+
+
+@csrf_exempt
+def calendar_home_uid_view(request, guid):
+    username = _dav_username_for_guid(guid)
+    if username is None:
+        return HttpResponse(status=404)
+    return calendar_home_view(request, username)
+
+
+@csrf_exempt
+def calendar_home_users_view(request, username):
+    return calendar_home_view(request, username)
+
+
 def _build_prop_map_for_calendar_collection(calendar):
     return {
         qname(NS_DAV, "resourcetype"): lambda: _resourcetype_prop(
             (NS_DAV, "collection"),
             (NS_CALDAV, "calendar"),
+        ),
+        qname(NS_DAV, "getcontentlength"): lambda: _text_prop(
+            NS_DAV,
+            "getcontentlength",
+            "",
         ),
         qname(NS_DAV, "displayname"): lambda: _text_prop(
             NS_DAV, "displayname", calendar.name
@@ -663,11 +874,14 @@ def calendar_collection_view(request, username, slug):
     if request.method != "PROPFIND":
         return _not_allowed(allowed)
 
-    depth = request.headers.get("Depth", "0")
-    if depth not in ("0", "1"):
+    parsed, parse_error = _parse_propfind_payload(request)
+    if parse_error is not None:
+        return parse_error
+    if parsed is None:
         return HttpResponse(status=400)
 
-    requested = parse_requested_properties(request.body)
+    depth = request.headers.get("Depth", "infinity")
+    requested = parsed["requested"] if parsed["mode"] == "prop" else None
     cal_map = _build_prop_map_for_calendar_collection(calendar)
     cal_ok, cal_missing = _select_props(cal_map, requested)
     responses = [
@@ -686,6 +900,19 @@ def calendar_collection_view(request, username, slug):
             responses.append(response_with_props(href, obj_ok, obj_missing))
 
     return _xml_response(207, multistatus_document(responses))
+
+
+@csrf_exempt
+def calendar_collection_uid_view(request, guid, slug):
+    username = _dav_username_for_guid(guid)
+    if username is None:
+        return HttpResponse(status=404)
+    return calendar_collection_view(request, username, slug)
+
+
+@csrf_exempt
+def calendar_collection_users_view(request, username, slug):
+    return calendar_collection_view(request, username, slug)
 
 
 def _build_prop_map_for_object(obj):
@@ -870,10 +1097,29 @@ def calendar_object_view(request, username, slug, filename):
     if request.method != "PROPFIND":
         return _not_allowed(allowed)
 
-    requested = parse_requested_properties(request.body)
+    parsed, parse_error = _parse_propfind_payload(request)
+    if parse_error is not None:
+        return parse_error
+    if parsed is None:
+        return HttpResponse(status=400)
+
+    requested = parsed["requested"] if parsed["mode"] == "prop" else None
     obj_map = _build_prop_map_for_object(obj)
     ok, missing = _select_props(obj_map, requested)
     href = f"/dav/calendars/{username}/{slug}/{filename}"
     return _xml_response(
         207, multistatus_document([response_with_props(href, ok, missing)])
     )
+
+
+@csrf_exempt
+def calendar_object_uid_view(request, guid, slug, filename):
+    username = _dav_username_for_guid(guid)
+    if username is None:
+        return HttpResponse(status=404)
+    return calendar_object_view(request, username, slug, filename)
+
+
+@csrf_exempt
+def calendar_object_users_view(request, username, slug, filename):
+    return calendar_object_view(request, username, slug, filename)

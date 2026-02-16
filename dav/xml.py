@@ -71,3 +71,31 @@ def parse_requested_properties(request_body):
     for child in list(prop):
         requested.append(child.tag)
     return requested
+
+
+def parse_propfind_request(request_body):
+    if not request_body:
+        return {"mode": "allprop", "requested": None}
+
+    try:
+        root = ET.fromstring(request_body)
+    except ET.ParseError:
+        return {"error": "malformed"}
+
+    if root.tag != qname(NS_DAV, "propfind"):
+        return {"error": "invalid-root"}
+
+    children = [child for child in list(root) if isinstance(child.tag, str)]
+    if len(children) != 1:
+        return {"error": "invalid-body"}
+
+    child = children[0]
+    if child.tag == qname(NS_DAV, "allprop"):
+        return {"mode": "allprop", "requested": None}
+    if child.tag == qname(NS_DAV, "propname"):
+        return {"mode": "propname", "requested": None}
+    if child.tag == qname(NS_DAV, "prop"):
+        requested = [grandchild.tag for grandchild in list(child)]
+        return {"mode": "prop", "requested": requested}
+
+    return {"error": "invalid-body"}

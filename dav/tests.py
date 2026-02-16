@@ -52,12 +52,22 @@ class DavDiscoveryTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.headers.get("Location"), "/dav/")
 
-    def test_dav_root_requires_auth_for_propfind(self):
+    def test_dav_root_propfind_allows_unauthenticated_marker(self):
         response = self.client.generic(
             "PROPFIND", "/dav/", data="", content_type="application/xml"
         )
-        self.assertEqual(response.status_code, 401)
-        self.assertIn("Basic", response.headers.get("WWW-Authenticate", ""))
+        self.assertEqual(response.status_code, 403)
+        self.assertIn("propfind-finite-depth", response.content.decode("utf-8"))
+
+        response_depth0 = self.client.generic(
+            "PROPFIND",
+            "/dav/",
+            data="",
+            content_type="application/xml",
+            HTTP_DEPTH="0",
+        )
+        self.assertEqual(response_depth0.status_code, 207)
+        self.assertIn("unauthenticated", response_depth0.content.decode("utf-8"))
 
     def test_dav_root_options_advertises_dav(self):
         response = self.client.options("/dav/")
@@ -70,14 +80,40 @@ class DavDiscoveryTests(TestCase):
             f"/dav/principals/{self.owner.username}/",
             data="",
             content_type="application/xml",
+            HTTP_DEPTH="0",
             **self._basic_auth("owner", "pw-test-12345"),
         )
         self.assertEqual(response.status_code, 207)
         xml = self._xml(response.content)
         self.assertIn(
-            f"/dav/calendars/{self.owner.username}/",
+            f"/dav/calendars/users/{self.owner.username}/",
             ET.tostring(xml, encoding="unicode"),
         )
+
+    def test_principals_users_collection_exists(self):
+        response = self.client.generic(
+            "PROPFIND",
+            "/dav/principals/users/",
+            data="",
+            content_type="application/xml",
+            HTTP_DEPTH="0",
+            **self._basic_auth("owner", "pw-test-12345"),
+        )
+        self.assertEqual(response.status_code, 207)
+
+    def test_depth_infinity_returns_propfind_finite_depth_error(self):
+        body = """<?xml version=\"1.0\" encoding=\"utf-8\"?>
+<D:propfind xmlns:D=\"DAV:\"><D:prop><D:resourcetype/></D:prop></D:propfind>"""
+        response = self.client.generic(
+            "PROPFIND",
+            f"/dav/calendars/{self.owner.username}/{self.calendar.slug}/",
+            data=body,
+            content_type="application/xml",
+            HTTP_DEPTH="infinity",
+            **self._basic_auth("owner", "pw-test-12345"),
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertIn("propfind-finite-depth", response.content.decode("utf-8"))
 
     def test_member_cannot_access_other_principal(self):
         response = self.client.generic(
@@ -126,6 +162,7 @@ class DavDiscoveryTests(TestCase):
             f"/dav/calendars/{self.owner.username}/{self.calendar.slug}/",
             data=body,
             content_type="application/xml",
+            HTTP_DEPTH="0",
             **self._basic_auth("owner", "pw-test-12345"),
         )
         self.assertEqual(response.status_code, 207)
@@ -507,3 +544,52 @@ class DavWebdavCompatibilityTests(TestCase):
             **self._basic_auth(),
         )
         self.assertEqual(response.status_code, 415)
+
+
+class DavPrincipalAliasTests(TestCase):
+    def setUp(self):
+        self.user1 = User.objects.create_user(username="user01", password="user01")
+        Calendar.objects.create(owner=self.user1, slug="calendar", name="calendar")
+
+    def _basic_auth(self):
+        token = base64.b64encode(b"user01:user01").decode("ascii")
+        return {"HTTP_AUTHORIZATION": f"Basic {token}"}
+
+    def test_root_current_user_principal_uses_uids_href(self):
+        body = """<?xml version=\"1.0\" encoding=\"utf-8\"?>
+<D:propfind xmlns:D=\"DAV:\"><D:prop><D:current-user-principal/></D:prop></D:propfind>"""
+        response = self.client.generic(
+            "PROPFIND",
+            "/dav/",
+            data=body,
+            content_type="application/xml",
+            HTTP_DEPTH="0",
+            **self._basic_auth(),
+        )
+        self.assertEqual(response.status_code, 207)
+        self.assertIn(
+            "/dav/principals/__uids__/10000000-0000-0000-0000-000000000001/",
+            response.content.decode("utf-8"),
+        )
+
+    def test_principal_uids_alias_resolves(self):
+        response = self.client.generic(
+            "PROPFIND",
+            "/dav/principals/__uids__/10000000-0000-0000-0000-000000000001/",
+            data="",
+            content_type="application/xml",
+            HTTP_DEPTH="0",
+            **self._basic_auth(),
+        )
+        self.assertEqual(response.status_code, 207)
+
+    def test_calendar_uids_alias_resolves(self):
+        response = self.client.generic(
+            "PROPFIND",
+            "/dav/calendars/__uids__/10000000-0000-0000-0000-000000000001/",
+            data="",
+            content_type="application/xml",
+            HTTP_DEPTH="0",
+            **self._basic_auth(),
+        )
+        self.assertEqual(response.status_code, 207)
