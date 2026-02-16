@@ -11,20 +11,36 @@
       let
         pkgs = import nixpkgs {
           inherit system;
+        };
+        pkgsInsecure = import nixpkgs {
+          inherit system;
           config.allowInsecurePredicate = pkg:
             builtins.elem (nixpkgs.lib.getName pkg) [ "python" ];
         };
       in {
-        devShells.caldavtester = pkgs.mkShell {
-          packages = with pkgs; [
-            git
-            python2
-          ];
+        devShells = {
+          caldavtester = pkgsInsecure.mkShell {
+            packages = with pkgsInsecure; [
+              git
+              python2
+            ];
 
-          shellHook = ''
-            echo "Entered caldavtester shell (Python $(python2 --version 2>&1))."
-            echo "Run: ./caldavtester-lab/bootstrap.sh"
-          '';
+            shellHook = ''
+              echo "Entered caldavtester shell (Python $(python2 --version 2>&1))."
+              echo "Run: ./caldavtester-lab/bootstrap.sh"
+            '';
+          };
+
+          litmus = pkgs.mkShell {
+            packages = with pkgs; [
+              litmus
+            ];
+
+            shellHook = ''
+              echo "Entered litmus shell."
+              echo "Run: just litmus-test"
+            '';
+          };
         };
       });
 }
