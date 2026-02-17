@@ -54,6 +54,11 @@ class DavDiscoveryTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.headers.get("Location"), "/dav/")
 
+    def test_well_known_redirects_with_trailing_slash(self):
+        response = self.client.get("/.well-known/caldav/")
+        self.assertEqual(response.status_code, 302)
+        self.assertEqual(response.headers.get("Location"), "/dav/")
+
     def test_dav_root_propfind_requires_authentication(self):
         response = self.client.generic(
             "PROPFIND", "/dav/", data="", content_type="application/xml"
@@ -76,8 +81,22 @@ class DavDiscoveryTests(TestCase):
             response_depth0.headers.get("WWW-Authenticate", ""),
         )
 
+    def test_dav_root_no_trailing_slash_propfind_requires_authentication(self):
+        response = self.client.generic(
+            "PROPFIND", "/dav", data="", content_type="application/xml"
+        )
+        self.assertEqual(response.status_code, 401)
+        self.assertIn(
+            'Basic realm="davhome"', response.headers.get("WWW-Authenticate", "")
+        )
+
     def test_dav_root_options_advertises_dav(self):
         response = self.client.options("/dav/")
+        self.assertEqual(response.status_code, 204)
+        self.assertIn("calendar-access", response.headers.get("DAV", ""))
+
+    def test_dav_root_no_trailing_slash_options_advertises_dav(self):
+        response = self.client.options("/dav")
         self.assertEqual(response.status_code, 204)
         self.assertIn("calendar-access", response.headers.get("DAV", ""))
 
@@ -97,10 +116,32 @@ class DavDiscoveryTests(TestCase):
             ET.tostring(xml, encoding="unicode"),
         )
 
+    def test_principal_propfind_without_trailing_slash(self):
+        response = self.client.generic(
+            "PROPFIND",
+            f"/dav/principals/{self.owner.username}",
+            data="",
+            content_type="application/xml",
+            HTTP_DEPTH="0",
+            **self._basic_auth("owner", "pw-test-12345"),
+        )
+        self.assertEqual(response.status_code, 207)
+
     def test_principals_users_collection_exists(self):
         response = self.client.generic(
             "PROPFIND",
             "/dav/principals/users/",
+            data="",
+            content_type="application/xml",
+            HTTP_DEPTH="0",
+            **self._basic_auth("owner", "pw-test-12345"),
+        )
+        self.assertEqual(response.status_code, 207)
+
+    def test_calendar_home_without_trailing_slash_exists(self):
+        response = self.client.generic(
+            "PROPFIND",
+            f"/dav/calendars/users/{self.owner.username}",
             data="",
             content_type="application/xml",
             HTTP_DEPTH="0",
