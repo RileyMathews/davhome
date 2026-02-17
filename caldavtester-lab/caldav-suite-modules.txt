@@ -10,6 +10,7 @@ CalDAV/get.xml
 CalDAV/delete.xml
 CalDAV/conditional.xml
 CalDAV/reports.xml
+CalDAV/sync-report.xml
 CalDAV/recurrenceput.xml
 CalDAV/timezoneservice.xml
 CalDAV/timezonestdservice.xml

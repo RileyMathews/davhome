@@ -297,7 +297,7 @@ class DavDiscoveryTests(TestCase):
         )
         self.assertEqual(response.status_code, 207)
         self.assertIn(
-            f"http://davhome/sync/{self.calendar.id}/0",
+            f"data:,{self.calendar.id}/0",
             response.content.decode("utf-8"),
         )
 
@@ -496,7 +496,7 @@ class DavWriteTests(TestCase):
         )
         self.assertEqual(response.status_code, 403)
 
-    def test_mkcalendar_is_disabled_for_remote_clients(self):
+    def test_owner_mkcalendar_creates_calendar(self):
         response = self.client.generic(
             "MKCALENDAR",
             f"/dav/calendars/{self.owner.username}/newcal/",
@@ -504,7 +504,20 @@ class DavWriteTests(TestCase):
             content_type="application/xml",
             **self._basic_auth("owner", "pw-test-12345"),
         )
-        self.assertEqual(response.status_code, 405)
+        self.assertEqual(response.status_code, 201)
+        self.assertTrue(
+            Calendar.objects.filter(owner=self.owner, slug="newcal").exists()
+        )
+
+    def test_shared_writer_cannot_mkcalendar(self):
+        response = self.client.generic(
+            "MKCALENDAR",
+            f"/dav/calendars/{self.owner.username}/newcal-writer/",
+            data="",
+            content_type="application/xml",
+            **self._basic_auth("writer", "pw-test-12345"),
+        )
+        self.assertEqual(response.status_code, 403)
 
     def test_mkcol_is_disabled_for_remote_clients(self):
         response = self.client.generic(
@@ -836,7 +849,7 @@ class DavReportTests(TestCase):
         self.assertIn(self.event.filename, xml_text)
         self.assertIn(self.todo.filename, xml_text)
         self.assertIn(
-            f"http://davhome/sync/{self.calendar.id}/0",
+            f"data:,{self.calendar.id}/0",
             xml_text,
         )
 
@@ -852,12 +865,12 @@ class DavReportTests(TestCase):
 
         response = self._sync_collection_report(
             f"/dav/calendars/{self.owner.username}/{self.calendar.slug}/",
-            sync_token=f"http://davhome/sync/{self.calendar.id}/0",
+            sync_token=f"data:,{self.calendar.id}/0",
         )
         self.assertEqual(response.status_code, 207)
         xml_text = response.content.decode("utf-8")
         self.assertIn("sync-new.ics", xml_text)
-        self.assertIn(f"http://davhome/sync/{self.calendar.id}/1", xml_text)
+        self.assertIn(f"data:,{self.calendar.id}/1", xml_text)
 
     def test_sync_collection_delete_returns_404_response(self):
         create = self.client.generic(
@@ -878,7 +891,7 @@ class DavReportTests(TestCase):
 
         response = self._sync_collection_report(
             f"/dav/calendars/{self.owner.username}/{self.calendar.slug}/",
-            sync_token=f"http://davhome/sync/{self.calendar.id}/1",
+            sync_token=f"data:,{self.calendar.id}/1",
         )
         self.assertEqual(response.status_code, 207)
         xml_text = response.content.decode("utf-8")
@@ -902,7 +915,7 @@ class DavReportTests(TestCase):
         )
         response = self._sync_collection_report(
             f"/dav/calendars/{self.owner.username}/{self.calendar.slug}/",
-            sync_token=f"http://davhome/sync/{other_calendar.id}/0",
+            sync_token=f"data:,{other_calendar.id}/0",
         )
         self.assertEqual(response.status_code, 403)
         self.assertIn("valid-sync-token", response.content.decode("utf-8"))
@@ -910,7 +923,7 @@ class DavReportTests(TestCase):
     def test_sync_collection_future_revision_token_returns_valid_sync_token_error(self):
         response = self._sync_collection_report(
             f"/dav/calendars/{self.owner.username}/{self.calendar.slug}/",
-            sync_token=f"http://davhome/sync/{self.calendar.id}/99",
+            sync_token=f"data:,{self.calendar.id}/99",
         )
         self.assertEqual(response.status_code, 403)
         self.assertIn("valid-sync-token", response.content.decode("utf-8"))

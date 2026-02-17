@@ -44,6 +44,7 @@ from .xml import (
 
 _ACTIVE_REPORT_TZINFO = None
 _SYNC_TOKEN_PATH_PREFIX = "/sync/"
+_SYNC_TOKEN_DATA_PREFIX = "data:,"
 
 
 @csrf_exempt
@@ -459,7 +460,7 @@ def _valid_sync_token_error_response():
 
 
 def _build_sync_token(calendar_id, revision):
-    return f"http://davhome{_SYNC_TOKEN_PATH_PREFIX}{calendar_id}/{revision}"
+    return f"{_SYNC_TOKEN_DATA_PREFIX}{calendar_id}/{revision}"
 
 
 def _latest_sync_revision(calendar):
@@ -477,6 +478,20 @@ def _parse_sync_token_for_calendar(token, calendar):
     value = (token or "").strip()
     if not value:
         return None, _valid_sync_token_error_response()
+
+    if value.startswith(_SYNC_TOKEN_DATA_PREFIX):
+        payload = value[len(_SYNC_TOKEN_DATA_PREFIX) :]
+        parts = payload.split("/")
+        if len(parts) != 2:
+            return None, _valid_sync_token_error_response()
+        try:
+            token_calendar_id = UUID(parts[0])
+            revision = int(parts[1])
+        except (ValueError, TypeError):
+            return None, _valid_sync_token_error_response()
+        if revision < 0 or token_calendar_id != calendar.id:
+            return None, _valid_sync_token_error_response()
+        return revision, None
 
     parsed = urlparse(value)
     path = parsed.path or ""
@@ -1940,6 +1955,9 @@ def _build_prop_map_for_collection(display_name):
             NS_DAV, "displayname", display_name
         ),
         qname(NS_DAV, "current-user-principal"): current_user_principal_for_requester,
+        qname(NS_DAV, "supported-report-set"): lambda: _supported_report_set_prop(
+            include_freebusy=True
+        ),
     }
 
 
@@ -2094,6 +2112,11 @@ def _build_prop_map_for_calendar_collection(calendar, auth_user):
             "getcontentlength",
             "",
         ),
+        qname(NS_DAV, "getcontenttype"): lambda: _text_prop(
+            NS_DAV,
+            "getcontenttype",
+            "text/calendar",
+        ),
         qname(NS_DAV, "displayname"): lambda: _text_prop(
             NS_DAV, "displayname", calendar.name
         ),
@@ -2241,6 +2264,27 @@ def _sync_collection_limit(root):
     return parsed
 
 
+def _collection_sync_limit_error_response():
+    error = ET.Element(qname(NS_DAV, "error"))
+    ET.SubElement(error, qname(NS_DAV, "number-of-matches-within-limits"))
+    return _xml_response(
+        403,
+        ET.tostring(error, encoding="utf-8", xml_declaration=True),
+    )
+
+
+def _collection_href_for_style(calendar, style):
+    if style == "uids":
+        guid = _dav_guid_for_username(calendar.owner.username)
+        if guid is not None:
+            return f"/dav/calendars/__uids__/{guid}/{calendar.slug}"
+
+    if style == "users":
+        return f"/dav/calendars/users/{calendar.owner.username}/{calendar.slug}"
+
+    return f"/dav/calendars/{calendar.owner.username}/{calendar.slug}"
+
+
 def _sync_collection_response(
     calendar,
     request_path,
@@ -2249,23 +2293,35 @@ def _sync_collection_response(
     token_revision,
     limit,
 ):
+    def response_for_props(href, prop_map):
+        if requested == []:
+            return response_with_status(href, "200 OK")
+        ok, missing = _select_props(prop_map, requested)
+        return response_with_props(href, ok, missing)
+
     style = _report_href_style(request_path)
     latest_revision = _latest_sync_revision(calendar)
     if token_revision is not None and token_revision > latest_revision:
         return _valid_sync_token_error_response()
+    if limit is not None:
+        return _collection_sync_limit_error_response()
 
     responses = []
     next_revision = latest_revision
 
     if token_revision is None:
+        cal_map = _build_prop_map_for_calendar_collection(calendar, calendar.owner)
+        responses.append(
+            response_for_props(
+                _collection_href_for_style(calendar, style),
+                cal_map,
+            )
+        )
         objects = list(calendar.calendar_objects.all())
-        if limit is not None:
-            objects = objects[:limit]
         for obj in objects:
             href = _object_href_for_style(calendar, obj, style)
             obj_map = _build_prop_map_for_object(obj, calendar_data_request)
-            ok, missing = _select_props(obj_map, requested)
-            responses.append(response_with_props(href, ok, missing))
+            responses.append(response_for_props(href, obj_map))
     else:
         changes = list(
             CalendarObjectChange.objects.filter(
@@ -2273,10 +2329,8 @@ def _sync_collection_response(
                 revision__gt=token_revision,
             ).order_by("revision")
         )
-        if limit is not None:
-            changes = changes[:limit]
-            if changes:
-                next_revision = changes[-1].revision
+        if changes:
+            next_revision = changes[-1].revision
 
         latest_by_filename = {}
         for change in changes:
@@ -2303,8 +2357,7 @@ def _sync_collection_response(
                 responses.append(response_with_status(href, "404 Not Found"))
                 continue
             obj_map = _build_prop_map_for_object(obj, calendar_data_request)
-            ok, missing = _select_props(obj_map, requested)
-            responses.append(response_with_props(href, ok, missing))
+            responses.append(response_for_props(href, obj_map))
 
     body = _sync_collection_multistatus_document(
         responses,
@@ -2393,6 +2446,11 @@ def _handle_report(calendars, request, allow_sync_collection=True):
         return response
 
     if root.tag == qname(NS_DAV, "sync-collection"):
+        requested_limit = _sync_collection_limit(root)
+        if requested_limit is not None:
+            _ACTIVE_REPORT_TZINFO = None
+            return _collection_sync_limit_error_response()
+
         if not allow_sync_collection:
             _ACTIVE_REPORT_TZINFO = None
             return HttpResponse(status=501)
@@ -2423,7 +2481,7 @@ def _handle_report(calendars, request, allow_sync_collection=True):
             requested,
             calendar_data_request,
             token_revision,
-            _sync_collection_limit(root),
+            requested_limit,
         )
         _ACTIVE_REPORT_TZINFO = None
         return response
@@ -2440,6 +2498,8 @@ def calendar_collection_view(request, username, slug):
         "GET",
         "HEAD",
         "REPORT",
+        "MKCALENDAR",
+        "DELETE",
     ]
     if request.method == "OPTIONS":
         response = HttpResponse(status=204)
@@ -2454,12 +2514,35 @@ def calendar_collection_view(request, username, slug):
     if owner is None:
         return HttpResponse(status=404)
 
-    if request.method in ("MKCOL", "MKCALENDAR"):
+    if request.method == "MKCOL":
         return _not_allowed(allowed)
+
+    if request.method == "MKCALENDAR":
+        if owner != user:
+            return HttpResponse(status=403)
+        existing = Calendar.objects.filter(owner=owner, slug=slug).first()
+        if existing is not None:
+            return HttpResponse(status=405)
+        calendar = Calendar.objects.create(
+            owner=owner,
+            slug=slug,
+            name=slug,
+            timezone="UTC",
+        )
+        response = HttpResponse(status=201)
+        response["Location"] = f"/dav/calendars/{username}/{calendar.slug}/"
+        return _dav_common_headers(response)
 
     calendar = get_calendar_for_user(user, username, slug)
     if calendar is None:
         return HttpResponse(status=404)
+
+    if request.method == "DELETE":
+        if owner != user:
+            return HttpResponse(status=403)
+        calendar.delete()
+        response = HttpResponse(status=204)
+        return _dav_common_headers(response)
 
     if request.method in ("GET", "HEAD"):
         calendar_etag = _etag_for_calendar(calendar)

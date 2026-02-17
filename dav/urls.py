@@ -46,6 +46,7 @@ urlpatterns = [
     path("principals/<str:username>/", views.principal_view, name="principal"),
     path("calendars", views.calendars_collection_view, name="calendars-no-slash"),
     path("calendars/", views.calendars_collection_view, name="calendars"),
+    path("calendars//", views.calendars_collection_view, name="calendars-double-slash"),
     path(
         "calendars/__uids__",
         views.calendars_uids_collection_view,
