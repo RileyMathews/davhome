@@ -78,6 +78,17 @@ Guidance for coding agents working in this repository.
 - The CalDAVTester repos are vendored under `caldavtester-lab/`:
   - `caldavtester-lab/ccs-caldavtester`
   - `caldavtester-lab/ccs-pycalendar`
+- `ccs-caldavtester` is a vendored upstream conformance suite and should be
+  treated as spec authority for supported modules.
+- Do not rewrite existing vendored tests/resources to make failures pass.
+  In normal feature work, only adjust which tests run by changing:
+  - module inclusion in `caldavtester-lab/caldav-suite-modules.txt`
+  - feature toggles in
+    `caldavtester-lab/ccs-caldavtester/scripts/server/serverinfo.xml`
+    (and matching template/pod variants when needed)
+- If you think a change to vendored tests/resources is required (beyond
+  enabling/disabling modules/features), stop and ask the user for explicit
+  clarification before making any such change.
 - `just caldavtester-test-suite` runs an explicit list of supported
   `scripts/tests/CalDAV/*.xml` modules from
   `caldavtester-lab/caldav-suite-modules.txt`.
