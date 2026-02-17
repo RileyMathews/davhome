@@ -1601,7 +1601,7 @@ def _current_user_privilege_set_prop(can_write):
     return elem
 
 
-def _supported_report_set_prop(include_freebusy=False):
+def _supported_report_set_prop(include_freebusy=False, include_sync_collection=False):
     elem = ET.Element(qname(NS_DAV, "supported-report-set"))
 
     def add_report(namespace, name):
@@ -1613,6 +1613,8 @@ def _supported_report_set_prop(include_freebusy=False):
     add_report(NS_CALDAV, "calendar-multiget")
     if include_freebusy:
         add_report(NS_CALDAV, "free-busy-query")
+    if include_sync_collection:
+        add_report(NS_DAV, "sync-collection")
 
     return elem
 
@@ -2111,7 +2113,13 @@ def _build_prop_map_for_calendar_collection(calendar, auth_user):
             NS_DAV, "current-user-privilege-set"
         ): lambda: _current_user_privilege_set_prop(can_write),
         qname(NS_DAV, "supported-report-set"): lambda: _supported_report_set_prop(
-            include_freebusy=True
+            include_freebusy=True,
+            include_sync_collection=True,
+        ),
+        qname(NS_DAV, "sync-token"): lambda: _text_prop(
+            NS_DAV,
+            "sync-token",
+            _sync_token_for_calendar(calendar),
         ),
     }
 

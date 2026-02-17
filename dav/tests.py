@@ -278,6 +278,28 @@ class DavDiscoveryTests(TestCase):
         xml_text = response.content.decode("utf-8")
         self.assertIn("calendar-query", xml_text)
         self.assertIn("calendar-multiget", xml_text)
+        self.assertIn("sync-collection", xml_text)
+
+    def test_calendar_collection_propfind_includes_sync_token(self):
+        body = """<?xml version=\"1.0\" encoding=\"utf-8\"?>
+<D:propfind xmlns:D=\"DAV:\">
+  <D:prop>
+    <D:sync-token/>
+  </D:prop>
+</D:propfind>"""
+        response = self.client.generic(
+            "PROPFIND",
+            f"/dav/calendars/{self.owner.username}/{self.calendar.slug}/",
+            data=body,
+            content_type="application/xml",
+            HTTP_DEPTH="0",
+            **self._basic_auth("owner", "pw-test-12345"),
+        )
+        self.assertEqual(response.status_code, 207)
+        self.assertIn(
+            f"http://davhome/sync/{self.calendar.id}/0",
+            response.content.decode("utf-8"),
+        )
 
     def test_calendar_collection_propfind_includes_owner(self):
         body = """<?xml version="1.0" encoding="utf-8"?>
