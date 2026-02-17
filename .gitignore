@@ -13,3 +13,4 @@ media
 *.egg-info/
 .DS_Store
 .encryption-password
+.envrc.secret
