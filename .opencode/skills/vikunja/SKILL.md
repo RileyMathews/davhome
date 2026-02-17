@@ -18,7 +18,7 @@ Use this skill whenever a task involves creating a task to do later. Finding a g
 
 ## Prerequisites
 Ensure the following environment variables are available. If they are not, ask the user to set them before continuing.
-- VIKUNJA_API_TOKEN : The api token to use for making API calls
+- VIKUNJA_API_KEY : The api token to use for making API calls
 - VIKUNJA_REFERENCE_URL : The API that returns the JSON schema for the API
 - VIKUNJA_PROJECT_ID : The project ID for the current project
 
