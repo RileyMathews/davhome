@@ -100,3 +100,34 @@ class CalendarObject(models.Model):
 
     def __str__(self):
         return f"{self.calendar}/{self.filename}"
+
+
+class CalendarObjectChange(models.Model):
+    calendar = models.ForeignKey(
+        Calendar,
+        on_delete=models.CASCADE,
+        related_name="object_changes",
+    )
+    revision = models.PositiveBigIntegerField()
+    filename = models.CharField(max_length=255)
+    uid = models.CharField(max_length=255, null=True, blank=True)
+    is_deleted = models.BooleanField()
+    created_at = models.DateTimeField(auto_now_add=True)
+
+    class Meta:
+        constraints = [
+            models.UniqueConstraint(
+                fields=["calendar", "revision"],
+                name="uniq_calendar_change_revision",
+            ),
+        ]
+        indexes = [
+            models.Index(
+                fields=["calendar", "filename"],
+                name="idx_calendar_change_filename",
+            ),
+        ]
+        ordering = ["calendar_id", "revision"]
+
+    def __str__(self):
+        return f"{self.calendar}:{self.revision}:{self.filename}"
