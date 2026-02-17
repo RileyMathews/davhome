@@ -7,7 +7,12 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 from django.utils import timezone
 
-from calendars.models import Calendar, CalendarObject, CalendarShare
+from calendars.models import (
+    Calendar,
+    CalendarObject,
+    CalendarObjectChange,
+    CalendarShare,
+)
 
 
 class DavDiscoveryTests(TestCase):
@@ -383,6 +388,13 @@ class DavWriteTests(TestCase):
         obj = CalendarObject.objects.get(calendar=self.calendar, filename="event-1.ics")
         self.assertEqual(obj.uid, "event-1")
         self.assertEqual(response.headers.get("ETag"), obj.etag)
+        change = CalendarObjectChange.objects.get(
+            calendar=self.calendar,
+            revision=1,
+        )
+        self.assertEqual(change.filename, "event-1.ics")
+        self.assertEqual(change.uid, "event-1")
+        self.assertFalse(change.is_deleted)
 
     def test_write_share_can_update_with_if_match(self):
         first = self._put_event(
@@ -482,6 +494,14 @@ class DavWriteTests(TestCase):
                 filename="event-6.ics",
             ).exists()
         )
+        changes = list(
+            CalendarObjectChange.objects.filter(calendar=self.calendar).order_by(
+                "revision"
+            )
+        )
+        self.assertEqual([change.revision for change in changes], [1, 2])
+        self.assertEqual(changes[-1].filename, "event-6.ics")
+        self.assertTrue(changes[-1].is_deleted)
 
     def test_put_without_uid_fails(self):
         response = self._put_event(
@@ -787,6 +807,16 @@ class DavWebdavCompatibilityTests(TestCase):
             **self._basic_auth(),
         )
         self.assertEqual(delete.status_code, 204)
+        changes = list(
+            CalendarObjectChange.objects.filter(calendar=self.calendar).order_by(
+                "revision"
+            )
+        )
+        self.assertEqual(len(changes), 2)
+        self.assertEqual(changes[0].filename, "coll/")
+        self.assertFalse(changes[0].is_deleted)
+        self.assertEqual(changes[1].filename, "coll/")
+        self.assertTrue(changes[1].is_deleted)
 
     def test_mkcol_missing_parent_returns_409(self):
         response = self.client.generic(

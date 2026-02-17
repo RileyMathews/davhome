@@ -14,6 +14,7 @@ from recurring_ical_events import of as recurring_of
 from django.http import HttpResponse, HttpResponseNotAllowed
 from django.shortcuts import redirect
 from django.views.decorators.csrf import csrf_exempt
+from django.db import transaction
 from django.db.models import Max
 from django.utils import timezone
 from django.utils.http import http_date
@@ -501,6 +502,16 @@ def _parse_sync_token_for_calendar(token, calendar):
         return None, _valid_sync_token_error_response()
 
     return revision, None
+
+
+def _create_calendar_change(calendar, revision, filename, uid, is_deleted):
+    return CalendarObjectChange.objects.create(
+        calendar=calendar,
+        revision=revision,
+        filename=filename,
+        uid=uid,
+        is_deleted=is_deleted,
+    )
 
 
 def _extract_tzid_from_timezone_text(timezone_text):
@@ -2434,115 +2445,156 @@ def calendar_object_view(request, username, slug, filename):
         if writable is False:
             return HttpResponse(status=403)
 
-        marker_filename = _collection_marker(filename)
-        parent_path, _leaf = _split_filename_path(filename)
+        with transaction.atomic():
+            writable = Calendar.objects.select_for_update().get(pk=writable.pk)
+            next_revision = _latest_sync_revision(writable) + 1
+            marker_filename = _collection_marker(filename)
+            parent_path, _leaf = _split_filename_path(filename)
 
-        if request.method in ("MKCOL", "MKCALENDAR"):
-            if request.method == "MKCOL" and request.body:
-                return HttpResponse(status=415)
+            if request.method in ("MKCOL", "MKCALENDAR"):
+                if request.method == "MKCOL" and request.body:
+                    return HttpResponse(status=415)
+                if not _collection_exists(writable, parent_path):
+                    return HttpResponse(status=409)
+
+                existing_collection = writable.calendar_objects.filter(
+                    filename=marker_filename
+                ).first()
+                existing_resource = writable.calendar_objects.filter(
+                    filename=filename.strip("/")
+                ).first()
+                if existing_collection is not None or existing_resource is not None:
+                    return HttpResponse(status=405)
+
+                marker_uid = f"collection:{marker_filename}"
+                writable.calendar_objects.create(
+                    uid=marker_uid,
+                    filename=marker_filename,
+                    etag=_generate_strong_etag(marker_filename.encode("utf-8")),
+                    ical_blob="",
+                    content_type="httpd/unix-directory",
+                    size=0,
+                )
+                _create_calendar_change(
+                    writable,
+                    next_revision,
+                    marker_filename,
+                    marker_uid,
+                    False,
+                )
+                writable.save(update_fields=["updated_at"])
+                response = HttpResponse(status=201)
+                response["Location"] = (
+                    f"/dav/calendars/{username}/{slug}/{marker_filename}"
+                )
+                return _dav_common_headers(response)
+
+            existing = writable.calendar_objects.filter(filename=filename).first()
+            if existing is None and filename.endswith("/"):
+                existing = writable.calendar_objects.filter(
+                    filename=marker_filename
+                ).first()
+
+            if request.method == "DELETE":
+                if existing is None:
+                    return HttpResponse(status=404)
+                if existing.filename.endswith("/"):
+                    prefix = existing.filename
+                    deleted = list(
+                        writable.calendar_objects.filter(
+                            filename__startswith=prefix
+                        ).values("filename", "uid")
+                    )
+                    writable.calendar_objects.filter(
+                        filename__startswith=prefix
+                    ).delete()
+                else:
+                    deleted = [
+                        {
+                            "filename": existing.filename,
+                            "uid": existing.uid,
+                        }
+                    ]
+                    existing.delete()
+                for item in deleted:
+                    _create_calendar_change(
+                        writable,
+                        next_revision,
+                        item["filename"],
+                        item["uid"],
+                        True,
+                    )
+                    next_revision += 1
+                writable.save(update_fields=["updated_at"])
+                response = HttpResponse(status=204)
+                return _dav_common_headers(response)
+
+            if _precondition_failed_for_write(request, existing):
+                return HttpResponse(status=412)
+
             if not _collection_exists(writable, parent_path):
                 return HttpResponse(status=409)
 
-            existing_collection = writable.calendar_objects.filter(
-                filename=marker_filename
-            ).first()
-            existing_resource = writable.calendar_objects.filter(
-                filename=filename.strip("/")
-            ).first()
-            if existing_collection is not None or existing_resource is not None:
-                return HttpResponse(status=405)
-
-            marker_uid = f"collection:{marker_filename}"
-            writable.calendar_objects.create(
-                uid=marker_uid,
-                filename=marker_filename,
-                etag=_generate_strong_etag(marker_filename.encode("utf-8")),
-                ical_blob="",
-                content_type="httpd/unix-directory",
-                size=0,
-            )
-            writable.save(update_fields=["updated_at"])
-            response = HttpResponse(status=201)
-            response["Location"] = f"/dav/calendars/{username}/{slug}/{marker_filename}"
-            return _dav_common_headers(response)
-
-        existing = writable.calendar_objects.filter(filename=filename).first()
-        if existing is None and filename.endswith("/"):
-            existing = writable.calendar_objects.filter(
-                filename=marker_filename
-            ).first()
-
-        if request.method == "DELETE":
-            if existing is None:
-                return HttpResponse(status=404)
-            if existing.filename.endswith("/"):
-                prefix = existing.filename
-                writable.calendar_objects.filter(filename__startswith=prefix).delete()
+            raw_content_type = request.META.get("CONTENT_TYPE") or request.content_type
+            content_type = _normalize_content_type(raw_content_type)
+            if _is_ical_resource(filename, content_type):
+                parsed, error = _validate_ical_payload(request.body)
             else:
-                existing.delete()
+                parsed, error = _validate_generic_payload(request.body)
+
+            if error is not None:
+                return HttpResponse(
+                    error, status=400, content_type="text/plain; charset=utf-8"
+                )
+            if parsed is None:
+                return HttpResponse(status=400)
+
+            now = timezone.now()
+            payload_text = parsed["text"]
+            if _is_ical_resource(filename, content_type):
+                payload_text = _dedupe_duplicate_alarms(payload_text)
+            payload = payload_text.encode("utf-8")
+            etag = _generate_strong_etag(payload)
+            object_uid = parsed["uid"] or f"dav:{filename}"
+            status_code = 204
+            if existing is None:
+                existing = writable.calendar_objects.create(
+                    uid=object_uid,
+                    filename=filename,
+                    etag=etag,
+                    ical_blob=payload_text,
+                    content_type=content_type,
+                    size=len(payload),
+                )
+                status_code = 201
+            else:
+                existing.uid = object_uid
+                existing.etag = etag
+                existing.ical_blob = payload_text
+                existing.content_type = content_type
+                existing.size = len(payload)
+                existing.updated_at = now
+                existing.save()
+
+            _create_calendar_change(
+                writable,
+                next_revision,
+                existing.filename,
+                object_uid,
+                False,
+            )
+            writable.updated_at = now
             writable.save(update_fields=["updated_at"])
-            response = HttpResponse(status=204)
+
+            response = HttpResponse(status=status_code)
+            response["ETag"] = existing.etag
+            response["Last-Modified"] = http_date(existing.updated_at.timestamp())
+            if status_code == 201:
+                escaped_filename = quote(filename, safe="/")
+                response["Location"] = (
+                    f"/dav/calendars/{username}/{slug}/{escaped_filename}"
+                )
             return _dav_common_headers(response)
-
-        if _precondition_failed_for_write(request, existing):
-            return HttpResponse(status=412)
-
-        if not _collection_exists(writable, parent_path):
-            return HttpResponse(status=409)
-
-        raw_content_type = request.META.get("CONTENT_TYPE") or request.content_type
-        content_type = _normalize_content_type(raw_content_type)
-        if _is_ical_resource(filename, content_type):
-            parsed, error = _validate_ical_payload(request.body)
-        else:
-            parsed, error = _validate_generic_payload(request.body)
-
-        if error is not None:
-            return HttpResponse(
-                error, status=400, content_type="text/plain; charset=utf-8"
-            )
-        if parsed is None:
-            return HttpResponse(status=400)
-
-        now = timezone.now()
-        payload_text = parsed["text"]
-        if _is_ical_resource(filename, content_type):
-            payload_text = _dedupe_duplicate_alarms(payload_text)
-        payload = payload_text.encode("utf-8")
-        etag = _generate_strong_etag(payload)
-        object_uid = parsed["uid"] or f"dav:{filename}"
-        status_code = 204
-        if existing is None:
-            existing = writable.calendar_objects.create(
-                uid=object_uid,
-                filename=filename,
-                etag=etag,
-                ical_blob=payload_text,
-                content_type=content_type,
-                size=len(payload),
-            )
-            status_code = 201
-        else:
-            existing.uid = object_uid
-            existing.etag = etag
-            existing.ical_blob = payload_text
-            existing.content_type = content_type
-            existing.size = len(payload)
-            existing.updated_at = now
-            existing.save()
-
-        writable.updated_at = now
-        writable.save(update_fields=["updated_at"])
-
-        response = HttpResponse(status=status_code)
-        response["ETag"] = existing.etag
-        response["Last-Modified"] = http_date(existing.updated_at.timestamp())
-        if status_code == 201:
-            escaped_filename = quote(filename, safe="/")
-            response["Location"] = (
-                f"/dav/calendars/{username}/{slug}/{escaped_filename}"
-            )
-        return _dav_common_headers(response)
 
     normalized_filename = filename
     if filename.endswith("/"):
