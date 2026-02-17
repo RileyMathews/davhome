@@ -37,7 +37,7 @@ HOSTNAME = require_env("WEB_HOST")
 
 ALLOWED_HOSTS = [HOSTNAME]
 CSRF_COOKIE_DOMAIN = HOSTNAME
-CSRF_TRUSTED_ORIGINS = f"https://{HOSTNAME}"
+CSRF_TRUSTED_ORIGINS = [f"https://{HOSTNAME}"]
 
 
 # Application definition
