@@ -1,0 +1,16 @@
+# Default CalDAVTester module allowlist for `just caldavtester-test-suite`.
+#
+# One module per line, relative to scripts/tests/ in ccs-caldavtester.
+# Comment lines and blank lines are ignored.
+
+CalDAV/current-user-principal.xml
+CalDAV/propfind.xml
+CalDAV/put.xml
+CalDAV/get.xml
+CalDAV/delete.xml
+CalDAV/conditional.xml
+CalDAV/reports.xml
+CalDAV/recurrenceput.xml
+CalDAV/timezoneservice.xml
+CalDAV/timezonestdservice.xml
+CalDAV/implicittodo.xml

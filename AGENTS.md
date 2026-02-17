@@ -79,13 +79,14 @@ Guidance for coding agents working in this repository.
   - `caldavtester-lab/ccs-caldavtester`
   - `caldavtester-lab/ccs-pycalendar`
 - `just caldavtester-test-suite` runs an explicit list of supported
-  `scripts/tests/CalDAV/*.xml` modules from `justfile`.
+  `scripts/tests/CalDAV/*.xml` modules from
+  `caldavtester-lab/caldav-suite-modules.txt`.
 - `caldavtester-lab/ccs-caldavtester/scripts/server/serverinfo.xml` controls
   feature-gated behavior *within* those modules.
   - Tests/suites guarded with `<require-feature>` only run when the matching
     `<feature>` is enabled in that file.
-  - To add/remove module-level coverage in the default suite, edit the CalDAV
-    module list in `justfile`.
+  - To add/remove module-level coverage in the default suite, edit
+    `caldavtester-lab/caldav-suite-modules.txt`.
   - To tune suite/test-level coverage inside a module, adjust feature flags in
     `serverinfo.xml`.
 - For quick targeted debugging, run a specific module directly from
