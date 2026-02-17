@@ -21,3 +21,6 @@ caldavtester-full-suite:
 integration-test:
 	just litmus-test
 	just caldavtester-test-suite
+
+django-test *args:
+	uv run python manage.py test --settings=config.settings_test --parallel {{args}}

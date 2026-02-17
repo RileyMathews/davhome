@@ -53,35 +53,32 @@ class CalendarModelTests(TestCase):
 
 
 class CalendarViewTests(TestCase):
-    def setUp(self):
-        self.owner = User.objects.create_user(
-            username="owner", password="pw-test-12345"
-        )
-        self.reader = User.objects.create_user(
+    @classmethod
+    def setUpTestData(cls):
+        cls.owner = User.objects.create_user(username="owner", password="pw-test-12345")
+        cls.reader = User.objects.create_user(
             username="reader", password="pw-test-12345"
         )
-        self.admin = User.objects.create_user(
+        cls.admin = User.objects.create_user(
             username="adminu", password="pw-test-12345"
         )
-        self.other = User.objects.create_user(
-            username="other", password="pw-test-12345"
-        )
+        cls.other = User.objects.create_user(username="other", password="pw-test-12345")
 
-        self.calendar = Calendar.objects.create(
-            owner=self.owner,
+        cls.calendar = Calendar.objects.create(
+            owner=cls.owner,
             slug="family",
             name="Family",
             timezone="UTC",
         )
         CalendarShare.objects.create(
-            calendar=self.calendar,
-            user=self.reader,
+            calendar=cls.calendar,
+            user=cls.reader,
             role=CalendarShare.READ,
             accepted_at=timezone.now(),
         )
         CalendarShare.objects.create(
-            calendar=self.calendar,
-            user=self.admin,
+            calendar=cls.calendar,
+            user=cls.admin,
             role=CalendarShare.ADMIN,
             accepted_at=timezone.now(),
         )

@@ -11,38 +11,37 @@ from calendars.models import Calendar, CalendarObject, CalendarShare
 
 
 class DavDiscoveryTests(TestCase):
-    def setUp(self):
-        self.owner = User.objects.create_user(
-            username="owner", password="pw-test-12345"
-        )
-        self.member = User.objects.create_user(
+    @classmethod
+    def setUpTestData(cls):
+        cls.owner = User.objects.create_user(username="owner", password="pw-test-12345")
+        cls.member = User.objects.create_user(
             username="member",
             password="pw-test-12345",
         )
-        self.writer = User.objects.create_user(
+        cls.writer = User.objects.create_user(
             username="writer",
             password="pw-test-12345",
         )
-        self.calendar = Calendar.objects.create(
-            owner=self.owner,
+        cls.calendar = Calendar.objects.create(
+            owner=cls.owner,
             slug="family",
             name="Family",
             timezone="UTC",
         )
         CalendarShare.objects.create(
-            calendar=self.calendar,
-            user=self.member,
+            calendar=cls.calendar,
+            user=cls.member,
             role=CalendarShare.READ,
             accepted_at=timezone.now(),
         )
         CalendarShare.objects.create(
-            calendar=self.calendar,
-            user=self.writer,
+            calendar=cls.calendar,
+            user=cls.writer,
             role=CalendarShare.WRITE,
             accepted_at=timezone.now(),
         )
-        self.object = CalendarObject.objects.create(
-            calendar=self.calendar,
+        cls.object = CalendarObject.objects.create(
+            calendar=cls.calendar,
             uid="uid-1",
             filename="event-1.ics",
             etag='"etag-1"',
@@ -330,33 +329,32 @@ class DavDiscoveryTests(TestCase):
 
 
 class DavWriteTests(TestCase):
-    def setUp(self):
-        self.owner = User.objects.create_user(
-            username="owner", password="pw-test-12345"
-        )
-        self.writer = User.objects.create_user(
+    @classmethod
+    def setUpTestData(cls):
+        cls.owner = User.objects.create_user(username="owner", password="pw-test-12345")
+        cls.writer = User.objects.create_user(
             username="writer",
             password="pw-test-12345",
         )
-        self.reader = User.objects.create_user(
+        cls.reader = User.objects.create_user(
             username="reader",
             password="pw-test-12345",
         )
-        self.calendar = Calendar.objects.create(
-            owner=self.owner,
+        cls.calendar = Calendar.objects.create(
+            owner=cls.owner,
             slug="family",
             name="Family",
             timezone="UTC",
         )
         CalendarShare.objects.create(
-            calendar=self.calendar,
-            user=self.writer,
+            calendar=cls.calendar,
+            user=cls.writer,
             role=CalendarShare.WRITE,
             accepted_at=timezone.now(),
         )
         CalendarShare.objects.create(
-            calendar=self.calendar,
-            user=self.reader,
+            calendar=cls.calendar,
+            user=cls.reader,
             role=CalendarShare.READ,
             accepted_at=timezone.now(),
         )
@@ -523,35 +521,34 @@ class DavWriteTests(TestCase):
 
 
 class DavReportTests(TestCase):
-    def setUp(self):
-        self.owner = User.objects.create_user(
-            username="owner", password="pw-test-12345"
-        )
-        self.writer = User.objects.create_user(
+    @classmethod
+    def setUpTestData(cls):
+        cls.owner = User.objects.create_user(username="owner", password="pw-test-12345")
+        cls.writer = User.objects.create_user(
             username="writer", password="pw-test-12345"
         )
-        self.calendar = Calendar.objects.create(
-            owner=self.owner,
+        cls.calendar = Calendar.objects.create(
+            owner=cls.owner,
             slug="family",
             name="Family",
             timezone="UTC",
         )
         CalendarShare.objects.create(
-            calendar=self.calendar,
-            user=self.writer,
+            calendar=cls.calendar,
+            user=cls.writer,
             role=CalendarShare.WRITE,
             accepted_at=timezone.now(),
         )
-        self.event = CalendarObject.objects.create(
-            calendar=self.calendar,
+        cls.event = CalendarObject.objects.create(
+            calendar=cls.calendar,
             uid="uid-event",
             filename="event.ics",
             etag='"etag-event"',
             ical_blob="BEGIN:VCALENDAR\nBEGIN:VEVENT\nUID:uid-event\nDTSTART:20260215T120000Z\nDTEND:20260215T130000Z\nEND:VEVENT\nEND:VCALENDAR\n",
             size=120,
         )
-        self.todo = CalendarObject.objects.create(
-            calendar=self.calendar,
+        cls.todo = CalendarObject.objects.create(
+            calendar=cls.calendar,
             uid="uid-todo",
             filename="todo.ics",
             etag='"etag-todo"',
@@ -726,10 +723,11 @@ class DavReportTests(TestCase):
 
 
 class DavWebdavCompatibilityTests(TestCase):
-    def setUp(self):
-        self.user = User.objects.create_user(username="user01", password="user01")
-        self.calendar = Calendar.objects.create(
-            owner=self.user,
+    @classmethod
+    def setUpTestData(cls):
+        cls.user = User.objects.create_user(username="user01", password="user01")
+        cls.calendar = Calendar.objects.create(
+            owner=cls.user,
             slug="litmus",
             name="litmus",
             timezone="UTC",
@@ -811,9 +809,10 @@ class DavWebdavCompatibilityTests(TestCase):
 
 
 class DavPrincipalAliasTests(TestCase):
-    def setUp(self):
-        self.user1 = User.objects.create_user(username="user01", password="user01")
-        Calendar.objects.create(owner=self.user1, slug="calendar", name="calendar")
+    @classmethod
+    def setUpTestData(cls):
+        cls.user1 = User.objects.create_user(username="user01", password="user01")
+        Calendar.objects.create(owner=cls.user1, slug="calendar", name="calendar")
 
     def _basic_auth(self):
         token = base64.b64encode(b"user01:user01").decode("ascii")
