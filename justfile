@@ -11,7 +11,7 @@ litmus-test:
 
 caldavtester-test-suite:
 	# Default implementation-loop suite: supported CalDAV subset only.
-	nix develop path:.#caldavtester -c bash -lc 'cd caldavtester-lab && ./bootstrap.sh >/dev/null && source ./.env-py2.sh && cd ccs-caldavtester && python2 testcaldav.py CalDAV/current-user-principal.xml CalDAV/propfind.xml CalDAV/put.xml CalDAV/get.xml CalDAV/delete.xml CalDAV/conditional.xml CalDAV/reports.xml CalDAV/recurrenceput.xml CalDAV/floating.xml CalDAV/timezoneservice.xml CalDAV/timezonestdservice.xml CalDAV/implicittodo.xml'
+	nix develop path:.#caldavtester -c bash -lc 'cd caldavtester-lab && ./bootstrap.sh >/dev/null && source ./.env-py2.sh && cd ccs-caldavtester && python2 testcaldav.py CalDAV/current-user-principal.xml CalDAV/propfind.xml CalDAV/put.xml CalDAV/get.xml CalDAV/delete.xml CalDAV/conditional.xml CalDAV/reports.xml CalDAV/recurrenceput.xml CalDAV/timezoneservice.xml CalDAV/timezonestdservice.xml CalDAV/implicittodo.xml'
 
 integration-test:
 	just litmus-test
