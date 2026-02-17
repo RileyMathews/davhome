@@ -19,6 +19,10 @@ class DavDiscoveryTests(TestCase):
             username="member",
             password="pw-test-12345",
         )
+        self.writer = User.objects.create_user(
+            username="writer",
+            password="pw-test-12345",
+        )
         self.calendar = Calendar.objects.create(
             owner=self.owner,
             slug="family",
@@ -29,6 +33,12 @@ class DavDiscoveryTests(TestCase):
             calendar=self.calendar,
             user=self.member,
             role=CalendarShare.READ,
+            accepted_at=timezone.now(),
+        )
+        CalendarShare.objects.create(
+            calendar=self.calendar,
+            user=self.writer,
+            role=CalendarShare.WRITE,
             accepted_at=timezone.now(),
         )
         self.object = CalendarObject.objects.create(
@@ -244,6 +254,79 @@ class DavDiscoveryTests(TestCase):
         self.assertEqual(response.status_code, 207)
         xml_text = response.content.decode("utf-8")
         self.assertIn("404 Not Found", xml_text)
+
+    def test_calendar_collection_propfind_includes_supported_report_set(self):
+        body = """<?xml version="1.0" encoding="utf-8"?>
+<D:propfind xmlns:D="DAV:">
+  <D:prop>
+    <D:supported-report-set/>
+  </D:prop>
+</D:propfind>"""
+        response = self.client.generic(
+            "PROPFIND",
+            f"/dav/calendars/{self.owner.username}/{self.calendar.slug}/",
+            data=body,
+            content_type="application/xml",
+            HTTP_DEPTH="0",
+            **self._basic_auth("owner", "pw-test-12345"),
+        )
+        self.assertEqual(response.status_code, 207)
+        xml_text = response.content.decode("utf-8")
+        self.assertIn("calendar-query", xml_text)
+        self.assertIn("calendar-multiget", xml_text)
+
+    def test_calendar_collection_propfind_includes_owner(self):
+        body = """<?xml version="1.0" encoding="utf-8"?>
+<D:propfind xmlns:D="DAV:"><D:prop><D:owner/></D:prop></D:propfind>"""
+        response = self.client.generic(
+            "PROPFIND",
+            f"/dav/calendars/{self.owner.username}/{self.calendar.slug}/",
+            data=body,
+            content_type="application/xml",
+            HTTP_DEPTH="0",
+            **self._basic_auth("member", "pw-test-12345"),
+        )
+        self.assertEqual(response.status_code, 207)
+        self.assertIn(
+            f"/dav/principals/users/{self.owner.username}/",
+            response.content.decode("utf-8"),
+        )
+
+    def test_current_user_privileges_read_share_is_read_only(self):
+        body = """<?xml version="1.0" encoding="utf-8"?>
+<D:propfind xmlns:D="DAV:">
+  <D:prop><D:current-user-privilege-set/></D:prop>
+</D:propfind>"""
+        response = self.client.generic(
+            "PROPFIND",
+            f"/dav/calendars/{self.owner.username}/{self.calendar.slug}/",
+            data=body,
+            content_type="application/xml",
+            HTTP_DEPTH="0",
+            **self._basic_auth("member", "pw-test-12345"),
+        )
+        self.assertEqual(response.status_code, 207)
+        xml_text = response.content.decode("utf-8")
+        self.assertIn("read-current-user-privilege-set", xml_text)
+        self.assertNotIn("write-content", xml_text)
+
+    def test_current_user_privileges_write_share_includes_write(self):
+        body = """<?xml version="1.0" encoding="utf-8"?>
+<D:propfind xmlns:D="DAV:">
+  <D:prop><D:current-user-privilege-set/></D:prop>
+</D:propfind>"""
+        response = self.client.generic(
+            "PROPFIND",
+            f"/dav/calendars/{self.owner.username}/{self.calendar.slug}/",
+            data=body,
+            content_type="application/xml",
+            HTTP_DEPTH="0",
+            **self._basic_auth("writer", "pw-test-12345"),
+        )
+        self.assertEqual(response.status_code, 207)
+        xml_text = response.content.decode("utf-8")
+        self.assertIn("write-content", xml_text)
+        self.assertIn("bind", xml_text)
 
 
 class DavWriteTests(TestCase):

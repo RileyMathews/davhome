@@ -17,7 +17,7 @@ from django.utils import timezone
 from django.utils.http import http_date
 
 from calendars.models import Calendar
-from calendars.permissions import can_view_calendar
+from calendars.permissions import can_view_calendar, can_write_calendar
 
 from .auth import get_dav_user, unauthorized_response
 from .report_engine import parse_report_request
@@ -1508,6 +1508,42 @@ def _supported_components_prop():
     return elem
 
 
+def _owner_prop(owner_user):
+    elem = ET.Element(qname(NS_DAV, "owner"))
+    href = ET.SubElement(elem, qname(NS_DAV, "href"))
+    href.text = _principal_href_for_user(owner_user)
+    return elem
+
+
+def _current_user_privilege_set_prop(can_write):
+    elem = ET.Element(qname(NS_DAV, "current-user-privilege-set"))
+    privileges = ["read", "read-current-user-privilege-set"]
+    if can_write:
+        privileges.extend(["write", "write-content", "bind", "unbind"])
+
+    for privilege_name in privileges:
+        privilege = ET.SubElement(elem, qname(NS_DAV, "privilege"))
+        ET.SubElement(privilege, qname(NS_DAV, privilege_name))
+
+    return elem
+
+
+def _supported_report_set_prop(include_freebusy=False):
+    elem = ET.Element(qname(NS_DAV, "supported-report-set"))
+
+    def add_report(namespace, name):
+        supported_report = ET.SubElement(elem, qname(NS_DAV, "supported-report"))
+        report = ET.SubElement(supported_report, qname(NS_DAV, "report"))
+        ET.SubElement(report, qname(namespace, name))
+
+    add_report(NS_CALDAV, "calendar-query")
+    add_report(NS_CALDAV, "calendar-multiget")
+    if include_freebusy:
+        add_report(NS_CALDAV, "free-busy-query")
+
+    return elem
+
+
 def _select_props(prop_map, requested_tags):
     if requested_tags is None:
         return [builder() for builder in prop_map.values()], []
@@ -1684,7 +1720,7 @@ def dav_root(request):
             response_with_props(principal_href, principal_ok, principal_missing)
         )
 
-        home_map = _build_prop_map_for_calendar_home(user)
+        home_map = _build_prop_map_for_calendar_home(user, user)
         home_ok, home_missing = _select_props(home_map, requested)
         responses.append(response_with_props(home_href, home_ok, home_missing))
 
@@ -1788,7 +1824,8 @@ def principal_users_view(request, username):
     return principal_view(request, username)
 
 
-def _build_prop_map_for_calendar_home(owner):
+def _build_prop_map_for_calendar_home(owner, auth_user):
+    can_write = owner == auth_user
     return {
         qname(NS_DAV, "resourcetype"): lambda: _resourcetype_prop(
             (NS_DAV, "collection")
@@ -1802,6 +1839,13 @@ def _build_prop_map_for_calendar_home(owner):
             NS_DAV,
             "displayname",
             f"{owner.username} calendars",
+        ),
+        qname(NS_DAV, "owner"): lambda: _owner_prop(owner),
+        qname(
+            NS_DAV, "current-user-privilege-set"
+        ): lambda: _current_user_privilege_set_prop(can_write),
+        qname(NS_DAV, "supported-report-set"): lambda: _supported_report_set_prop(
+            include_freebusy=True
         ),
     }
 
@@ -1919,7 +1963,7 @@ def calendar_home_view(request, username):
 
     depth = request.headers.get("Depth", "infinity")
     requested = parsed["requested"] if parsed["mode"] == "prop" else None
-    home_map = _build_prop_map_for_calendar_home(owner)
+    home_map = _build_prop_map_for_calendar_home(owner, user)
     home_ok, home_missing = _select_props(home_map, requested)
     responses = [
         response_with_props(f"/dav/calendars/{owner.username}/", home_ok, home_missing)
@@ -1927,7 +1971,7 @@ def calendar_home_view(request, username):
 
     if depth == "1":
         for calendar in calendars:
-            cal_map = _build_prop_map_for_calendar_collection(calendar)
+            cal_map = _build_prop_map_for_calendar_collection(calendar, user)
             cal_ok, cal_missing = _select_props(cal_map, requested)
             href = f"/dav/calendars/{owner.username}/{calendar.slug}/"
             responses.append(response_with_props(href, cal_ok, cal_missing))
@@ -1963,7 +2007,8 @@ def calendar_home_users_view(request, username):
     return calendar_home_view(request, username)
 
 
-def _build_prop_map_for_calendar_collection(calendar):
+def _build_prop_map_for_calendar_collection(calendar, auth_user):
+    can_write = can_write_calendar(calendar, auth_user)
     return {
         qname(NS_DAV, "resourcetype"): lambda: _resourcetype_prop(
             (NS_DAV, "collection"),
@@ -1987,6 +2032,13 @@ def _build_prop_map_for_calendar_collection(calendar):
         ): _supported_components_prop,
         qname(NS_DAV, "getetag"): lambda: _text_prop(
             NS_DAV, "getetag", _etag_for_calendar(calendar)
+        ),
+        qname(NS_DAV, "owner"): lambda: _owner_prop(calendar.owner),
+        qname(
+            NS_DAV, "current-user-privilege-set"
+        ): lambda: _current_user_privilege_set_prop(can_write),
+        qname(NS_DAV, "supported-report-set"): lambda: _supported_report_set_prop(
+            include_freebusy=True
         ),
     }
 
@@ -2250,7 +2302,7 @@ def calendar_collection_view(request, username, slug):
 
     depth = request.headers.get("Depth", "infinity")
     requested = parsed["requested"] if parsed["mode"] == "prop" else None
-    cal_map = _build_prop_map_for_calendar_collection(calendar)
+    cal_map = _build_prop_map_for_calendar_collection(calendar, user)
     cal_ok, cal_missing = _select_props(cal_map, requested)
     responses = [
         response_with_props(
