@@ -11,7 +11,6 @@ litmus-test:
 
 caldavtester-test-suite:
 	# Default implementation-loop suite: supported CalDAV subset only.
-	just setup-integration-fixtures
 	nix develop path:.#caldavtester -c bash -lc 'cd caldavtester-lab && ./bootstrap.sh >/dev/null && source ./.env-py2.sh && cd ccs-caldavtester && python2 testcaldav.py CalDAV/current-user-principal.xml CalDAV/propfind.xml CalDAV/put.xml CalDAV/get.xml CalDAV/delete.xml CalDAV/conditional.xml CalDAV/reports.xml CalDAV/recurrenceput.xml CalDAV/floating.xml CalDAV/timezoneservice.xml CalDAV/timezonestdservice.xml CalDAV/implicittodo.xml'
 
 caldavtester-full-suite:
@@ -24,3 +23,7 @@ integration-test:
 
 django-test *args:
 	uv run python manage.py test --settings=config.settings_test --parallel {{args}}
+
+django-test-server *args:
+	DJANGO_SETTINGS_MODULE=config.settings_test just setup-integration-fixtures
+	uv run python manage.py runserver --settings=config.settings_test {{args}}
