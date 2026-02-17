@@ -2264,15 +2264,6 @@ def _sync_collection_limit(root):
     return parsed
 
 
-def _collection_sync_limit_error_response():
-    error = ET.Element(qname(NS_DAV, "error"))
-    ET.SubElement(error, qname(NS_DAV, "number-of-matches-within-limits"))
-    return _xml_response(
-        403,
-        ET.tostring(error, encoding="utf-8", xml_declaration=True),
-    )
-
-
 def _collection_href_for_style(calendar, style):
     if style == "uids":
         guid = _dav_guid_for_username(calendar.owner.username)
@@ -2303,8 +2294,6 @@ def _sync_collection_response(
     latest_revision = _latest_sync_revision(calendar)
     if token_revision is not None and token_revision > latest_revision:
         return _valid_sync_token_error_response()
-    if limit is not None:
-        return _collection_sync_limit_error_response()
 
     responses = []
     next_revision = latest_revision
@@ -2317,11 +2306,45 @@ def _sync_collection_response(
                 cal_map,
             )
         )
-        objects = list(calendar.calendar_objects.all())
-        for obj in objects:
-            href = _object_href_for_style(calendar, obj, style)
-            obj_map = _build_prop_map_for_object(obj, calendar_data_request)
-            responses.append(response_for_props(href, obj_map))
+        changes = list(
+            CalendarObjectChange.objects.filter(calendar=calendar).order_by("revision")
+        )
+        if changes:
+            latest_by_filename = {}
+            for change in changes:
+                latest_by_filename[change.filename] = change
+            selected_changes = sorted(
+                latest_by_filename.values(),
+                key=lambda change: change.revision,
+            )
+            if limit is not None:
+                selected_changes = selected_changes[:limit]
+            if selected_changes:
+                next_revision = selected_changes[-1].revision
+
+            current_objects = {
+                obj.filename: obj
+                for obj in calendar.calendar_objects.filter(
+                    filename__in=[change.filename for change in selected_changes]
+                )
+            }
+            for change in selected_changes:
+                if change.is_deleted:
+                    continue
+                obj = current_objects.get(change.filename)
+                if obj is None:
+                    continue
+                href = _object_href_for_style(calendar, obj, style)
+                obj_map = _build_prop_map_for_object(obj, calendar_data_request)
+                responses.append(response_for_props(href, obj_map))
+        else:
+            objects = list(calendar.calendar_objects.all())
+            if limit is not None:
+                objects = objects[:limit]
+            for obj in objects:
+                href = _object_href_for_style(calendar, obj, style)
+                obj_map = _build_prop_map_for_object(obj, calendar_data_request)
+                responses.append(response_for_props(href, obj_map))
     else:
         changes = list(
             CalendarObjectChange.objects.filter(
@@ -2329,23 +2352,24 @@ def _sync_collection_response(
                 revision__gt=token_revision,
             ).order_by("revision")
         )
-        if changes:
-            next_revision = changes[-1].revision
-
         latest_by_filename = {}
         for change in changes:
             latest_by_filename[change.filename] = change
-
-        current_objects = {
-            obj.filename: obj
-            for obj in calendar.calendar_objects.filter(
-                filename__in=latest_by_filename.keys()
-            )
-        }
         ordered_changes = sorted(
             latest_by_filename.values(),
             key=lambda change: change.revision,
         )
+        if limit is not None:
+            ordered_changes = ordered_changes[:limit]
+        if ordered_changes:
+            next_revision = ordered_changes[-1].revision
+
+        current_objects = {
+            obj.filename: obj
+            for obj in calendar.calendar_objects.filter(
+                filename__in=[change.filename for change in ordered_changes]
+            )
+        }
         for change in ordered_changes:
             filename = change.filename
             href = _object_href_for_filename(calendar, filename, style)
@@ -2447,9 +2471,6 @@ def _handle_report(calendars, request, allow_sync_collection=True):
 
     if root.tag == qname(NS_DAV, "sync-collection"):
         requested_limit = _sync_collection_limit(root)
-        if requested_limit is not None:
-            _ACTIVE_REPORT_TZINFO = None
-            return _collection_sync_limit_error_response()
 
         if not allow_sync_collection:
             _ACTIVE_REPORT_TZINFO = None

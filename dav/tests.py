@@ -635,14 +635,18 @@ class DavReportTests(TestCase):
         )
         return {"HTTP_AUTHORIZATION": f"Basic {token}"}
 
-    def _sync_collection_body(self, sync_token=None):
+    def _sync_collection_body(self, sync_token=None, limit=None):
         sync_token_xml = ""
         if sync_token is not None:
             sync_token_xml = f"<D:sync-token>{sync_token}</D:sync-token>"
+        limit_xml = ""
+        if limit is not None:
+            limit_xml = f"<D:limit><D:nresults>{limit}</D:nresults></D:limit>"
         return f"""<?xml version=\"1.0\" encoding=\"utf-8\"?>
 <D:sync-collection xmlns:D=\"DAV:\" xmlns:C=\"urn:ietf:params:xml:ns:caldav\">
   <D:sync-level>1</D:sync-level>
   {sync_token_xml}
+  {limit_xml}
   <D:prop>
     <D:getetag/>
     <C:calendar-data/>
@@ -655,11 +659,12 @@ class DavReportTests(TestCase):
         username="owner",
         password="pw-test-12345",
         sync_token=None,
+        limit=None,
     ):
         return self.client.generic(
             "REPORT",
             path,
-            data=self._sync_collection_body(sync_token=sync_token),
+            data=self._sync_collection_body(sync_token=sync_token, limit=limit),
             content_type="application/xml",
             **self._basic_auth(username, password),
         )
@@ -965,6 +970,68 @@ class DavReportTests(TestCase):
         self.assertIn(
             "/dav/calendars/__uids__/10000000-0000-0000-0000-000000000001/family/style.ics",
             uids_response.content.decode("utf-8"),
+        )
+
+    def test_sync_collection_limit_is_supported(self):
+        first = self.client.generic(
+            "PUT",
+            f"/dav/calendars/{self.owner.username}/{self.calendar.slug}/limit-a.ics",
+            data="BEGIN:VCALENDAR\nBEGIN:VEVENT\nUID:limit-a\nEND:VEVENT\nEND:VCALENDAR\n",
+            content_type="text/calendar; charset=utf-8",
+            **self._basic_auth("owner", "pw-test-12345"),
+        )
+        self.assertEqual(first.status_code, 201)
+        second = self.client.generic(
+            "PUT",
+            f"/dav/calendars/{self.owner.username}/{self.calendar.slug}/limit-b.ics",
+            data="BEGIN:VCALENDAR\nBEGIN:VEVENT\nUID:limit-b\nEND:VEVENT\nEND:VCALENDAR\n",
+            content_type="text/calendar; charset=utf-8",
+            **self._basic_auth("owner", "pw-test-12345"),
+        )
+        self.assertEqual(second.status_code, 201)
+
+        response = self._sync_collection_report(
+            f"/dav/calendars/{self.owner.username}/{self.calendar.slug}/",
+            sync_token=f"data:,{self.calendar.id}/0",
+            limit=1,
+        )
+        self.assertEqual(response.status_code, 207)
+        xml_text = response.content.decode("utf-8")
+        self.assertNotIn("number-of-matches-within-limits", xml_text)
+        root = ET.fromstring(response.content)
+        token = root.find("{DAV:}sync-token")
+        self.assertIsNotNone(token)
+        token_value = "" if token is None else (token.text or "")
+        self.assertTrue(token_value.startswith(f"data:,{self.calendar.id}/"))
+
+    def test_sync_collection_limit_with_filter_returns_207(self):
+        body = f"""<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+<sync-collection xmlns=\"DAV:\">
+  <sync-token />
+  <sync-level>1</sync-level>
+  <prop>
+    <getcontenttype />
+  </prop>
+  <filter xmlns=\"urn:ietf:params:xml:ns:caldav\">
+    <comp-filter name=\"VCALENDAR\">
+      <comp-filter name=\"VEVENT\" />
+    </comp-filter>
+  </filter>
+  <limit>
+    <nresults>100</nresults>
+  </limit>
+</sync-collection>"""
+        response = self.client.generic(
+            "REPORT",
+            f"/dav/calendars/{self.owner.username}/{self.calendar.slug}/",
+            data=body,
+            content_type="application/xml",
+            **self._basic_auth("owner", "pw-test-12345"),
+        )
+        self.assertEqual(response.status_code, 207)
+        self.assertNotIn(
+            "number-of-matches-within-limits",
+            response.content.decode("utf-8"),
         )
 
 
