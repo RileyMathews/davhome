@@ -54,12 +54,14 @@ class DavDiscoveryTests(TestCase):
         self.assertEqual(response.status_code, 302)
         self.assertEqual(response.headers.get("Location"), "/dav/")
 
-    def test_dav_root_propfind_allows_unauthenticated_marker(self):
+    def test_dav_root_propfind_requires_authentication(self):
         response = self.client.generic(
             "PROPFIND", "/dav/", data="", content_type="application/xml"
         )
-        self.assertEqual(response.status_code, 403)
-        self.assertIn("propfind-finite-depth", response.content.decode("utf-8"))
+        self.assertEqual(response.status_code, 401)
+        self.assertIn(
+            'Basic realm="davhome"', response.headers.get("WWW-Authenticate", "")
+        )
 
         response_depth0 = self.client.generic(
             "PROPFIND",
@@ -68,8 +70,11 @@ class DavDiscoveryTests(TestCase):
             content_type="application/xml",
             HTTP_DEPTH="0",
         )
-        self.assertEqual(response_depth0.status_code, 207)
-        self.assertIn("unauthenticated", response_depth0.content.decode("utf-8"))
+        self.assertEqual(response_depth0.status_code, 401)
+        self.assertIn(
+            'Basic realm="davhome"',
+            response_depth0.headers.get("WWW-Authenticate", ""),
+        )
 
     def test_dav_root_options_advertises_dav(self):
         response = self.client.options("/dav/")

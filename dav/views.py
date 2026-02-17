@@ -1656,15 +1656,15 @@ def dav_root(request):
     if request.method != "PROPFIND":
         return _not_allowed(allowed)
 
+    user = get_dav_user(request)
+    if user is None:
+        return unauthorized_response()
+
     parsed, parse_error = _parse_propfind_payload(request)
     if parse_error is not None:
         return parse_error
 
-    user = get_dav_user(request)
-    if user is None:
-        prop_map = _build_prop_map_for_root_unauthenticated()
-    else:
-        prop_map = _build_prop_map_for_root(user)
+    prop_map = _build_prop_map_for_root(user)
 
     depth = request.headers.get("Depth", "infinity")
     if parsed is None:
@@ -1674,7 +1674,7 @@ def dav_root(request):
     root_ok, root_missing = _select_props(prop_map, requested)
     responses = [response_with_props("/dav/", root_ok, root_missing)]
 
-    if depth == "1" and user is not None:
+    if depth == "1":
         principal_href = _principal_href_for_user(user)
         home_href = _calendar_home_href_for_user(user)
 
