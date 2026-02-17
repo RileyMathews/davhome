@@ -13,10 +13,6 @@ caldavtester-test-suite:
 	# Default implementation-loop suite. serverinfo.xml feature flags control what runs.
 	nix develop path:.#caldavtester -c bash -lc 'cd caldavtester-lab && ./bootstrap.sh >/dev/null && source ./.env-py2.sh && cd ccs-caldavtester && python2 testcaldav.py --all'
 
-caldavtester-full-suite:
-	# Full --all suite is for explicit overnight diagnostics only.
-	nix develop path:.#caldavtester -c bash -lc 'set -euo pipefail; cd caldavtester-lab && ./bootstrap.sh >/dev/null && source ./.env-py2.sh && cd ccs-caldavtester && mkdir -p ../../logs && LOG=../../logs/caldavtester-full-$(date +%Y%m%d-%H%M%S).log && python2 testcaldav.py --all 2>&1 | tee "$LOG"; echo "Saved full-suite log: $LOG"'
-
 integration-test:
 	just litmus-test
 	just caldavtester-test-suite
