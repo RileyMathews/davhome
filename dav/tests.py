@@ -907,6 +907,14 @@ class DavReportTests(TestCase):
         self.assertEqual(response.status_code, 403)
         self.assertIn("valid-sync-token", response.content.decode("utf-8"))
 
+    def test_sync_collection_future_revision_token_returns_valid_sync_token_error(self):
+        response = self._sync_collection_report(
+            f"/dav/calendars/{self.owner.username}/{self.calendar.slug}/",
+            sync_token=f"http://davhome/sync/{self.calendar.id}/99",
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertIn("valid-sync-token", response.content.decode("utf-8"))
+
     def test_sync_collection_hrefs_follow_users_and_uids_paths(self):
         user01 = User.objects.create_user(username="user01", password="user01")
         calendar = Calendar.objects.create(
