@@ -5,6 +5,7 @@ import re
 from datetime import datetime, timedelta, timezone as datetime_timezone
 from email.utils import parsedate_to_datetime
 from urllib.parse import quote, urlparse
+from uuid import UUID
 from xml.etree import ElementTree as ET
 from zoneinfo import ZoneInfo
 
@@ -13,10 +14,11 @@ from recurring_ical_events import of as recurring_of
 from django.http import HttpResponse, HttpResponseNotAllowed
 from django.shortcuts import redirect
 from django.views.decorators.csrf import csrf_exempt
+from django.db.models import Max
 from django.utils import timezone
 from django.utils.http import http_date
 
-from calendars.models import Calendar
+from calendars.models import Calendar, CalendarObjectChange
 from calendars.permissions import can_view_calendar, can_write_calendar
 
 from .auth import get_dav_user, unauthorized_response
@@ -40,6 +42,7 @@ from .xml import (
 
 
 _ACTIVE_REPORT_TZINFO = None
+_SYNC_TOKEN_PATH_PREFIX = "/sync/"
 
 
 @csrf_exempt
@@ -439,6 +442,65 @@ def _caldav_error_response(error_name, status=403):
         status,
         ET.tostring(error, encoding="utf-8", xml_declaration=True),
     )
+
+
+def _dav_error_response(error_name, status=403):
+    error = ET.Element(qname(NS_DAV, "error"))
+    ET.SubElement(error, qname(NS_DAV, error_name))
+    return _xml_response(
+        status,
+        ET.tostring(error, encoding="utf-8", xml_declaration=True),
+    )
+
+
+def _valid_sync_token_error_response():
+    return _dav_error_response("valid-sync-token", status=403)
+
+
+def _build_sync_token(calendar_id, revision):
+    return f"http://davhome{_SYNC_TOKEN_PATH_PREFIX}{calendar_id}/{revision}"
+
+
+def _latest_sync_revision(calendar):
+    latest = CalendarObjectChange.objects.filter(calendar=calendar).aggregate(
+        max_revision=Max("revision")
+    )
+    return int(latest["max_revision"] or 0)
+
+
+def _sync_token_for_calendar(calendar):
+    return _build_sync_token(calendar.id, _latest_sync_revision(calendar))
+
+
+def _parse_sync_token_for_calendar(token, calendar):
+    value = (token or "").strip()
+    if not value:
+        return None, _valid_sync_token_error_response()
+
+    parsed = urlparse(value)
+    path = parsed.path or ""
+    if (
+        parsed.params
+        or parsed.query
+        or parsed.fragment
+        or not path.startswith(_SYNC_TOKEN_PATH_PREFIX)
+    ):
+        return None, _valid_sync_token_error_response()
+
+    parts = path.removeprefix(_SYNC_TOKEN_PATH_PREFIX).split("/")
+    if len(parts) != 2:
+        return None, _valid_sync_token_error_response()
+
+    try:
+        token_calendar_id = UUID(parts[0])
+        revision = int(parts[1])
+    except (ValueError, TypeError):
+        return None, _valid_sync_token_error_response()
+
+    if revision < 0 or token_calendar_id != calendar.id:
+        return None, _valid_sync_token_error_response()
+
+    return revision, None
 
 
 def _extract_tzid_from_timezone_text(timezone_text):
