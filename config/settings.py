@@ -10,7 +10,10 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/6.0/ref/settings/
 """
 
+import os
 from pathlib import Path
+
+from django.core.exceptions import ImproperlyConfigured
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
@@ -25,7 +28,7 @@ SECRET_KEY = "django-insecure-*p-7ew4h%hq5&u+8q&8$tuf@s1sbg=tr%4ck7-(ze-m2%84wss
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = True
 
-ALLOWED_HOSTS = []
+ALLOWED_HOSTS = [require_env("WEB_HOST")]
 
 
 # Application definition
@@ -72,13 +75,24 @@ TEMPLATES = [
 WSGI_APPLICATION = "config.wsgi.application"
 
 
+def require_env(name: str) -> str:
+    value = os.environ.get(name)
+    if not value:
+        raise ImproperlyConfigured(f"Set the {name} environment variable")
+    return value
+
+
 # Database
 # https://docs.djangoproject.com/en/6.0/ref/settings/#databases
 
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": require_env("POSTGRES_DB"),
+        "USER": require_env("POSTGRES_USER"),
+        "PASSWORD": require_env("POSTGRES_PASSWORD"),
+        "HOST": require_env("POSTGRES_HOST"),
+        "PORT": os.environ.get("POSTGRES_PORT", "5432"),
     }
 }
 
