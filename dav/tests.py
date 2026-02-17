@@ -301,6 +301,24 @@ class DavDiscoveryTests(TestCase):
             response.content.decode("utf-8"),
         )
 
+    def test_calendar_home_supported_report_set_does_not_include_sync_collection(self):
+        body = """<?xml version="1.0" encoding="utf-8"?>
+<D:propfind xmlns:D="DAV:">
+  <D:prop>
+    <D:supported-report-set/>
+  </D:prop>
+</D:propfind>"""
+        response = self.client.generic(
+            "PROPFIND",
+            f"/dav/calendars/{self.owner.username}/",
+            data=body,
+            content_type="application/xml",
+            HTTP_DEPTH="0",
+            **self._basic_auth("owner", "pw-test-12345"),
+        )
+        self.assertEqual(response.status_code, 207)
+        self.assertNotIn("sync-collection", response.content.decode("utf-8"))
+
     def test_calendar_collection_propfind_includes_owner(self):
         body = """<?xml version="1.0" encoding="utf-8"?>
 <D:propfind xmlns:D="DAV:"><D:prop><D:owner/></D:prop></D:propfind>"""
@@ -682,6 +700,23 @@ class DavReportTests(TestCase):
         response = self.client.generic(
             "REPORT",
             f"/dav/calendars/{self.owner.username}/{self.calendar.slug}/",
+            data=body,
+            content_type="application/xml",
+            **self._basic_auth("owner", "pw-test-12345"),
+        )
+        self.assertEqual(response.status_code, 501)
+
+    def test_calendar_home_sync_collection_report_returns_501(self):
+        body = """<?xml version="1.0" encoding="utf-8"?>
+<D:sync-collection xmlns:D="DAV:">
+  <D:sync-level>1</D:sync-level>
+  <D:prop>
+    <D:getetag/>
+  </D:prop>
+</D:sync-collection>"""
+        response = self.client.generic(
+            "REPORT",
+            f"/dav/calendars/{self.owner.username}/",
             data=body,
             content_type="application/xml",
             **self._basic_auth("owner", "pw-test-12345"),

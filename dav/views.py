@@ -2025,7 +2025,7 @@ def calendar_home_view(request, username):
     calendars = _visible_calendars_for_home(owner, user)
 
     if request.method == "REPORT":
-        return _handle_report(calendars, request)
+        return _handle_report(calendars, request, allow_sync_collection=False)
 
     if request.method != "PROPFIND":
         return _not_allowed(allowed)
@@ -2313,7 +2313,7 @@ def _sync_collection_response(
     return _xml_response(207, body)
 
 
-def _handle_report(calendars, request):
+def _handle_report(calendars, request, allow_sync_collection=True):
     global _ACTIVE_REPORT_TZINFO
     parsed_report = parse_report_request(request.body)
     if parsed_report is None:
@@ -2393,6 +2393,10 @@ def _handle_report(calendars, request):
         return response
 
     if root.tag == qname(NS_DAV, "sync-collection"):
+        if not allow_sync_collection:
+            _ACTIVE_REPORT_TZINFO = None
+            return HttpResponse(status=501)
+
         sync_level = (root.findtext(qname(NS_DAV, "sync-level")) or "").strip()
         if sync_level and sync_level != "1":
             _ACTIVE_REPORT_TZINFO = None
@@ -2478,7 +2482,7 @@ def calendar_collection_view(request, username, slug):
         return _dav_common_headers(response)
 
     if request.method == "REPORT":
-        return _handle_report([calendar], request)
+        return _handle_report([calendar], request, allow_sync_collection=True)
 
     if request.method != "PROPFIND":
         return _not_allowed(allowed)
