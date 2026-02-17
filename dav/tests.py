@@ -446,6 +446,25 @@ class DavWriteTests(TestCase):
         )
         self.assertEqual(response.status_code, 403)
 
+    def test_mkcalendar_is_disabled_for_remote_clients(self):
+        response = self.client.generic(
+            "MKCALENDAR",
+            f"/dav/calendars/{self.owner.username}/newcal/",
+            data="",
+            content_type="application/xml",
+            **self._basic_auth("owner", "pw-test-12345"),
+        )
+        self.assertEqual(response.status_code, 405)
+
+    def test_mkcol_is_disabled_for_remote_clients(self):
+        response = self.client.generic(
+            "MKCOL",
+            f"/dav/calendars/{self.owner.username}/newcal/",
+            data="",
+            **self._basic_auth("owner", "pw-test-12345"),
+        )
+        self.assertEqual(response.status_code, 405)
+
     def test_write_share_can_delete(self):
         self._put_event(
             "owner",

@@ -2212,8 +2212,6 @@ def calendar_collection_view(request, username, slug):
         "GET",
         "HEAD",
         "REPORT",
-        "MKCOL",
-        "MKCALENDAR",
     ]
     if request.method == "OPTIONS":
         response = HttpResponse(status=204)
@@ -2229,32 +2227,7 @@ def calendar_collection_view(request, username, slug):
         return HttpResponse(status=404)
 
     if request.method in ("MKCOL", "MKCALENDAR"):
-        if user != owner:
-            return HttpResponse(status=403)
-
-        if request.method == "MKCOL" and request.body:
-            return HttpResponse(status=415)
-
-        existing = Calendar.objects.filter(owner=owner, slug=slug).first()  # type: ignore[attr-defined]
-        if existing is not None:
-            return HttpResponse(status=405)
-
-        timezone_name = "UTC"
-        if request.method == "MKCALENDAR":
-            timezone_name = _timezone_name_from_mkcalendar_payload(request.body)
-
-        now = timezone.now()
-        calendar = Calendar.objects.create(  # type: ignore[attr-defined]
-            owner=owner,
-            slug=slug,
-            name=slug,
-            timezone=timezone_name,
-            updated_at=now,
-        )
-        response = HttpResponse(status=201)
-        response["Location"] = f"/dav/calendars/{username}/{calendar.slug}/"
-        response["ETag"] = _etag_for_calendar(calendar)
-        return _dav_common_headers(response)
+        return _not_allowed(allowed)
 
     calendar = get_calendar_for_user(user, username, slug)
     if calendar is None:
