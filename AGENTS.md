@@ -60,11 +60,13 @@ Guidance for coding agents working in this repository.
 
 ## Integration / Protocol Test Commands
 
+- Use `just` recipes for integration/protocol work. They encode the expected
+  settings/profile and avoid fixture drift.
 - Seed integration fixtures:
   - `just setup-integration-fixtures`
 - Litmus DAV compatibility test:
   - `just litmus-test`
-- CalDAV tester default suite (`--all` with feature-gated execution):
+- CalDAV tester default suite (explicit supported subset):
   - `just caldavtester-test-suite`
 - Full CalDAV tester diagnostics (long run):
   - `just caldavtester-full-suite`
@@ -76,18 +78,21 @@ Guidance for coding agents working in this repository.
 - The CalDAVTester repos are vendored under `caldavtester-lab/`:
   - `caldavtester-lab/ccs-caldavtester`
   - `caldavtester-lab/ccs-pycalendar`
-- `just caldavtester-test-suite` runs `python2 testcaldav.py --all`.
-- The effective integration test scope is controlled by
-  `caldavtester-lab/ccs-caldavtester/scripts/server/serverinfo.xml`.
+- `just caldavtester-test-suite` runs an explicit list of supported
+  `scripts/tests/CalDAV/*.xml` modules from `justfile`.
+- `caldavtester-lab/ccs-caldavtester/scripts/server/serverinfo.xml` controls
+  feature-gated behavior *within* those modules.
   - Tests/suites guarded with `<require-feature>` only run when the matching
     `<feature>` is enabled in that file.
-  - To add coverage for a module/suite, enable the required feature(s).
-  - To remove coverage for a module/suite, disable/comment those feature(s).
-- Use this as the policy: adjust feature flags in `serverinfo.xml` rather than
-  hard-coding suite file lists in `justfile`.
+  - To add/remove module-level coverage in the default suite, edit the CalDAV
+    module list in `justfile`.
+  - To tune suite/test-level coverage inside a module, adjust feature flags in
+    `serverinfo.xml`.
 - For quick targeted debugging, run a specific module directly from
   `caldavtester-lab/ccs-caldavtester`, for example:
   - `python2 testcaldav.py CalDAV/reports.xml`
+  - If direct runs need fixture state, run `just setup-integration-fixtures`
+    first (it uses `config.settings_test`).
 
 ## Lint / Format / Type Checks
 
