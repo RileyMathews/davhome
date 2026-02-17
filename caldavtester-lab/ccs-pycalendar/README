@@ -1,0 +1,25 @@
+Notice of Archival
+==================
+
+The developers of the Calendar and Contacts Server and its related
+projects have each moved on to other things. The time has come to
+officially archive the project. Thank you to all the users and
+contributors. Feel free to fork this project if you wish to continue
+to maintain it.
+
+Getting Started
+===============
+
+This is a python library for parsing and generating iCalendar data.
+
+
+Copyright and License
+=====================
+
+Copyright (c) 2005-2017 Apple Inc.  All rights reserved.
+
+This software is licensed under the Apache License, Version 2.0.  The
+Apache License is a well-established open source license, enabling
+collaborative open source software development.
+
+See the "LICENSE" file for the full text of the license terms.

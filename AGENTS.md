@@ -64,12 +64,30 @@ Guidance for coding agents working in this repository.
   - `just setup-integration-fixtures`
 - Litmus DAV compatibility test:
   - `just litmus-test`
-- CalDAV tester default suite:
+- CalDAV tester default suite (`--all` with feature-gated execution):
   - `just caldavtester-test-suite`
 - Full CalDAV tester diagnostics (long run):
   - `just caldavtester-full-suite`
 - Combined integration shortcut:
   - `just integration-test`
+
+### CalDAVTester source of truth
+
+- The CalDAVTester repos are vendored under `caldavtester-lab/`:
+  - `caldavtester-lab/ccs-caldavtester`
+  - `caldavtester-lab/ccs-pycalendar`
+- `just caldavtester-test-suite` runs `python2 testcaldav.py --all`.
+- The effective integration test scope is controlled by
+  `caldavtester-lab/ccs-caldavtester/scripts/server/serverinfo.xml`.
+  - Tests/suites guarded with `<require-feature>` only run when the matching
+    `<feature>` is enabled in that file.
+  - To add coverage for a module/suite, enable the required feature(s).
+  - To remove coverage for a module/suite, disable/comment those feature(s).
+- Use this as the policy: adjust feature flags in `serverinfo.xml` rather than
+  hard-coding suite file lists in `justfile`.
+- For quick targeted debugging, run a specific module directly from
+  `caldavtester-lab/ccs-caldavtester`, for example:
+  - `python2 testcaldav.py CalDAV/reports.xml`
 
 ## Lint / Format / Type Checks
 
