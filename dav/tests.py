@@ -622,6 +622,35 @@ class DavReportTests(TestCase):
         )
         return {"HTTP_AUTHORIZATION": f"Basic {token}"}
 
+    def _sync_collection_body(self, sync_token=None):
+        sync_token_xml = ""
+        if sync_token is not None:
+            sync_token_xml = f"<D:sync-token>{sync_token}</D:sync-token>"
+        return f"""<?xml version=\"1.0\" encoding=\"utf-8\"?>
+<D:sync-collection xmlns:D=\"DAV:\" xmlns:C=\"urn:ietf:params:xml:ns:caldav\">
+  <D:sync-level>1</D:sync-level>
+  {sync_token_xml}
+  <D:prop>
+    <D:getetag/>
+    <C:calendar-data/>
+  </D:prop>
+</D:sync-collection>"""
+
+    def _sync_collection_report(
+        self,
+        path,
+        username="owner",
+        password="pw-test-12345",
+        sync_token=None,
+    ):
+        return self.client.generic(
+            "REPORT",
+            path,
+            data=self._sync_collection_body(sync_token=sync_token),
+            content_type="application/xml",
+            **self._basic_auth(username, password),
+        )
+
     def test_calendar_multiget_returns_calendar_data(self):
         body = f"""<?xml version=\"1.0\" encoding=\"utf-8\"?>
 <C:calendar-multiget xmlns:D=\"DAV:\" xmlns:C=\"urn:ietf:params:xml:ns:caldav\">
@@ -796,6 +825,125 @@ class DavReportTests(TestCase):
         self.assertIn(
             "/dav/calendars/__uids__/10000000-0000-0000-0000-000000000001/family/",
             xml_text,
+        )
+
+    def test_sync_collection_initial_sync_returns_members_and_token(self):
+        response = self._sync_collection_report(
+            f"/dav/calendars/{self.owner.username}/{self.calendar.slug}/"
+        )
+        self.assertEqual(response.status_code, 207)
+        xml_text = response.content.decode("utf-8")
+        self.assertIn(self.event.filename, xml_text)
+        self.assertIn(self.todo.filename, xml_text)
+        self.assertIn(
+            f"http://davhome/sync/{self.calendar.id}/0",
+            xml_text,
+        )
+
+    def test_sync_collection_incremental_after_put_returns_changed_item(self):
+        create = self.client.generic(
+            "PUT",
+            f"/dav/calendars/{self.owner.username}/{self.calendar.slug}/sync-new.ics",
+            data="BEGIN:VCALENDAR\nBEGIN:VEVENT\nUID:sync-new\nEND:VEVENT\nEND:VCALENDAR\n",
+            content_type="text/calendar; charset=utf-8",
+            **self._basic_auth("owner", "pw-test-12345"),
+        )
+        self.assertEqual(create.status_code, 201)
+
+        response = self._sync_collection_report(
+            f"/dav/calendars/{self.owner.username}/{self.calendar.slug}/",
+            sync_token=f"http://davhome/sync/{self.calendar.id}/0",
+        )
+        self.assertEqual(response.status_code, 207)
+        xml_text = response.content.decode("utf-8")
+        self.assertIn("sync-new.ics", xml_text)
+        self.assertIn(f"http://davhome/sync/{self.calendar.id}/1", xml_text)
+
+    def test_sync_collection_delete_returns_404_response(self):
+        create = self.client.generic(
+            "PUT",
+            f"/dav/calendars/{self.owner.username}/{self.calendar.slug}/sync-delete.ics",
+            data="BEGIN:VCALENDAR\nBEGIN:VEVENT\nUID:sync-delete\nEND:VEVENT\nEND:VCALENDAR\n",
+            content_type="text/calendar; charset=utf-8",
+            **self._basic_auth("owner", "pw-test-12345"),
+        )
+        self.assertEqual(create.status_code, 201)
+
+        delete = self.client.generic(
+            "DELETE",
+            f"/dav/calendars/{self.owner.username}/{self.calendar.slug}/sync-delete.ics",
+            **self._basic_auth("owner", "pw-test-12345"),
+        )
+        self.assertEqual(delete.status_code, 204)
+
+        response = self._sync_collection_report(
+            f"/dav/calendars/{self.owner.username}/{self.calendar.slug}/",
+            sync_token=f"http://davhome/sync/{self.calendar.id}/1",
+        )
+        self.assertEqual(response.status_code, 207)
+        xml_text = response.content.decode("utf-8")
+        self.assertIn("sync-delete.ics", xml_text)
+        self.assertIn("404 Not Found", xml_text)
+
+    def test_sync_collection_invalid_token_returns_valid_sync_token_error(self):
+        response = self._sync_collection_report(
+            f"/dav/calendars/{self.owner.username}/{self.calendar.slug}/",
+            sync_token="not-a-token",
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertIn("valid-sync-token", response.content.decode("utf-8"))
+
+    def test_sync_collection_wrong_calendar_token_returns_valid_sync_token_error(self):
+        other_calendar = Calendar.objects.create(
+            owner=self.owner,
+            slug="other",
+            name="Other",
+            timezone="UTC",
+        )
+        response = self._sync_collection_report(
+            f"/dav/calendars/{self.owner.username}/{self.calendar.slug}/",
+            sync_token=f"http://davhome/sync/{other_calendar.id}/0",
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertIn("valid-sync-token", response.content.decode("utf-8"))
+
+    def test_sync_collection_hrefs_follow_users_and_uids_paths(self):
+        user01 = User.objects.create_user(username="user01", password="user01")
+        calendar = Calendar.objects.create(
+            owner=user01,
+            slug="family",
+            name="Family",
+            timezone="UTC",
+        )
+        CalendarObject.objects.create(
+            calendar=calendar,
+            uid="uid-style",
+            filename="style.ics",
+            etag='"etag-style"',
+            ical_blob="BEGIN:VCALENDAR\nBEGIN:VEVENT\nUID:uid-style\nEND:VEVENT\nEND:VCALENDAR\n",
+            size=96,
+        )
+
+        users_response = self._sync_collection_report(
+            "/dav/calendars/users/user01/family/",
+            username="user01",
+            password="user01",
+        )
+        self.assertEqual(users_response.status_code, 207)
+        self.assertIn(
+            "/dav/calendars/users/user01/family/style.ics",
+            users_response.content.decode("utf-8"),
+        )
+
+        uids_response = self._sync_collection_report(
+            "/dav/calendars/__uids__/10000000-0000-0000-0000-000000000001/family/",
+            username="user01",
+            password="user01",
+        )
+        self.assertEqual(uids_response.status_code, 207)
+        self.assertIn(
+            "/dav/calendars/__uids__/10000000-0000-0000-0000-000000000001/family/style.ics",
+            uids_response.content.decode("utf-8"),
         )
 
 
