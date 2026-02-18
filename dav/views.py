@@ -1532,7 +1532,30 @@ def _dav_common_headers(response):
     return response
 
 
-def _not_allowed(allowed):
+def _not_allowed(request, allowed, **extra):
+    forwarded = (request.headers.get("X-Forwarded-For") or "").strip()
+    remote_ip = (
+        forwarded.split(",", 1)[0].strip()
+        if forwarded
+        else (request.META.get("REMOTE_ADDR") or "").strip()
+    )
+    logger.info(
+        "dav_method_not_allowed method=%s path=%s status=%s allowed=%r user_agent=%r content_type=%r content_length=%r depth=%r destination=%r overwrite=%r if_none_match=%r if_match=%r remote_ip=%r extra=%r",
+        request.method,
+        request.path,
+        405,
+        allowed,
+        request.headers.get("User-Agent"),
+        request.META.get("CONTENT_TYPE") or request.content_type,
+        request.META.get("CONTENT_LENGTH"),
+        request.headers.get("Depth"),
+        request.headers.get("Destination"),
+        request.headers.get("Overwrite"),
+        request.headers.get("If-None-Match"),
+        request.headers.get("If-Match"),
+        remote_ip,
+        extra,
+    )
     response = HttpResponseNotAllowed(allowed)
     return _dav_common_headers(response)
 
@@ -1813,7 +1836,7 @@ def dav_root(request):
         return _dav_common_headers(response)
 
     if request.method != "PROPFIND":
-        return _not_allowed(allowed)
+        return _not_allowed(request, allowed)
 
     user = get_dav_user(request)
     if user is None:
@@ -1906,7 +1929,7 @@ def principal_view(request, username):
         return _dav_common_headers(response)
 
     if request.method != "PROPFIND":
-        return _not_allowed(allowed)
+        return _not_allowed(request, allowed, username=username)
 
     parsed, parse_error = _parse_propfind_payload(request)
     if parse_error is not None:
@@ -2015,7 +2038,7 @@ def _collection_view(request, href, display_name):
         return _dav_common_headers(response)
 
     if request.method != "PROPFIND":
-        return _not_allowed(allowed)
+        return _not_allowed(request, allowed, href=href)
 
     parsed, parse_error = _parse_propfind_payload(request)
     if parse_error is not None:
@@ -2079,7 +2102,7 @@ def calendar_home_view(request, username):
         return _handle_report(calendars, request, allow_sync_collection=False)
 
     if request.method != "PROPFIND":
-        return _not_allowed(allowed)
+        return _not_allowed(request, allowed, username=username)
 
     parsed, parse_error = _parse_propfind_payload(request)
     if parse_error is not None:
@@ -2569,7 +2592,7 @@ def calendar_collection_view(request, username, slug):
         return HttpResponse(status=404)
 
     if request.method == "MKCALENDAR":
-        return _not_allowed(allowed)
+        return _not_allowed(request, allowed, username=username, slug=slug)
 
     if request.method == "MKCOL":
         if owner != user:
@@ -2632,7 +2655,7 @@ def calendar_collection_view(request, username, slug):
         return _handle_report([calendar], request, allow_sync_collection=True)
 
     if request.method != "PROPFIND":
-        return _not_allowed(allowed)
+        return _not_allowed(request, allowed, username=username, slug=slug)
 
     propfind_etag = _etag_for_calendar(calendar)
     propfind_timestamp = calendar.updated_at.timestamp()
@@ -2941,7 +2964,13 @@ def calendar_object_view(request, username, slug, filename):
         return _dav_common_headers(response)
 
     if request.method != "PROPFIND":
-        return _not_allowed(allowed)
+        return _not_allowed(
+            request,
+            allowed,
+            username=username,
+            slug=slug,
+            filename=filename,
+        )
 
     parsed, parse_error = _parse_propfind_payload(request)
     if parse_error is not None:
