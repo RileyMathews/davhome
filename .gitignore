@@ -14,3 +14,4 @@ media
 .DS_Store
 .encryption-password
 .envrc.secret
+debug.log

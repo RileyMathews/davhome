@@ -1086,6 +1086,32 @@ class DavReportTests(TestCase):
             response.content.decode("utf-8"),
         )
 
+    def test_sync_collection_logs_request_revisions_and_selected_items(self):
+        create = self.client.generic(
+            "PUT",
+            f"/dav/calendars/{self.owner.username}/{self.calendar.slug}/sync-log.ics",
+            data="BEGIN:VCALENDAR\nBEGIN:VEVENT\nUID:sync-log\nEND:VEVENT\nEND:VCALENDAR\n",
+            content_type="text/calendar; charset=utf-8",
+            **self._basic_auth("owner", "pw-test-12345"),
+        )
+        self.assertEqual(create.status_code, 201)
+
+        with self.assertLogs("dav.audit", level="INFO") as captured:
+            response = self._sync_collection_report(
+                f"/dav/calendars/{self.owner.username}/{self.calendar.slug}/",
+                sync_token=f"data:,{self.calendar.id}/0",
+            )
+
+        self.assertEqual(response.status_code, 207)
+        log_output = "\n".join(captured.output)
+        self.assertIn("dav_sync_collection_request", log_output)
+        self.assertIn("dav_sync_collection_token_parsed", log_output)
+        self.assertIn("dav_sync_collection_selection", log_output)
+        self.assertIn("dav_sync_collection_response", log_output)
+        self.assertIn("token_revision=0", log_output)
+        self.assertIn("latest_revision=1", log_output)
+        self.assertIn("sync-log.ics", log_output)
+
 
 class DavWebdavCompatibilityTests(TestCase):
     @classmethod

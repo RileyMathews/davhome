@@ -2692,6 +2692,8 @@ def _sync_collection_response(
 
     responses = []
     next_revision = latest_revision
+    selected_items = []
+    selected_items_source = ""
 
     if token_revision is None:
         cal_map = _build_prop_map_for_calendar_collection(calendar, calendar.owner)
@@ -2705,6 +2707,7 @@ def _sync_collection_response(
             CalendarObjectChange.objects.filter(calendar=calendar).order_by("revision")
         )
         if changes:
+            selected_items_source = "initial-latest-by-filename"
             latest_by_filename = {}
             for change in changes:
                 latest_by_filename[change.filename] = change
@@ -2725,22 +2728,48 @@ def _sync_collection_response(
             }
             for change in selected_changes:
                 if change.is_deleted:
+                    selected_items.append(
+                        {
+                            "revision": change.revision,
+                            "filename": change.filename,
+                            "is_deleted": True,
+                            "object_found": False,
+                        }
+                    )
                     continue
                 obj = current_objects.get(change.filename)
+                selected_items.append(
+                    {
+                        "revision": change.revision,
+                        "filename": change.filename,
+                        "is_deleted": False,
+                        "object_found": obj is not None,
+                    }
+                )
                 if obj is None:
                     continue
                 href = _object_href_for_style(calendar, obj, style)
                 obj_map = _build_prop_map_for_object(obj, calendar_data_request)
                 responses.append(response_for_props(href, obj_map))
         else:
+            selected_items_source = "initial-current-objects"
             objects = list(calendar.calendar_objects.all())
             if limit is not None:
                 objects = objects[:limit]
             for obj in objects:
+                selected_items.append(
+                    {
+                        "revision": None,
+                        "filename": obj.filename,
+                        "is_deleted": False,
+                        "object_found": True,
+                    }
+                )
                 href = _object_href_for_style(calendar, obj, style)
                 obj_map = _build_prop_map_for_object(obj, calendar_data_request)
                 responses.append(response_for_props(href, obj_map))
     else:
+        selected_items_source = "incremental-latest-by-filename"
         changes = list(
             CalendarObjectChange.objects.filter(
                 calendar=calendar,
@@ -2768,19 +2797,55 @@ def _sync_collection_response(
         for change in ordered_changes:
             filename = change.filename
             href = _object_href_for_filename(calendar, filename, style)
+            obj = current_objects.get(filename)
+            selected_items.append(
+                {
+                    "revision": change.revision,
+                    "filename": filename,
+                    "is_deleted": change.is_deleted,
+                    "object_found": obj is not None,
+                }
+            )
             if change.is_deleted:
                 responses.append(response_with_status(href, "404 Not Found"))
                 continue
-            obj = current_objects.get(filename)
             if obj is None:
                 responses.append(response_with_status(href, "404 Not Found"))
                 continue
             obj_map = _build_prop_map_for_object(obj, calendar_data_request)
             responses.append(response_for_props(href, obj_map))
 
+    max_items_to_log = 200
+    logger.info(
+        "dav_sync_collection_selection path=%s calendar_id=%s owner=%s slug=%s token_revision=%r latest_revision=%s next_revision=%s initial_sync=%s limit=%r selected_items_source=%s selected_items_count=%s selected_items_truncated=%s selected_items=%r",
+        request_path,
+        calendar.id,
+        calendar.owner.username,
+        calendar.slug,
+        token_revision,
+        latest_revision,
+        next_revision,
+        token_revision is None,
+        limit,
+        selected_items_source,
+        len(selected_items),
+        len(selected_items) > max_items_to_log,
+        selected_items[:max_items_to_log],
+    )
+
+    response_sync_token = _build_sync_token(calendar.id, next_revision)
+    logger.info(
+        "dav_sync_collection_response path=%s calendar_id=%s owner=%s slug=%s response_count=%s response_sync_token=%s",
+        request_path,
+        calendar.id,
+        calendar.owner.username,
+        calendar.slug,
+        len(responses),
+        response_sync_token,
+    )
     body = _sync_collection_multistatus_document(
         responses,
-        _build_sync_token(calendar.id, next_revision),
+        response_sync_token,
     )
     return _xml_response(207, body)
 
@@ -2881,18 +2946,42 @@ def _handle_report(calendars, request, allow_sync_collection=True):
             return HttpResponse(status=501)
 
         sync_token_value = (root.findtext(qname(NS_DAV, "sync-token")) or "").strip()
+        calendar = calendars[0]
+        logger.info(
+            "dav_sync_collection_request path=%s calendar_id=%s owner=%s slug=%s sync_level=%r token_present=%s sync_token=%r requested_limit=%r",
+            request.path,
+            calendar.id,
+            calendar.owner.username,
+            calendar.slug,
+            sync_level,
+            bool(sync_token_value),
+            sync_token_value or None,
+            requested_limit,
+        )
         token_revision = None
         if sync_token_value:
             token_revision, token_error = _parse_sync_token_for_calendar(
                 sync_token_value,
-                calendars[0],
+                calendar,
             )
             if token_error is not None:
+                logger.info(
+                    "dav_sync_collection_token_rejected path=%s calendar_id=%s sync_token=%r",
+                    request.path,
+                    calendar.id,
+                    sync_token_value,
+                )
                 _ACTIVE_REPORT_TZINFO = None
                 return token_error
+            logger.info(
+                "dav_sync_collection_token_parsed path=%s calendar_id=%s token_revision=%s",
+                request.path,
+                calendar.id,
+                token_revision,
+            )
 
         response = _sync_collection_response(
-            calendars[0],
+            calendar,
             request.path,
             requested,
             calendar_data_request,
