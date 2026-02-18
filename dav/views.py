@@ -1,6 +1,7 @@
 # pyright: reportGeneralTypeIssues=false, reportAttributeAccessIssue=false
 
 import hashlib
+import logging
 import re
 from datetime import datetime, timedelta, timezone as datetime_timezone
 from email.utils import parsedate_to_datetime
@@ -40,6 +41,9 @@ from .xml import (
     response_with_status,
     response_with_props,
 )
+
+
+logger = logging.getLogger("dav.audit")
 
 
 _ACTIVE_REPORT_TZINFO = None
@@ -1656,6 +1660,35 @@ def _require_dav_user(request):
     return user, None
 
 
+def _client_ip(request):
+    forwarded = (request.headers.get("X-Forwarded-For") or "").strip()
+    if forwarded:
+        return forwarded.split(",", 1)[0].strip()
+    return (request.META.get("REMOTE_ADDR") or "").strip()
+
+
+def _log_dav_create(
+    event, request, actor_username, owner_username, slug, status, **extra
+):
+    logger.info(
+        "%s actor=%s owner=%s slug=%s method=%s path=%s status=%s user_agent=%r content_type=%r depth=%r if_none_match=%r if_match=%r remote_ip=%r extra=%r",
+        event,
+        actor_username,
+        owner_username,
+        slug,
+        request.method,
+        request.path,
+        status,
+        request.headers.get("User-Agent"),
+        request.META.get("CONTENT_TYPE") or request.content_type,
+        request.headers.get("Depth"),
+        request.headers.get("If-None-Match"),
+        request.headers.get("If-Match"),
+        _client_ip(request),
+        extra,
+    )
+
+
 def _dav_guid_for_username(username):
     match = re.fullmatch(r"user(\d{2})", username)
     if match is None:
@@ -2552,6 +2585,16 @@ def calendar_collection_view(request, username, slug):
         )
         response = HttpResponse(status=201)
         response["Location"] = f"/dav/calendars/{username}/{calendar.slug}/"
+        _log_dav_create(
+            "dav_create_calendar",
+            request,
+            actor_username=getattr(user, "username", ""),
+            owner_username=username,
+            slug=slug,
+            status=201,
+            location=response["Location"],
+            calendar_id=str(calendar.id),
+        )
         return _dav_common_headers(response)
 
     calendar = get_calendar_for_user(user, username, slug)
@@ -2746,6 +2789,17 @@ def calendar_object_view(request, username, slug, filename):
                 response["Location"] = (
                     f"/dav/calendars/{username}/{slug}/{marker_filename}"
                 )
+                _log_dav_create(
+                    "dav_create_collection_marker",
+                    request,
+                    actor_username=getattr(user, "username", ""),
+                    owner_username=username,
+                    slug=slug,
+                    status=201,
+                    filename=marker_filename,
+                    uid=marker_uid,
+                    location=response["Location"],
+                )
                 return _dav_common_headers(response)
 
             existing = writable.calendar_objects.filter(filename=filename).first()
@@ -2852,6 +2906,19 @@ def calendar_object_view(request, username, slug, filename):
                 escaped_filename = quote(filename, safe="/")
                 response["Location"] = (
                     f"/dav/calendars/{username}/{slug}/{escaped_filename}"
+                )
+                _log_dav_create(
+                    "dav_create_object",
+                    request,
+                    actor_username=getattr(user, "username", ""),
+                    owner_username=username,
+                    slug=slug,
+                    status=201,
+                    filename=existing.filename,
+                    uid=object_uid,
+                    etag=existing.etag,
+                    location=response["Location"],
+                    parsed_uid=parsed["uid"],
                 )
             return _dav_common_headers(response)
 
