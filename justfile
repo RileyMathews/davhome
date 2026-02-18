@@ -6,7 +6,7 @@ setup-integration-fixtures:
 	uv run python manage.py shell --settings=config.settings_test -c "from calendars.models import Calendar; users=['admin','apprentice','superuser']+[f'user{i:02d}' for i in range(1,41)]; [Calendar.objects.filter(owner__username=username, slug__in=['calendar-none','calendar-us','litmus','synccalendar1','synccalendar2']).delete() for username in users]; [cal.calendar_objects.all().delete() for cal in Calendar.objects.filter(owner__username__in=users, slug__in=['calendar','tasks','inbox','outbox'])]"
 
 litmus-test:
-	uv run python manage.py shell -c "from django.contrib.auth.models import User; from calendars.models import Calendar; user,_=User.objects.get_or_create(username='user01', defaults={'is_active':True,'email':'user01@example.com'}); user.set_password('user01'); user.save(update_fields=['password','is_active','email']); Calendar.objects.filter(owner=user, slug='litmus').delete()"
+	uv run python manage.py shell --settings=config.settings_test -c "from django.contrib.auth.models import User; from calendars.models import Calendar; user,_=User.objects.get_or_create(username='user01', defaults={'is_active':True,'email':'user01@example.com'}); user.set_password('user01'); user.save(update_fields=['password','is_active','email']); Calendar.objects.filter(owner=user, slug='litmus').delete()"
 	nix develop path:.#litmus -c litmus "http://127.0.0.1:8000/dav/calendars/user01/" "user01" "user01"
 
 caldavtester-test-suite:
