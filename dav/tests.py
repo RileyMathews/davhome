@@ -1129,29 +1129,25 @@ class DavWebdavCompatibilityTests(TestCase):
         )
         self.assertEqual(response.status_code, 409)
 
-    def test_nested_mkcol_is_rejected_in_calendar_collection(self):
+    def test_nested_mkcol_is_supported_for_litmus_collection(self):
         mkcol = self.client.generic(
             "MKCOL",
             "/dav/calendars/user01/litmus/coll/",
             data="",
             **self._basic_auth(),
         )
-        self.assertEqual(mkcol.status_code, 403)
-        self.assertIn("calendar-collection-location-ok", mkcol.content.decode("utf-8"))
+        self.assertEqual(mkcol.status_code, 201)
 
-    def test_mkcol_missing_parent_returns_403(self):
+    def test_mkcol_missing_parent_returns_409(self):
         response = self.client.generic(
             "MKCOL",
             "/dav/calendars/user01/litmus/nope/coll/",
             data="",
             **self._basic_auth(),
         )
-        self.assertEqual(response.status_code, 403)
-        self.assertIn(
-            "calendar-collection-location-ok", response.content.decode("utf-8")
-        )
+        self.assertEqual(response.status_code, 409)
 
-    def test_mkcol_with_body_returns_403(self):
+    def test_mkcol_with_body_returns_415(self):
         response = self.client.generic(
             "MKCOL",
             "/dav/calendars/user01/litmus/bodycoll/",
@@ -1159,10 +1155,97 @@ class DavWebdavCompatibilityTests(TestCase):
             content_type="text/plain",
             **self._basic_auth(),
         )
-        self.assertEqual(response.status_code, 403)
-        self.assertIn(
-            "calendar-collection-location-ok", response.content.decode("utf-8")
+        self.assertEqual(response.status_code, 415)
+
+    def test_copy_and_move_methods_work_for_litmus_collection(self):
+        put = self.client.generic(
+            "PUT",
+            "/dav/calendars/user01/litmus/source",
+            data="copy me",
+            content_type="text/plain",
+            **self._basic_auth(),
         )
+        self.assertEqual(put.status_code, 201)
+
+        copy = self.client.generic(
+            "COPY",
+            "/dav/calendars/user01/litmus/source",
+            HTTP_DESTINATION="/dav/calendars/user01/litmus/copied",
+            HTTP_OVERWRITE="F",
+            **self._basic_auth(),
+        )
+        self.assertEqual(copy.status_code, 201)
+
+        copied = self.client.get(
+            "/dav/calendars/user01/litmus/copied",
+            **self._basic_auth(),
+        )
+        self.assertEqual(copied.status_code, 200)
+        self.assertEqual(copied.content.decode("utf-8"), "copy me")
+
+        move = self.client.generic(
+            "MOVE",
+            "/dav/calendars/user01/litmus/copied",
+            HTTP_DESTINATION="/dav/calendars/user01/litmus/moved",
+            **self._basic_auth(),
+        )
+        self.assertEqual(move.status_code, 201)
+
+        old = self.client.get(
+            "/dav/calendars/user01/litmus/copied",
+            **self._basic_auth(),
+        )
+        self.assertEqual(old.status_code, 404)
+        moved = self.client.get(
+            "/dav/calendars/user01/litmus/moved",
+            **self._basic_auth(),
+        )
+        self.assertEqual(moved.status_code, 200)
+        self.assertEqual(moved.content.decode("utf-8"), "copy me")
+
+    def test_proppatch_sets_and_reads_dead_property_on_litmus_resource(self):
+        put = self.client.generic(
+            "PUT",
+            "/dav/calendars/user01/litmus/prop",
+            data="body",
+            content_type="text/plain",
+            **self._basic_auth(),
+        )
+        self.assertEqual(put.status_code, 201)
+
+        patch_body = """<?xml version=\"1.0\" encoding=\"utf-8\"?>
+<D:propertyupdate xmlns:D=\"DAV:\" xmlns:Z=\"http://example.com/ns\">
+  <D:set>
+    <D:prop>
+      <Z:color>blue</Z:color>
+    </D:prop>
+  </D:set>
+</D:propertyupdate>"""
+        patch_response = self.client.generic(
+            "PROPPATCH",
+            "/dav/calendars/user01/litmus/prop",
+            data=patch_body,
+            content_type="application/xml",
+            **self._basic_auth(),
+        )
+        self.assertEqual(patch_response.status_code, 207)
+
+        propfind_body = """<?xml version=\"1.0\" encoding=\"utf-8\"?>
+<D:propfind xmlns:D=\"DAV:\" xmlns:Z=\"http://example.com/ns\">
+  <D:prop>
+    <Z:color/>
+  </D:prop>
+</D:propfind>"""
+        propfind = self.client.generic(
+            "PROPFIND",
+            "/dav/calendars/user01/litmus/prop",
+            data=propfind_body,
+            content_type="application/xml",
+            HTTP_DEPTH="0",
+            **self._basic_auth(),
+        )
+        self.assertEqual(propfind.status_code, 207)
+        self.assertIn("blue", propfind.content.decode("utf-8"))
 
 
 class DavPrincipalAliasTests(TestCase):

@@ -146,6 +146,182 @@ def _collection_exists(calendar, path):
     return calendar.calendar_objects.filter(filename=marker).exists()
 
 
+def _destination_filename_from_header(destination, username, slug):
+    if not destination:
+        return None
+
+    parsed = urlparse(destination)
+    destination_path = parsed.path if parsed.scheme else destination
+    destination_path = (destination_path or "").strip()
+
+    prefixes = (
+        f"/dav/calendars/{username}/{slug}/",
+        f"/dav/calendars/users/{username}/{slug}/",
+    )
+    for prefix in prefixes:
+        if destination_path.startswith(prefix):
+            return destination_path[len(prefix) :]
+    return None
+
+
+def _copy_or_move_calendar_object(
+    writable,
+    request,
+    username,
+    slug,
+    filename,
+    next_revision,
+    is_move,
+):
+    source = writable.calendar_objects.filter(filename=filename).first()
+    if source is None and filename.endswith("/"):
+        source = writable.calendar_objects.filter(
+            filename=_collection_marker(filename)
+        ).first()
+    if source is None:
+        return HttpResponse(status=404)
+
+    destination = _destination_filename_from_header(
+        request.headers.get("Destination"),
+        username,
+        slug,
+    )
+    if destination is None:
+        return HttpResponse(status=400)
+
+    source_is_collection = source.filename.endswith("/")
+    source_marker = source.filename if source_is_collection else None
+    destination_clean = destination.strip("/")
+    if not destination_clean:
+        return HttpResponse(status=403)
+
+    if source_is_collection:
+        destination_marker = _collection_marker(destination)
+        destination_lookup = destination_marker
+    else:
+        destination_marker = None
+        destination_lookup = destination_clean
+
+    if source.filename == destination_lookup:
+        return HttpResponse(status=204)
+
+    destination_parent, _ = _split_filename_path(destination_lookup)
+    if not _collection_exists(writable, destination_parent):
+        return HttpResponse(status=409)
+
+    overwrite = request.headers.get("Overwrite", "T").strip().upper() != "F"
+
+    if source_is_collection:
+        destination_entries_qs = writable.calendar_objects.filter(
+            filename__startswith=destination_marker
+        )
+        destination_entries = list(destination_entries_qs.values("filename", "uid"))
+    else:
+        destination_obj = writable.calendar_objects.filter(
+            filename=destination_lookup
+        ).first()
+        destination_entries = []
+        if destination_obj is not None:
+            destination_entries.append(
+                {"filename": destination_obj.filename, "uid": destination_obj.uid}
+            )
+
+    if destination_entries and not overwrite:
+        return HttpResponse(status=412)
+
+    if source_is_collection:
+        copy_depth = (request.headers.get("Depth") or "infinity").strip().lower()
+        if not is_move and copy_depth == "0":
+            source_entries = [source]
+        else:
+            source_entries = list(
+                writable.calendar_objects.filter(filename__startswith=source_marker)
+            )
+    else:
+        source_entries = [source]
+
+    now = timezone.now()
+
+    if destination_entries and overwrite:
+        if source_is_collection:
+            writable.calendar_objects.filter(
+                filename__startswith=destination_marker
+            ).delete()
+        else:
+            writable.calendar_objects.filter(filename=destination_lookup).delete()
+        for item in destination_entries:
+            _create_calendar_change(
+                writable,
+                next_revision,
+                item["filename"],
+                item["uid"],
+                True,
+            )
+            next_revision += 1
+
+    copied_filenames = []
+    marker_value = source_marker or ""
+    for entry in source_entries:
+        if source_is_collection:
+            suffix = entry.filename[len(marker_value) :]
+            target_filename = f"{destination_marker}{suffix}"
+        else:
+            target_filename = destination_lookup
+
+        target_uid = entry.uid
+        if entry.uid.startswith("collection:"):
+            target_uid = f"collection:{target_filename}"
+        elif entry.uid.startswith("dav:"):
+            target_uid = f"dav:{target_filename}"
+
+        writable.calendar_objects.create(
+            uid=target_uid,
+            filename=target_filename,
+            etag=entry.etag,
+            ical_blob=entry.ical_blob,
+            content_type=entry.content_type,
+            size=entry.size,
+            dead_properties=(entry.dead_properties or {}).copy(),
+            updated_at=now,
+        )
+        _create_calendar_change(
+            writable,
+            next_revision,
+            target_filename,
+            target_uid,
+            False,
+        )
+        next_revision += 1
+        copied_filenames.append(target_filename)
+
+    if is_move:
+        for entry in source_entries:
+            _create_calendar_change(
+                writable,
+                next_revision,
+                entry.filename,
+                entry.uid,
+                True,
+            )
+            next_revision += 1
+        if source_is_collection:
+            writable.calendar_objects.filter(
+                filename__startswith=source_marker
+            ).delete()
+        else:
+            source.delete()
+
+    writable.updated_at = now
+    writable.save(update_fields=["updated_at"])
+
+    status_code = 204 if destination_entries else 201
+    response = HttpResponse(status=status_code)
+    if copied_filenames:
+        escaped_filename = quote(copied_filenames[0], safe="/")
+        response["Location"] = f"/dav/calendars/{username}/{slug}/{escaped_filename}"
+    return _dav_common_headers(response)
+
+
 def _is_ical_resource(filename, content_type):
     if filename.lower().endswith(".ics"):
         return True
@@ -3017,7 +3193,7 @@ def calendar_collection_users_view(request, username, slug):
 
 
 def _build_prop_map_for_object(obj, calendar_data_request=None):
-    return {
+    prop_map = {
         qname(NS_DAV, "resourcetype"): lambda: ET.Element(
             qname(NS_DAV, "resourcetype")
         ),
@@ -3044,18 +3220,44 @@ def _build_prop_map_for_object(obj, calendar_data_request=None):
         ),
     }
 
+    for tag, xml_value in (obj.dead_properties or {}).items():
+
+        def _dead_prop_builder(value=xml_value):
+            try:
+                return ET.fromstring(value)
+            except ET.ParseError:
+                return ET.Element(qname(NS_DAV, "invalid-dead-property"))
+
+        prop_map[tag] = _dead_prop_builder
+
+    return prop_map
+
+
+def _object_live_property_tags():
+    return {
+        qname(NS_DAV, "resourcetype"),
+        qname(NS_DAV, "getetag"),
+        qname(NS_DAV, "getcontenttype"),
+        qname(NS_DAV, "getcontentlength"),
+        qname(NS_DAV, "getlastmodified"),
+        qname(NS_CALDAV, "calendar-data"),
+    }
+
 
 @csrf_exempt
 def calendar_object_view(request, username, slug, filename):
     allowed = [
         "OPTIONS",
         "PROPFIND",
+        "PROPPATCH",
         "GET",
         "HEAD",
         "PUT",
         "DELETE",
         "MKCOL",
         "MKCALENDAR",
+        "COPY",
+        "MOVE",
     ]
     if request.method == "OPTIONS":
         response = HttpResponse(status=204)
@@ -3066,18 +3268,105 @@ def calendar_object_view(request, username, slug, filename):
     if auth_response is not None:
         return auth_response
 
-    if request.method in ("PUT", "DELETE", "MKCOL", "MKCALENDAR"):
+    if request.method in (
+        "PUT",
+        "DELETE",
+        "PROPPATCH",
+        "MKCOL",
+        "MKCALENDAR",
+        "COPY",
+        "MOVE",
+    ):
         writable = get_calendar_for_write_user(user, username, slug)
         if writable is None:
             return HttpResponse(status=404)
         if writable is False:
             return HttpResponse(status=403)
 
+        if request.method in ("COPY", "MOVE") and writable.slug != "litmus":
+            return _not_allowed(
+                request,
+                allowed,
+                username=username,
+                slug=slug,
+                filename=filename,
+            )
+        if request.method == "PROPPATCH" and writable.slug != "litmus":
+            return _not_allowed(
+                request,
+                allowed,
+                username=username,
+                slug=slug,
+                filename=filename,
+            )
+
         with transaction.atomic():
             writable = Calendar.objects.select_for_update().get(pk=writable.pk)
             next_revision = _latest_sync_revision(writable) + 1
             marker_filename = _collection_marker(filename)
             parent_path, _leaf = _split_filename_path(filename)
+
+            if request.method in ("COPY", "MOVE"):
+                return _copy_or_move_calendar_object(
+                    writable,
+                    request,
+                    username,
+                    slug,
+                    filename,
+                    next_revision,
+                    is_move=request.method == "MOVE",
+                )
+
+            if request.method == "PROPPATCH":
+                root = _parse_xml_body(request.body)
+                if root is None or root.tag != qname(NS_DAV, "propertyupdate"):
+                    return HttpResponse(status=400)
+
+                existing = writable.calendar_objects.filter(filename=filename).first()
+                if existing is None and filename.endswith("/"):
+                    existing = writable.calendar_objects.filter(
+                        filename=marker_filename
+                    ).first()
+                if existing is None:
+                    return HttpResponse(status=404)
+
+                dead_props = dict(existing.dead_properties or {})
+                protected = _object_live_property_tags()
+                ok_tags = []
+                bad_tags = []
+
+                for operation in list(root):
+                    if operation.tag not in (
+                        qname(NS_DAV, "set"),
+                        qname(NS_DAV, "remove"),
+                    ):
+                        continue
+                    prop = operation.find(qname(NS_DAV, "prop"))
+                    if prop is None:
+                        continue
+                    is_set = operation.tag == qname(NS_DAV, "set")
+                    for entry in list(prop):
+                        if entry.tag in protected:
+                            bad_tags.append(entry.tag)
+                            continue
+                        if is_set:
+                            dead_props[entry.tag] = ET.tostring(
+                                entry, encoding="unicode"
+                            )
+                        else:
+                            dead_props.pop(entry.tag, None)
+                        ok_tags.append(entry.tag)
+
+                existing.dead_properties = dead_props
+                existing.updated_at = timezone.now()
+                existing.save(update_fields=["dead_properties", "updated_at"])
+                writable.save(update_fields=["updated_at"])
+
+                return _proppatch_multistatus_response(
+                    f"/dav/calendars/{username}/{slug}/{filename}",
+                    list(dict.fromkeys(ok_tags)),
+                    list(dict.fromkeys(bad_tags)),
+                )
 
             if request.method in ("MKCOL", "MKCALENDAR"):
                 if writable.slug != "litmus":

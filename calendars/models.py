@@ -96,6 +96,7 @@ class CalendarObject(models.Model):
         max_length=128, default="text/calendar; charset=utf-8"
     )
     size = models.PositiveIntegerField()
+    dead_properties = models.JSONField(default=dict, blank=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 
