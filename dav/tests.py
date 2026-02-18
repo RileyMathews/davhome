@@ -645,6 +645,123 @@ class DavWriteTests(TestCase):
         self.assertEqual(obj.ical_blob.count("BEGIN:VALARM"), 1)
 
 
+class DavObjectWriteHelperFlowTests(TestCase):
+    @classmethod
+    def setUpTestData(cls):
+        cls.owner = User.objects.create_user(username="owner", password="pw-test-12345")
+        cls.litmus = Calendar.objects.create(
+            owner=cls.owner,
+            slug="litmus",
+            name="litmus",
+            timezone="UTC",
+        )
+
+    def _basic_auth(self):
+        token = base64.b64encode(b"owner:pw-test-12345").decode("ascii")
+        return {"HTTP_AUTHORIZATION": f"Basic {token}"}
+
+    def test_proppatch_on_collection_path_uses_collection_marker(self):
+        mkcol = self.client.generic(
+            "MKCOL",
+            "/dav/calendars/owner/litmus/coll/",
+            data="",
+            **self._basic_auth(),
+        )
+        self.assertEqual(mkcol.status_code, 201)
+
+        patch_body = """<?xml version=\"1.0\" encoding=\"utf-8\"?>
+<D:propertyupdate xmlns:D=\"DAV:\" xmlns:Z=\"http://example.com/ns\">
+  <D:set>
+    <D:prop>
+      <Z:color>blue</Z:color>
+    </D:prop>
+  </D:set>
+</D:propertyupdate>"""
+        patch = self.client.generic(
+            "PROPPATCH",
+            "/dav/calendars/owner/litmus/coll/",
+            data=patch_body,
+            content_type="application/xml",
+            **self._basic_auth(),
+        )
+        self.assertEqual(patch.status_code, 207)
+
+        propfind_body = """<?xml version=\"1.0\" encoding=\"utf-8\"?>
+<D:propfind xmlns:D=\"DAV:\" xmlns:Z=\"http://example.com/ns\">
+  <D:prop>
+    <Z:color/>
+  </D:prop>
+</D:propfind>"""
+        propfind = self.client.generic(
+            "PROPFIND",
+            "/dav/calendars/owner/litmus/coll/",
+            data=propfind_body,
+            content_type="application/xml",
+            HTTP_DEPTH="0",
+            **self._basic_auth(),
+        )
+        self.assertEqual(propfind.status_code, 207)
+        self.assertIn("blue", propfind.content.decode("utf-8"))
+
+    def test_delete_collection_removes_descendants_and_records_changes(self):
+        mkcol = self.client.generic(
+            "MKCOL",
+            "/dav/calendars/owner/litmus/tree/",
+            data="",
+            **self._basic_auth(),
+        )
+        self.assertEqual(mkcol.status_code, 201)
+
+        put = self.client.generic(
+            "PUT",
+            "/dav/calendars/owner/litmus/tree/item.txt",
+            data="payload",
+            content_type="text/plain",
+            **self._basic_auth(),
+        )
+        self.assertEqual(put.status_code, 201)
+
+        delete = self.client.generic(
+            "DELETE",
+            "/dav/calendars/owner/litmus/tree/",
+            **self._basic_auth(),
+        )
+        self.assertEqual(delete.status_code, 204)
+
+        self.assertFalse(
+            CalendarObject.objects.filter(
+                calendar=self.litmus,
+                filename__in=["tree/", "tree/item.txt"],
+            ).exists()
+        )
+
+        changes = list(
+            CalendarObjectChange.objects.filter(calendar=self.litmus).order_by(
+                "revision"
+            )
+        )
+        self.assertEqual([change.revision for change in changes], [1, 2, 3, 4])
+        deleted_changes = [change for change in changes if change.is_deleted]
+        self.assertEqual(len(deleted_changes), 2)
+        self.assertEqual(
+            {change.filename for change in deleted_changes},
+            {"tree/", "tree/item.txt"},
+        )
+
+    def test_put_plaintext_uses_dav_uid_fallback(self):
+        response = self.client.generic(
+            "PUT",
+            "/dav/calendars/owner/litmus/note.txt",
+            data="plain text body",
+            content_type="text/plain",
+            **self._basic_auth(),
+        )
+        self.assertEqual(response.status_code, 201)
+
+        obj = CalendarObject.objects.get(calendar=self.litmus, filename="note.txt")
+        self.assertEqual(obj.uid, "dav:note.txt")
+
+
 class DavReportTests(TestCase):
     @classmethod
     def setUpTestData(cls):
