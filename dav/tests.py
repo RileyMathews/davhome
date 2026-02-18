@@ -535,16 +535,16 @@ class DavWriteTests(TestCase):
         )
         self.assertEqual(response.status_code, 403)
 
-    def test_mkcol_is_rejected_for_calendar_creation(self):
+    def test_mkcol_can_create_top_level_calendar_for_webdav_compatibility(self):
         response = self.client.generic(
             "MKCOL",
             f"/dav/calendars/{self.owner.username}/newcal/",
             data="",
             **self._basic_auth("owner", "pw-test-12345"),
         )
-        self.assertEqual(response.status_code, 403)
-        self.assertIn(
-            "calendar-collection-location-ok", response.content.decode("utf-8")
+        self.assertEqual(response.status_code, 201)
+        self.assertTrue(
+            Calendar.objects.filter(owner=self.owner, slug="newcal").exists()
         )
 
     def test_proppatch_updates_calendar_color_and_order(self):

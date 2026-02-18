@@ -2739,6 +2739,7 @@ def calendar_collection_view(request, username, slug):
         "HEAD",
         "REPORT",
         "MKCALENDAR",
+        "MKCOL",
         "PROPPATCH",
         "DELETE",
     ]
@@ -2756,7 +2757,13 @@ def calendar_collection_view(request, username, slug):
         return HttpResponse(status=404)
 
     if request.method == "MKCOL":
-        return _caldav_error_response("calendar-collection-location-ok", status=403)
+        if request.body:
+            return HttpResponse(status=415)
+        request_method = request.method
+        request.method = "MKCALENDAR"
+        response = calendar_collection_view(request, username, slug)
+        request.method = request_method
+        return response
 
     if request.method == "MKCALENDAR":
         if owner != user:
@@ -3073,9 +3080,58 @@ def calendar_object_view(request, username, slug, filename):
             parent_path, _leaf = _split_filename_path(filename)
 
             if request.method in ("MKCOL", "MKCALENDAR"):
-                return _caldav_error_response(
-                    "calendar-collection-location-ok", status=403
+                if writable.slug != "litmus":
+                    return _caldav_error_response(
+                        "calendar-collection-location-ok", status=403
+                    )
+
+                if request.method == "MKCOL" and request.body:
+                    return HttpResponse(status=415)
+                if not _collection_exists(writable, parent_path):
+                    return HttpResponse(status=409)
+
+                existing_collection = writable.calendar_objects.filter(
+                    filename=marker_filename
+                ).first()
+                existing_resource = writable.calendar_objects.filter(
+                    filename=filename.strip("/")
+                ).first()
+                if existing_collection is not None or existing_resource is not None:
+                    return HttpResponse(status=405)
+
+                marker_uid = f"collection:{marker_filename}"
+                writable.calendar_objects.create(
+                    uid=marker_uid,
+                    filename=marker_filename,
+                    etag=_generate_strong_etag(marker_filename.encode("utf-8")),
+                    ical_blob="",
+                    content_type="httpd/unix-directory",
+                    size=0,
                 )
+                _create_calendar_change(
+                    writable,
+                    next_revision,
+                    marker_filename,
+                    marker_uid,
+                    False,
+                )
+                writable.save(update_fields=["updated_at"])
+                response = HttpResponse(status=201)
+                response["Location"] = (
+                    f"/dav/calendars/{username}/{slug}/{marker_filename}"
+                )
+                _log_dav_create(
+                    "dav_create_collection_marker",
+                    request,
+                    actor_username=getattr(user, "username", ""),
+                    owner_username=username,
+                    slug=slug,
+                    status=201,
+                    filename=marker_filename,
+                    uid=marker_uid,
+                    location=response["Location"],
+                )
+                return _dav_common_headers(response)
 
             existing = writable.calendar_objects.filter(filename=filename).first()
             if existing is None and filename.endswith("/"):
