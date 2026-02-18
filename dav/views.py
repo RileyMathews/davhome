@@ -1539,8 +1539,9 @@ def _not_allowed(request, allowed, **extra):
         if forwarded
         else (request.META.get("REMOTE_ADDR") or "").strip()
     )
-    logger.info(
-        "dav_method_not_allowed method=%s path=%s status=%s allowed=%r user_agent=%r content_type=%r content_length=%r depth=%r destination=%r overwrite=%r if_none_match=%r if_match=%r remote_ip=%r extra=%r",
+    logger.warning(
+        "dav_method_not_allowed reason_code=%s method=%s path=%s status=%s allowed=%r user_agent=%r content_type=%r content_length=%r depth=%r destination=%r overwrite=%r if_none_match=%r if_match=%r remote_ip=%r body=%r extra=%r",
+        "unsupported_method",
         request.method,
         request.path,
         405,
@@ -1554,6 +1555,7 @@ def _not_allowed(request, allowed, **extra):
         request.headers.get("If-None-Match"),
         request.headers.get("If-Match"),
         remote_ip,
+        request.body,
         extra,
     )
     response = HttpResponseNotAllowed(allowed)
