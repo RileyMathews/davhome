@@ -496,9 +496,9 @@ class DavWriteTests(TestCase):
         )
         self.assertEqual(response.status_code, 403)
 
-    def test_owner_mkcalendar_creates_calendar(self):
+    def test_owner_mkcol_creates_calendar(self):
         response = self.client.generic(
-            "MKCALENDAR",
+            "MKCOL",
             f"/dav/calendars/{self.owner.username}/newcal/",
             data="",
             content_type="application/xml",
@@ -509,9 +509,9 @@ class DavWriteTests(TestCase):
             Calendar.objects.filter(owner=self.owner, slug="newcal").exists()
         )
 
-    def test_shared_writer_cannot_mkcalendar(self):
+    def test_shared_writer_cannot_mkcol(self):
         response = self.client.generic(
-            "MKCALENDAR",
+            "MKCOL",
             f"/dav/calendars/{self.owner.username}/newcal-writer/",
             data="",
             content_type="application/xml",
@@ -519,13 +519,15 @@ class DavWriteTests(TestCase):
         )
         self.assertEqual(response.status_code, 403)
 
-    def test_mkcol_is_disabled_for_remote_clients(self):
+    def test_mkcalendar_is_disabled_for_remote_clients(self):
         response = self.client.generic(
-            "MKCOL",
+            "MKCALENDAR",
             f"/dav/calendars/{self.owner.username}/newcal/",
             data="",
             **self._basic_auth("owner", "pw-test-12345"),
         )
+        # Apple Reminders clients may issue MKCALENDAR with UUID slugs, which
+        # can create unwanted top-level calendars. We intentionally disallow it.
         self.assertEqual(response.status_code, 405)
 
     def test_write_share_can_delete(self):

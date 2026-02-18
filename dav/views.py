@@ -2552,7 +2552,7 @@ def calendar_collection_view(request, username, slug):
         "GET",
         "HEAD",
         "REPORT",
-        "MKCALENDAR",
+        "MKCOL",
         "DELETE",
     ]
     if request.method == "OPTIONS":
@@ -2568,10 +2568,10 @@ def calendar_collection_view(request, username, slug):
     if owner is None:
         return HttpResponse(status=404)
 
-    if request.method == "MKCOL":
+    if request.method == "MKCALENDAR":
         return _not_allowed(allowed)
 
-    if request.method == "MKCALENDAR":
+    if request.method == "MKCOL":
         if owner != user:
             return HttpResponse(status=403)
         existing = Calendar.objects.filter(owner=owner, slug=slug).first()
