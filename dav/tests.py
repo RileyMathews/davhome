@@ -496,22 +496,38 @@ class DavWriteTests(TestCase):
         )
         self.assertEqual(response.status_code, 403)
 
-    def test_owner_mkcol_creates_calendar(self):
+    def test_owner_mkcalendar_creates_calendar(self):
+        body = """<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+<B:mkcalendar xmlns:B=\"urn:ietf:params:xml:ns:caldav\" xmlns:A=\"DAV:\" xmlns:D=\"http://apple.com/ns/ical/\">
+  <A:set>
+    <A:prop>
+      <A:displayname>Tasks</A:displayname>
+      <B:supported-calendar-component-set>
+        <B:comp name=\"VTODO\"/>
+      </B:supported-calendar-component-set>
+      <D:calendar-color>#007AFF</D:calendar-color>
+      <D:calendar-order>23</D:calendar-order>
+    </A:prop>
+  </A:set>
+</B:mkcalendar>
+"""
         response = self.client.generic(
-            "MKCOL",
+            "MKCALENDAR",
             f"/dav/calendars/{self.owner.username}/newcal/",
-            data="",
+            data=body,
             content_type="application/xml",
             **self._basic_auth("owner", "pw-test-12345"),
         )
         self.assertEqual(response.status_code, 201)
-        self.assertTrue(
-            Calendar.objects.filter(owner=self.owner, slug="newcal").exists()
-        )
+        created = Calendar.objects.get(owner=self.owner, slug="newcal")
+        self.assertEqual(created.name, "Tasks")
+        self.assertEqual(created.component_kind, Calendar.COMPONENT_VTODO)
+        self.assertEqual(created.color, "#007AFF")
+        self.assertEqual(created.sort_order, 23)
 
-    def test_shared_writer_cannot_mkcol(self):
+    def test_shared_writer_cannot_mkcalendar(self):
         response = self.client.generic(
-            "MKCOL",
+            "MKCALENDAR",
             f"/dav/calendars/{self.owner.username}/newcal-writer/",
             data="",
             content_type="application/xml",
@@ -519,16 +535,50 @@ class DavWriteTests(TestCase):
         )
         self.assertEqual(response.status_code, 403)
 
-    def test_mkcalendar_is_disabled_for_remote_clients(self):
+    def test_mkcol_is_rejected_for_calendar_creation(self):
         response = self.client.generic(
-            "MKCALENDAR",
+            "MKCOL",
             f"/dav/calendars/{self.owner.username}/newcal/",
             data="",
             **self._basic_auth("owner", "pw-test-12345"),
         )
-        # Apple Reminders clients may issue MKCALENDAR with UUID slugs, which
-        # can create unwanted top-level calendars. We intentionally disallow it.
-        self.assertEqual(response.status_code, 405)
+        self.assertEqual(response.status_code, 403)
+        self.assertIn(
+            "calendar-collection-location-ok", response.content.decode("utf-8")
+        )
+
+    def test_proppatch_updates_calendar_color_and_order(self):
+        body = """<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+<A:propertyupdate xmlns:A=\"DAV:\" xmlns:G=\"http://apple.com/ns/ical/\">
+  <A:set>
+    <A:prop>
+      <G:calendar-color>#CB30E0</G:calendar-color>
+      <G:calendar-order>7</G:calendar-order>
+    </A:prop>
+  </A:set>
+</A:propertyupdate>
+"""
+        response = self.client.generic(
+            "PROPPATCH",
+            f"/dav/calendars/{self.owner.username}/{self.calendar.slug}/",
+            data=body,
+            content_type="application/xml",
+            **self._basic_auth("owner", "pw-test-12345"),
+        )
+        self.assertEqual(response.status_code, 207)
+        self.calendar.refresh_from_db()
+        self.assertEqual(self.calendar.color, "#CB30E0")
+        self.assertEqual(self.calendar.sort_order, 7)
+
+    def test_put_vtodo_rejected_in_vevent_calendar(self):
+        response = self._put_event(
+            "owner",
+            "pw-test-12345",
+            "todo-1.ics",
+            "BEGIN:VCALENDAR\nBEGIN:VTODO\nUID:todo-1\nEND:VTODO\nEND:VCALENDAR\n",
+        )
+        self.assertEqual(response.status_code, 403)
+        self.assertIn("supported-calendar-component", response.content.decode("utf-8"))
 
     def test_write_share_can_delete(self):
         self._put_event(
@@ -1079,50 +1129,29 @@ class DavWebdavCompatibilityTests(TestCase):
         )
         self.assertEqual(response.status_code, 409)
 
-    def test_nested_mkcol_and_delete(self):
+    def test_nested_mkcol_is_rejected_in_calendar_collection(self):
         mkcol = self.client.generic(
             "MKCOL",
             "/dav/calendars/user01/litmus/coll/",
             data="",
             **self._basic_auth(),
         )
-        self.assertEqual(mkcol.status_code, 201)
+        self.assertEqual(mkcol.status_code, 403)
+        self.assertIn("calendar-collection-location-ok", mkcol.content.decode("utf-8"))
 
-        mkcol_again = self.client.generic(
-            "MKCOL",
-            "/dav/calendars/user01/litmus/coll/",
-            data="",
-            **self._basic_auth(),
-        )
-        self.assertEqual(mkcol_again.status_code, 405)
-
-        delete = self.client.generic(
-            "DELETE",
-            "/dav/calendars/user01/litmus/coll/",
-            **self._basic_auth(),
-        )
-        self.assertEqual(delete.status_code, 204)
-        changes = list(
-            CalendarObjectChange.objects.filter(calendar=self.calendar).order_by(
-                "revision"
-            )
-        )
-        self.assertEqual(len(changes), 2)
-        self.assertEqual(changes[0].filename, "coll/")
-        self.assertFalse(changes[0].is_deleted)
-        self.assertEqual(changes[1].filename, "coll/")
-        self.assertTrue(changes[1].is_deleted)
-
-    def test_mkcol_missing_parent_returns_409(self):
+    def test_mkcol_missing_parent_returns_403(self):
         response = self.client.generic(
             "MKCOL",
             "/dav/calendars/user01/litmus/nope/coll/",
             data="",
             **self._basic_auth(),
         )
-        self.assertEqual(response.status_code, 409)
+        self.assertEqual(response.status_code, 403)
+        self.assertIn(
+            "calendar-collection-location-ok", response.content.decode("utf-8")
+        )
 
-    def test_mkcol_with_body_returns_415(self):
+    def test_mkcol_with_body_returns_403(self):
         response = self.client.generic(
             "MKCOL",
             "/dav/calendars/user01/litmus/bodycoll/",
@@ -1130,7 +1159,10 @@ class DavWebdavCompatibilityTests(TestCase):
             content_type="text/plain",
             **self._basic_auth(),
         )
-        self.assertEqual(response.status_code, 415)
+        self.assertEqual(response.status_code, 403)
+        self.assertIn(
+            "calendar-collection-location-ok", response.content.decode("utf-8")
+        )
 
 
 class DavPrincipalAliasTests(TestCase):

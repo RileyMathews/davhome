@@ -4,10 +4,12 @@ from xml.etree import ElementTree as ET
 NS_DAV = "DAV:"
 NS_CALDAV = "urn:ietf:params:xml:ns:caldav"
 NS_CS = "http://calendarserver.org/ns/"
+NS_APPLE_ICAL = "http://apple.com/ns/ical/"
 
 ET.register_namespace("D", NS_DAV)
 ET.register_namespace("C", NS_CALDAV)
 ET.register_namespace("CS", NS_CS)
+ET.register_namespace("A", NS_APPLE_ICAL)
 
 
 def qname(namespace, local):

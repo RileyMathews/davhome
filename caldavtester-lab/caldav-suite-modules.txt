@@ -5,6 +5,7 @@
 
 CalDAV/current-user-principal.xml
 CalDAV/propfind.xml
+CalDAV/mkcalendar.xml
 CalDAV/put.xml
 CalDAV/get.xml
 CalDAV/delete.xml

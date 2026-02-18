@@ -5,6 +5,13 @@ from django.db import models
 
 
 class Calendar(models.Model):
+    COMPONENT_VEVENT = "VEVENT"
+    COMPONENT_VTODO = "VTODO"
+    COMPONENT_CHOICES = (
+        (COMPONENT_VEVENT, "Event"),
+        (COMPONENT_VTODO, "Task"),
+    )
+
     id = models.UUIDField(primary_key=True, default=uuid.uuid4, editable=False)
     owner = models.ForeignKey(
         User,
@@ -15,7 +22,13 @@ class Calendar(models.Model):
     name = models.CharField(max_length=120)
     description = models.TextField(blank=True)
     color = models.CharField(max_length=16, blank=True)
+    sort_order = models.IntegerField(null=True, blank=True)
     timezone = models.CharField(max_length=64, default="UTC")
+    component_kind = models.CharField(
+        max_length=16,
+        choices=COMPONENT_CHOICES,
+        default=COMPONENT_VEVENT,
+    )
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
 

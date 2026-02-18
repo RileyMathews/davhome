@@ -32,6 +32,7 @@ from .resolver import (
     get_principal,
 )
 from .xml import (
+    NS_APPLE_ICAL,
     NS_CALDAV,
     NS_CS,
     NS_DAV,
@@ -542,23 +543,171 @@ def _extract_tzid_from_timezone_text(timezone_text):
     return match.group(1).strip()
 
 
-def _timezone_name_from_mkcalendar_payload(payload):
+def _supported_components_prop(component_kind=Calendar.COMPONENT_VEVENT):
+    elem = ET.Element(qname(NS_CALDAV, "supported-calendar-component-set"))
+    ET.SubElement(elem, qname(NS_CALDAV, "comp"), name=component_kind)
+    return elem
+
+
+def _supported_component_sets_prop():
+    elem = ET.Element(qname(NS_CALDAV, "supported-calendar-component-sets"))
+    for component_kind in (Calendar.COMPONENT_VEVENT, Calendar.COMPONENT_VTODO):
+        subset = ET.SubElement(
+            elem, qname(NS_CALDAV, "supported-calendar-component-set")
+        )
+        ET.SubElement(subset, qname(NS_CALDAV, "comp"), name=component_kind)
+    return elem
+
+
+def _calendar_timezone_prop(timezone_name):
+    elem = ET.Element(qname(NS_CALDAV, "calendar-timezone"))
+    elem.text = (
+        "BEGIN:VCALENDAR\r\n"
+        "VERSION:2.0\r\n"
+        "BEGIN:VTIMEZONE\r\n"
+        f"TZID:{timezone_name}\r\n"
+        "END:VTIMEZONE\r\n"
+        "END:VCALENDAR\r\n"
+    )
+    return elem
+
+
+def _calendar_color_prop(color):
+    elem = ET.Element(qname(NS_APPLE_ICAL, "calendar-color"))
+    elem.text = color
+    return elem
+
+
+def _calendar_order_prop(sort_order):
+    elem = ET.Element(qname(NS_APPLE_ICAL, "calendar-order"))
+    elem.text = str(sort_order)
+    return elem
+
+
+def _mkcalendar_props_from_payload(payload):
+    defaults = {
+        "display_name": None,
+        "description": "",
+        "timezone": "UTC",
+        "color": "",
+        "sort_order": None,
+        "component_kind": Calendar.COMPONENT_VEVENT,
+    }
     if not payload:
-        return "UTC"
+        return defaults, [], None
+
     root = _parse_xml_body(payload)
-    if root is None:
-        return "UTC"
-    timezone_elem = root.find(f".//{qname(NS_CALDAV, 'calendar-timezone')}")
-    if timezone_elem is None or not (timezone_elem.text or "").strip():
-        return "UTC"
-    tzid = _extract_tzid_from_timezone_text((timezone_elem.text or "").strip())
-    if not tzid:
-        return "UTC"
-    try:
-        ZoneInfo(tzid)
-        return tzid
-    except Exception:
-        return "UTC"
+    if root is None or root.tag != qname(NS_CALDAV, "mkcalendar"):
+        return None, [], _caldav_error_response("valid-calendar-data", status=400)
+
+    prop = root.find(f".//{qname(NS_DAV, 'set')}/{qname(NS_DAV, 'prop')}")
+    if prop is None:
+        return defaults, [], None
+
+    property_tags = [entry.tag for entry in list(prop)]
+    allowed_tags = {
+        qname(NS_DAV, "displayname"),
+        qname(NS_CALDAV, "calendar-description"),
+        qname(NS_CALDAV, "calendar-timezone"),
+        qname(NS_CALDAV, "calendar-free-busy-set"),
+        qname(NS_CALDAV, "supported-calendar-component-set"),
+        qname(NS_APPLE_ICAL, "calendar-color"),
+        qname(NS_APPLE_ICAL, "calendar-order"),
+    }
+    if qname(NS_DAV, "getetag") in property_tags:
+        return defaults, property_tags, None
+    if any(tag not in allowed_tags for tag in property_tags):
+        return defaults, property_tags, None
+
+    display = prop.find(qname(NS_DAV, "displayname"))
+    if display is not None and (display.text or "").strip():
+        defaults["display_name"] = (display.text or "").strip()
+
+    description = prop.find(qname(NS_CALDAV, "calendar-description"))
+    if description is not None and (description.text or "").strip():
+        defaults["description"] = (description.text or "").strip()
+
+    timezone_elem = prop.find(qname(NS_CALDAV, "calendar-timezone"))
+    if timezone_elem is not None and (timezone_elem.text or "").strip():
+        tzid = _extract_tzid_from_timezone_text((timezone_elem.text or "").strip())
+        if not tzid:
+            return None, [], _caldav_error_response("valid-calendar-data", status=400)
+        try:
+            ZoneInfo(tzid)
+            defaults["timezone"] = tzid
+        except Exception:
+            return None, [], _caldav_error_response("valid-calendar-data", status=400)
+
+    color_elem = prop.find(qname(NS_APPLE_ICAL, "calendar-color"))
+    if color_elem is not None and (color_elem.text or "").strip():
+        defaults["color"] = (color_elem.text or "").strip()
+
+    order_elem = prop.find(qname(NS_APPLE_ICAL, "calendar-order"))
+    if order_elem is not None and (order_elem.text or "").strip():
+        try:
+            defaults["sort_order"] = int((order_elem.text or "").strip())
+        except ValueError:
+            return None, [], _caldav_error_response("valid-calendar-data", status=400)
+
+    comp_set = prop.find(qname(NS_CALDAV, "supported-calendar-component-set"))
+    if comp_set is not None:
+        names = {
+            (comp.get("name") or "").upper()
+            for comp in comp_set.findall(qname(NS_CALDAV, "comp"))
+            if (comp.get("name") or "").strip()
+        }
+        if len(names) != 1:
+            return (
+                defaults,
+                [qname(NS_CALDAV, "supported-calendar-component-set")],
+                None,
+            )
+        if not names.issubset({Calendar.COMPONENT_VEVENT, Calendar.COMPONENT_VTODO}):
+            return (
+                defaults,
+                [qname(NS_CALDAV, "supported-calendar-component-set")],
+                None,
+            )
+        defaults["component_kind"] = names.pop()
+
+    return defaults, [], None
+
+
+def _component_kind_from_payload(payload_text):
+    upper = payload_text.upper()
+    has_event = "BEGIN:VEVENT" in upper
+    has_todo = "BEGIN:VTODO" in upper
+    if has_event and has_todo:
+        return None
+    if has_todo:
+        return Calendar.COMPONENT_VTODO
+    if has_event:
+        return Calendar.COMPONENT_VEVENT
+    return None
+
+
+def _proppatch_multistatus_response(path, ok_props, bad_props):
+    response = ET.Element(qname(NS_DAV, "response"))
+    href = ET.SubElement(response, qname(NS_DAV, "href"))
+    href.text = path
+
+    if ok_props:
+        ok_stat = ET.SubElement(response, qname(NS_DAV, "propstat"))
+        ok_prop = ET.SubElement(ok_stat, qname(NS_DAV, "prop"))
+        for tag in ok_props:
+            ET.SubElement(ok_prop, tag)
+        status = ET.SubElement(ok_stat, qname(NS_DAV, "status"))
+        status.text = "HTTP/1.1 200 OK"
+
+    if bad_props:
+        bad_stat = ET.SubElement(response, qname(NS_DAV, "propstat"))
+        bad_prop = ET.SubElement(bad_stat, qname(NS_DAV, "prop"))
+        for tag in bad_props:
+            ET.SubElement(bad_prop, tag)
+        status = ET.SubElement(bad_stat, qname(NS_DAV, "status"))
+        status.text = "HTTP/1.1 403 Forbidden"
+
+    return _xml_response(207, multistatus_document([response]))
 
 
 def _tzinfo_from_report(root):
@@ -1619,12 +1768,6 @@ def _resourcetype_prop(*types):
     return elem
 
 
-def _supported_components_prop():
-    elem = ET.Element(qname(NS_CALDAV, "supported-calendar-component-set"))
-    ET.SubElement(elem, qname(NS_CALDAV, "comp"), name="VEVENT")
-    return elem
-
-
 def _owner_prop(owner_user):
     elem = ET.Element(qname(NS_DAV, "owner"))
     href = ET.SubElement(elem, qname(NS_DAV, "href"))
@@ -1995,6 +2138,10 @@ def _build_prop_map_for_calendar_home(owner, auth_user):
         qname(NS_DAV, "supported-report-set"): lambda: _supported_report_set_prop(
             include_freebusy=True
         ),
+        qname(
+            NS_CALDAV,
+            "supported-calendar-component-sets",
+        ): _supported_component_sets_prop,
     }
 
 
@@ -2185,7 +2332,21 @@ def _build_prop_map_for_calendar_collection(calendar, auth_user):
         ),
         qname(
             NS_CALDAV, "supported-calendar-component-set"
-        ): _supported_components_prop,
+        ): lambda: _supported_components_prop(calendar.component_kind),
+        qname(NS_CALDAV, "calendar-timezone"): lambda: _calendar_timezone_prop(
+            calendar.timezone
+        ),
+        qname(NS_CALDAV, "calendar-description"): lambda: _text_prop(
+            NS_CALDAV,
+            "calendar-description",
+            calendar.description,
+        ),
+        qname(NS_APPLE_ICAL, "calendar-color"): lambda: _calendar_color_prop(
+            calendar.color
+        ),
+        qname(NS_APPLE_ICAL, "calendar-order"): lambda: _calendar_order_prop(
+            calendar.sort_order if calendar.sort_order is not None else 0
+        ),
         qname(NS_DAV, "getetag"): lambda: _text_prop(
             NS_DAV, "getetag", _etag_for_calendar(calendar)
         ),
@@ -2577,7 +2738,8 @@ def calendar_collection_view(request, username, slug):
         "GET",
         "HEAD",
         "REPORT",
-        "MKCOL",
+        "MKCALENDAR",
+        "PROPPATCH",
         "DELETE",
     ]
     if request.method == "OPTIONS":
@@ -2593,20 +2755,41 @@ def calendar_collection_view(request, username, slug):
     if owner is None:
         return HttpResponse(status=404)
 
-    if request.method == "MKCALENDAR":
-        return _not_allowed(request, allowed, username=username, slug=slug)
-
     if request.method == "MKCOL":
+        return _caldav_error_response("calendar-collection-location-ok", status=403)
+
+    if request.method == "MKCALENDAR":
         if owner != user:
             return HttpResponse(status=403)
         existing = Calendar.objects.filter(owner=owner, slug=slug).first()
         if existing is not None:
-            return HttpResponse(status=405)
+            return _dav_error_response("resource-must-be-null")
+
+        properties, bad_props, property_error = _mkcalendar_props_from_payload(
+            request.body
+        )
+        if property_error is not None:
+            return property_error
+        if properties is None:
+            return HttpResponse(status=400)
+        if bad_props:
+            return _proppatch_multistatus_response(
+                f"/dav/calendars/{username}/{slug}/",
+                [],
+                bad_props,
+            )
+
         calendar = Calendar.objects.create(
             owner=owner,
             slug=slug,
-            name=slug,
-            timezone="UTC",
+            name=(properties.get("display_name") or slug),
+            description=(properties.get("description") or ""),
+            timezone=(properties.get("timezone") or "UTC"),
+            color=(properties.get("color") or ""),
+            sort_order=properties.get("sort_order"),
+            component_kind=(
+                properties.get("component_kind") or Calendar.COMPONENT_VEVENT
+            ),
         )
         response = HttpResponse(status=201)
         response["Location"] = f"/dav/calendars/{username}/{calendar.slug}/"
@@ -2624,7 +2807,15 @@ def calendar_collection_view(request, username, slug):
 
     calendar = get_calendar_for_user(user, username, slug)
     if calendar is None:
-        return HttpResponse(status=404)
+        if request.method == "REPORT":
+            report_root = _parse_xml_body(request.body)
+            if report_root is not None and report_root.tag == qname(
+                NS_CALDAV,
+                "free-busy-query",
+            ):
+                calendar = Calendar.objects.filter(owner=owner, slug=slug).first()
+        if calendar is None:
+            return HttpResponse(status=404)
 
     if request.method == "DELETE":
         if owner != user:
@@ -2632,6 +2823,109 @@ def calendar_collection_view(request, username, slug):
         calendar.delete()
         response = HttpResponse(status=204)
         return _dav_common_headers(response)
+
+    if request.method == "PROPPATCH":
+        if owner != user:
+            return HttpResponse(status=403)
+        root = _parse_xml_body(request.body)
+        if root is None or root.tag != qname(NS_DAV, "propertyupdate"):
+            return HttpResponse(status=400)
+
+        ok_tags = []
+        bad_tags = []
+        update_fields = set()
+        pending_values = {
+            "name": calendar.name,
+            "description": calendar.description,
+            "timezone": calendar.timezone,
+            "color": calendar.color,
+            "sort_order": calendar.sort_order,
+        }
+
+        for operation in list(root):
+            if operation.tag not in (qname(NS_DAV, "set"), qname(NS_DAV, "remove")):
+                continue
+            prop = operation.find(qname(NS_DAV, "prop"))
+            if prop is None:
+                continue
+            is_set = operation.tag == qname(NS_DAV, "set")
+            for entry in list(prop):
+                if entry.tag == qname(NS_DAV, "displayname"):
+                    if is_set:
+                        pending_values["name"] = (
+                            entry.text or ""
+                        ).strip() or calendar.slug
+                    else:
+                        pending_values["name"] = calendar.slug
+                    update_fields.add("name")
+                    ok_tags.append(entry.tag)
+                    continue
+
+                if entry.tag == qname(NS_CALDAV, "calendar-description"):
+                    pending_values["description"] = (
+                        (entry.text or "").strip() if is_set else ""
+                    )
+                    update_fields.add("description")
+                    ok_tags.append(entry.tag)
+                    continue
+
+                if entry.tag == qname(NS_CALDAV, "calendar-timezone"):
+                    if not is_set:
+                        pending_values["timezone"] = "UTC"
+                        update_fields.add("timezone")
+                        ok_tags.append(entry.tag)
+                        continue
+                    timezone_text = (entry.text or "").strip()
+                    tzid = _extract_tzid_from_timezone_text(timezone_text)
+                    if not tzid:
+                        bad_tags.append(entry.tag)
+                        continue
+                    try:
+                        ZoneInfo(tzid)
+                    except Exception:
+                        bad_tags.append(entry.tag)
+                        continue
+                    pending_values["timezone"] = tzid
+                    update_fields.add("timezone")
+                    ok_tags.append(entry.tag)
+                    continue
+
+                if entry.tag == qname(NS_APPLE_ICAL, "calendar-color"):
+                    pending_values["color"] = (
+                        (entry.text or "").strip() if is_set else ""
+                    )
+                    update_fields.add("color")
+                    ok_tags.append(entry.tag)
+                    continue
+
+                if entry.tag == qname(NS_APPLE_ICAL, "calendar-order"):
+                    if not is_set:
+                        pending_values["sort_order"] = None
+                        update_fields.add("sort_order")
+                        ok_tags.append(entry.tag)
+                        continue
+                    try:
+                        pending_values["sort_order"] = int((entry.text or "").strip())
+                    except ValueError:
+                        bad_tags.append(entry.tag)
+                        continue
+                    update_fields.add("sort_order")
+                    ok_tags.append(entry.tag)
+                    continue
+
+                bad_tags.append(entry.tag)
+
+        if update_fields:
+            for key, value in pending_values.items():
+                setattr(calendar, key, value)
+            update_fields.add("updated_at")
+            calendar.save(update_fields=list(update_fields))
+
+        return _proppatch_multistatus_response(
+            f"/dav/calendars/{username}/{calendar.slug}/",
+            ok_tags,
+            bad_tags,
+        )
 
     if request.method in ("GET", "HEAD"):
         calendar_etag = _etag_for_calendar(calendar)
@@ -2779,53 +3073,9 @@ def calendar_object_view(request, username, slug, filename):
             parent_path, _leaf = _split_filename_path(filename)
 
             if request.method in ("MKCOL", "MKCALENDAR"):
-                if request.method == "MKCOL" and request.body:
-                    return HttpResponse(status=415)
-                if not _collection_exists(writable, parent_path):
-                    return HttpResponse(status=409)
-
-                existing_collection = writable.calendar_objects.filter(
-                    filename=marker_filename
-                ).first()
-                existing_resource = writable.calendar_objects.filter(
-                    filename=filename.strip("/")
-                ).first()
-                if existing_collection is not None or existing_resource is not None:
-                    return HttpResponse(status=405)
-
-                marker_uid = f"collection:{marker_filename}"
-                writable.calendar_objects.create(
-                    uid=marker_uid,
-                    filename=marker_filename,
-                    etag=_generate_strong_etag(marker_filename.encode("utf-8")),
-                    ical_blob="",
-                    content_type="httpd/unix-directory",
-                    size=0,
+                return _caldav_error_response(
+                    "calendar-collection-location-ok", status=403
                 )
-                _create_calendar_change(
-                    writable,
-                    next_revision,
-                    marker_filename,
-                    marker_uid,
-                    False,
-                )
-                writable.save(update_fields=["updated_at"])
-                response = HttpResponse(status=201)
-                response["Location"] = (
-                    f"/dav/calendars/{username}/{slug}/{marker_filename}"
-                )
-                _log_dav_create(
-                    "dav_create_collection_marker",
-                    request,
-                    actor_username=getattr(user, "username", ""),
-                    owner_username=username,
-                    slug=slug,
-                    status=201,
-                    filename=marker_filename,
-                    uid=marker_uid,
-                    location=response["Location"],
-                )
-                return _dav_common_headers(response)
 
             existing = writable.calendar_objects.filter(filename=filename).first()
             if existing is None and filename.endswith("/"):
@@ -2890,6 +3140,11 @@ def calendar_object_view(request, username, slug, filename):
             now = timezone.now()
             payload_text = parsed["text"]
             if _is_ical_resource(filename, content_type):
+                component_kind = _component_kind_from_payload(payload_text)
+                if component_kind is None or component_kind != writable.component_kind:
+                    return _caldav_error_response(
+                        "supported-calendar-component", status=403
+                    )
                 payload_text = _dedupe_duplicate_alarms(payload_text)
             payload = payload_text.encode("utf-8")
             etag = _generate_strong_etag(payload)
