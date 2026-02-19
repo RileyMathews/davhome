@@ -23,20 +23,16 @@ Guidance for coding agents working in this repository.
   - `uv sync`
 - Activate environment if needed:
   - `source .venv/bin/activate`
-- If using default `config.settings`, required env vars include:
-  - `WEB_HOST`, `POSTGRES_DB`, `POSTGRES_USER`, `POSTGRES_PASSWORD`, `POSTGRES_HOST`
 - For agent-driven local work, prefer `config.settings_test` or `config.settings_dev` to avoid Postgres/env requirements.
 
 ## Build / Run Commands
-To verify correctness of changes we have a series of tests that can be run.
+Use a single command for correctness verification:
 
-### Django tests
-The quickest tests are our own django tests. `just django-test`
+- `just full-verify`
 
-### Integration tests
-We have some vendored test suites that run separately and send web requests to the django server.
-Before running these ensure the django server is running on port 8000.
-Then you can run `just litmus-test` and `just caldavtester-test-suite` to run the integration tests.
+`just full-verify` is the required verification sweep for agents. It builds and starts a fresh Docker container, applies migrations and integration fixtures inside that container, runs integration suites, runs Django unit tests, and then tears the container down.
+
+Do not treat partial test runs as completion verification when `just full-verify` is available.
 
 
 ### CalDAVTester source of truth
@@ -66,19 +62,13 @@ Then you can run `just litmus-test` and `just caldavtester-test-suite` to run th
     `caldavtester-lab/caldav-suite-modules.txt`.
   - To tune suite/test-level coverage inside a module, adjust feature flags in
     `serverinfo.xml`.
-- For quick targeted debugging, run a specific module directly from
-  `caldavtester-lab/ccs-caldavtester`, for example:
-  - `python2 testcaldav.py CalDAV/reports.xml`
-  - If direct runs need fixture state, run `just setup-integration-fixtures`
-    first (it uses `config.settings_test`).
 
 ## Lint / Format / Type Checks
 
 - No mandatory lint/format tool is configured in this repo (no committed Ruff/Black/isort config).
 - Do not invent new tooling in feature PRs unless requested.
-- Minimum quality checks agents should run before handoff:
-  - `uv run python manage.py test --settings=config.settings_test <target>`
-  - `uv run python manage.py check --settings=config.settings_dev`
+- Minimum quality check agents should run before handoff:
+  - `just full-verify`
 - If you use local optional tools, keep behavior non-invasive and match existing formatting.
 
 ## Code Organization Conventions
@@ -157,5 +147,5 @@ Then you can run `just litmus-test` and `just caldavtester-test-suite` to run th
 - Make small, targeted changes.
 - Read nearby code before editing to match local patterns.
 - Update/add tests with behavior changes.
-- Run focused tests first, then broader suites when practical.
+- Run `just full-verify` as the default and final verification command.
 - If unable to run a command locally, state exactly what was not run and why.
