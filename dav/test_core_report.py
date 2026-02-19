@@ -49,3 +49,29 @@ class DavCoreReportTests(SimpleTestCase):
         self.assertEqual(value.sync_level, "1")
         self.assertEqual(value.sync_token, "data:,abc/1")
         self.assertEqual(value.requested_limit, 25)
+
+    def test_multiget_resolution_helpers(self):
+        objects = [
+            {"id": "a", "hrefs": ["/x/a", "/y/a"]},
+            {"id": "b", "hrefs": ["/x/b"]},
+        ]
+
+        index = core_report.build_href_index(objects, lambda obj: obj["hrefs"])
+        resolved = core_report.resolve_multiget_hrefs(
+            ["x/a", "/x/missing"],
+            index,
+            lambda href: href if href.startswith("/") else f"/{href}",
+        )
+        self.assertEqual(resolved[0][0], "/x/a")
+        self.assertEqual(resolved[0][1]["id"], "a")
+        self.assertEqual(resolved[1][0], "/x/missing")
+        self.assertIsNone(resolved[1][1])
+
+    def test_select_query_objects(self):
+        objects = [{"id": "a"}, {"id": "b"}]
+        selected = core_report.select_query_objects(
+            objects,
+            "filter",
+            lambda obj, query_filter: obj["id"] == "b" and query_filter == "filter",
+        )
+        self.assertEqual(selected, [{"id": "b"}])

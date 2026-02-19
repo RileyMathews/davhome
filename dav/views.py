@@ -2147,15 +2147,11 @@ def _all_object_hrefs_for_data(obj_data):
 
 def _responses_for_multiget(calendars, requested, hrefs, calendar_data_request=None):
     responses = []
-    by_path = {}
     objects = shell_repository.list_calendar_object_data_for_calendars(calendars)
-    for obj in objects:
-        for href in _all_object_hrefs_for_data(obj):
-            by_path[href] = obj
+    by_path = core_report.build_href_index(objects, _all_object_hrefs_for_data)
+    resolved = core_report.resolve_multiget_hrefs(hrefs, by_path, _normalize_href_path)
 
-    for href in hrefs:
-        normalized = _normalize_href_path(href)
-        obj = by_path.get(normalized)
+    for normalized, obj in resolved:
         if obj is None:
             responses.append(response_with_status(normalized, "404 Not Found"))
             continue
@@ -2177,9 +2173,10 @@ def _responses_for_calendar_query(
     responses = []
     style = _report_href_style(request_path)
     objects = shell_repository.list_calendar_object_data_for_calendars(calendars)
-    for obj in objects:
-        if not _object_matches_query(obj, query_filter):
-            continue
+    matched = core_report.select_query_objects(
+        objects, query_filter, _object_matches_query
+    )
+    for obj in matched:
         obj_map = _build_prop_map_for_object(obj, calendar_data_request)
         ok, missing = _select_props(obj_map, requested)
         href = _object_href_for_style_data(obj, style)

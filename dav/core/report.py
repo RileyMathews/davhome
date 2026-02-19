@@ -18,6 +18,26 @@ class SyncCollectionRequest:
     requested_limit: int | None
 
 
+def build_href_index(objects, all_hrefs_for_object):
+    by_path = {}
+    for obj in objects:
+        for href in all_hrefs_for_object(obj):
+            by_path[href] = obj
+    return by_path
+
+
+def resolve_multiget_hrefs(hrefs, href_index, normalize_href):
+    resolved = []
+    for href in hrefs:
+        normalized = normalize_href(href)
+        resolved.append((normalized, href_index.get(normalized)))
+    return resolved
+
+
+def select_query_objects(objects, query_filter, object_matches_query):
+    return [obj for obj in objects if object_matches_query(obj, query_filter)]
+
+
 def classify_report_kind(root_tag: str) -> str:
     if root_tag == qname(NS_CALDAV, "calendar-multiget"):
         return REPORT_KIND_MULTIGET
