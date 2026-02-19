@@ -2,6 +2,8 @@
 
 import base64
 from datetime import date, datetime, timedelta, timezone as datetime_timezone
+from types import SimpleNamespace
+from uuid import UUID
 from xml.etree import ElementTree as ET
 
 from django.contrib.auth.models import User
@@ -14,6 +16,7 @@ from calendars.models import (
     CalendarObjectChange,
     CalendarShare,
 )
+from dav import views as dav_views
 from dav.core import calendar_data as core_calendar_data
 from dav.core import filters as core_filters
 from dav.core import freebusy as core_freebusy
@@ -1721,3 +1724,467 @@ class DavPureFunctionTests(SimpleTestCase):
                 self._matches_comp_filter,
             )
         )
+
+    def test_remap_uid_for_copied_object(self):
+        self.assertEqual(
+            dav_views._remap_uid_for_copied_object("collection:old/", "new/"),
+            "collection:new/",
+        )
+        self.assertEqual(
+            dav_views._remap_uid_for_copied_object("dav:old.ics", "new.ics"),
+            "dav:new.ics",
+        )
+        self.assertEqual(
+            dav_views._remap_uid_for_copied_object("uid-123", "new.ics"),
+            "uid-123",
+        )
+
+    def test_sync_token_revision_from_parts(self):
+        calendar_id = UUID("11111111-1111-1111-1111-111111111111")
+        self.assertEqual(
+            dav_views._sync_token_revision_from_parts(
+                ["11111111-1111-1111-1111-111111111111", "7"],
+                calendar_id,
+            ),
+            7,
+        )
+        self.assertIsNone(
+            dav_views._sync_token_revision_from_parts(["bad", "7"], calendar_id)
+        )
+        self.assertIsNone(
+            dav_views._sync_token_revision_from_parts(
+                ["22222222-2222-2222-2222-222222222222", "7"],
+                calendar_id,
+            )
+        )
+        self.assertIsNone(
+            dav_views._sync_token_revision_from_parts(
+                ["11111111-1111-1111-1111-111111111111", "-1"],
+                calendar_id,
+            )
+        )
+
+    def test_build_freebusy_response_lines(self):
+        start = datetime(2026, 2, 20, 10, 0, tzinfo=datetime_timezone.utc)
+        end = datetime(2026, 2, 20, 11, 0, tzinfo=datetime_timezone.utc)
+        lines = dav_views._build_freebusy_response_lines(
+            start,
+            end,
+            [(start, end)],
+            [],
+            [],
+        )
+        self.assertEqual(lines[0], "BEGIN:VCALENDAR")
+        self.assertIn("BEGIN:VFREEBUSY", lines)
+        self.assertTrue(any(line.startswith("FREEBUSY:") for line in lines))
+        self.assertEqual(lines[-2], "END:VCALENDAR")
+
+    def test_calendar_collection_proppatch_plan(self):
+        root = ET.fromstring(
+            """<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+<A:propertyupdate xmlns:A=\"DAV:\" xmlns:C=\"urn:ietf:params:xml:ns:caldav\" xmlns:G=\"http://apple.com/ns/ical/\">
+  <A:set>
+    <A:prop>
+      <A:displayname>Renamed</A:displayname>
+      <C:calendar-description>Desc</C:calendar-description>
+      <G:calendar-color>#112233</G:calendar-color>
+      <G:calendar-order>5</G:calendar-order>
+    </A:prop>
+  </A:set>
+</A:propertyupdate>"""
+        )
+        current_values = {
+            "name": "Family",
+            "description": "",
+            "timezone": "UTC",
+            "color": "",
+            "sort_order": None,
+        }
+        pending_values, update_fields, ok_tags, bad_tags = (
+            dav_views._calendar_collection_proppatch_plan(
+                root,
+                "family",
+                current_values,
+            )
+        )
+        self.assertEqual(pending_values["name"], "Renamed")
+        self.assertEqual(pending_values["description"], "Desc")
+        self.assertEqual(pending_values["color"], "#112233")
+        self.assertEqual(pending_values["sort_order"], 5)
+        self.assertIn("name", update_fields)
+        self.assertIn("description", update_fields)
+        self.assertIn("color", update_fields)
+        self.assertIn("sort_order", update_fields)
+        self.assertTrue(ok_tags)
+        self.assertEqual(bad_tags, [])
+
+    def test_calendar_collection_proppatch_plan_rejects_bad_values(self):
+        root = ET.fromstring(
+            """<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+<A:propertyupdate xmlns:A=\"DAV:\" xmlns:C=\"urn:ietf:params:xml:ns:caldav\" xmlns:G=\"http://apple.com/ns/ical/\">
+  <A:set>
+    <A:prop>
+      <C:calendar-timezone>NOT_A_TZ</C:calendar-timezone>
+      <G:calendar-order>not-int</G:calendar-order>
+    </A:prop>
+  </A:set>
+</A:propertyupdate>"""
+        )
+        pending_values, update_fields, ok_tags, bad_tags = (
+            dav_views._calendar_collection_proppatch_plan(
+                root,
+                "family",
+                {
+                    "name": "Family",
+                    "description": "",
+                    "timezone": "UTC",
+                    "color": "",
+                    "sort_order": None,
+                },
+            )
+        )
+        self.assertEqual(pending_values["timezone"], "UTC")
+        self.assertEqual(pending_values["sort_order"], None)
+        self.assertEqual(update_fields, set())
+        self.assertEqual(ok_tags, [])
+        self.assertEqual(len(bad_tags), 2)
+
+    def test_parse_sync_token_for_calendar_data_and_path_forms(self):
+        calendar = SimpleNamespace(id=UUID("11111111-1111-1111-1111-111111111111"))
+        revision, error = dav_views._parse_sync_token_for_calendar(
+            "data:,11111111-1111-1111-1111-111111111111/3",
+            calendar,
+        )
+        self.assertEqual(revision, 3)
+        self.assertIsNone(error)
+
+        revision, error = dav_views._parse_sync_token_for_calendar(
+            "/sync/11111111-1111-1111-1111-111111111111/4",
+            calendar,
+        )
+        self.assertEqual(revision, 4)
+        self.assertIsNone(error)
+
+        revision, error = dav_views._parse_sync_token_for_calendar(
+            "/sync/22222222-2222-2222-2222-222222222222/4",
+            calendar,
+        )
+        self.assertIsNone(revision)
+        self.assertIsNotNone(error)
+
+    def test_parse_xml_body_helper(self):
+        self.assertIsNotNone(dav_views._parse_xml_body(b"<root/>"))
+        self.assertIsNone(dav_views._parse_xml_body(b"<root>"))
+
+    def test_calendar_default_tzinfo_helper(self):
+        self.assertEqual(
+            dav_views._calendar_default_tzinfo(SimpleNamespace(timezone="")),
+            datetime_timezone.utc,
+        )
+        self.assertEqual(
+            getattr(
+                dav_views._calendar_default_tzinfo(SimpleNamespace(timezone="UTC")),
+                "key",
+                "",
+            ),
+            "UTC",
+        )
+        self.assertEqual(
+            dav_views._calendar_default_tzinfo(
+                SimpleNamespace(timezone="Bad/Timezone")
+            ),
+            datetime_timezone.utc,
+        )
+
+    def test_sync_collection_limit_helper(self):
+        root = ET.fromstring('<D:sync-collection xmlns:D="DAV:" />')
+        self.assertIsNone(dav_views._sync_collection_limit(root))
+
+        root = ET.fromstring(
+            '<D:sync-collection xmlns:D="DAV:"><D:limit><D:nresults>2</D:nresults></D:limit></D:sync-collection>'
+        )
+        self.assertEqual(dav_views._sync_collection_limit(root), 2)
+
+        root = ET.fromstring(
+            '<D:sync-collection xmlns:D="DAV:"><D:limit><D:nresults>0</D:nresults></D:limit></D:sync-collection>'
+        )
+        self.assertIsNone(dav_views._sync_collection_limit(root))
+
+    def test_collection_and_object_href_style_helpers(self):
+        owner = SimpleNamespace(username="user01")
+        calendar = SimpleNamespace(owner=owner, slug="family")
+        obj = SimpleNamespace(filename="item.ics")
+        self.assertEqual(
+            dav_views._report_href_style("/dav/calendars/__uids__/x/family/"),
+            "uids",
+        )
+        self.assertEqual(
+            dav_views._report_href_style("/dav/calendars/users/user01/family/"),
+            "users",
+        )
+        self.assertEqual(
+            dav_views._report_href_style("/dav/calendars/user01/family/"),
+            "username",
+        )
+        self.assertIn(
+            "/dav/calendars/users/user01/family/item.ics",
+            dav_views._all_object_hrefs(calendar, obj),
+        )
+
+    def test_sync_token_helpers(self):
+        calendar_id = UUID("11111111-1111-1111-1111-111111111111")
+        self.assertEqual(
+            dav_views._build_sync_token(calendar_id, 9),
+            "data:,11111111-1111-1111-1111-111111111111/9",
+        )
+
+    def test_calendar_collection_proppatch_plan_remove_operations(self):
+        root = ET.fromstring(
+            """<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+<A:propertyupdate xmlns:A=\"DAV:\" xmlns:C=\"urn:ietf:params:xml:ns:caldav\" xmlns:G=\"http://apple.com/ns/ical/\">
+  <A:remove>
+    <A:prop>
+      <A:displayname />
+      <C:calendar-timezone />
+      <G:calendar-order />
+      <A:unsupported />
+    </A:prop>
+  </A:remove>
+</A:propertyupdate>"""
+        )
+        pending_values, update_fields, ok_tags, bad_tags = (
+            dav_views._calendar_collection_proppatch_plan(
+                root,
+                "family",
+                {
+                    "name": "Family Name",
+                    "description": "Desc",
+                    "timezone": "America/Chicago",
+                    "color": "#000000",
+                    "sort_order": 10,
+                },
+            )
+        )
+        self.assertEqual(pending_values["name"], "family")
+        self.assertEqual(pending_values["timezone"], "UTC")
+        self.assertEqual(pending_values["sort_order"], None)
+        self.assertIn("name", update_fields)
+        self.assertIn("timezone", update_fields)
+        self.assertIn("sort_order", update_fields)
+        self.assertEqual(len(ok_tags), 3)
+        self.assertEqual(len(bad_tags), 1)
+
+    def test_dedupe_duplicate_alarms_helper(self):
+        input_ical = (
+            "BEGIN:VCALENDAR\r\n"
+            "BEGIN:VEVENT\r\n"
+            "UID:dup\r\n"
+            "BEGIN:VALARM\r\nACTION:DISPLAY\r\nTRIGGER:-PT10M\r\nEND:VALARM\r\n"
+            "BEGIN:VALARM\r\nACTION:DISPLAY\r\nTRIGGER:-PT10M\r\nEND:VALARM\r\n"
+            "END:VEVENT\r\n"
+            "END:VCALENDAR\r\n"
+        )
+        output_ical = dav_views._dedupe_duplicate_alarms(input_ical)
+        self.assertEqual(output_ical.count("BEGIN:VALARM"), 1)
+
+    def test_guid_and_href_helpers(self):
+        self.assertEqual(
+            dav_views._dav_guid_for_username("user01"),
+            "10000000-0000-0000-0000-000000000001",
+        )
+        self.assertIsNone(dav_views._dav_guid_for_username("owner"))
+        self.assertEqual(
+            dav_views._dav_username_for_guid("10000000-0000-0000-0000-000000000099"),
+            "user99",
+        )
+        self.assertIsNone(
+            dav_views._dav_username_for_guid("10000000-0000-0000-0000-000000000100")
+        )
+
+        user01 = SimpleNamespace(username="user01")
+        owner = SimpleNamespace(username="owner")
+        self.assertEqual(
+            dav_views._principal_href_for_user(user01),
+            "/dav/principals/__uids__/10000000-0000-0000-0000-000000000001/",
+        )
+        self.assertEqual(
+            dav_views._principal_href_for_user(owner),
+            "/dav/principals/users/owner/",
+        )
+        self.assertEqual(
+            dav_views._calendar_home_href_for_user(user01),
+            "/dav/calendars/__uids__/10000000-0000-0000-0000-000000000001/",
+        )
+
+    def test_tzinfo_from_report_helper(self):
+        root = ET.fromstring(
+            '<C:calendar-query xmlns:C="urn:ietf:params:xml:ns:caldav"><C:timezone-id>UTC</C:timezone-id></C:calendar-query>'
+        )
+        tzinfo, error = dav_views._tzinfo_from_report(root)
+        self.assertIsNone(error)
+        self.assertEqual(getattr(tzinfo, "key", ""), "UTC")
+
+        bad = ET.fromstring(
+            '<C:calendar-query xmlns:C="urn:ietf:params:xml:ns:caldav"><C:timezone-id>Bad/Timezone</C:timezone-id></C:calendar-query>'
+        )
+        tzinfo, error = dav_views._tzinfo_from_report(bad)
+        self.assertIsNone(tzinfo)
+        self.assertIsNotNone(error)
+
+    def test_sync_collection_multistatus_document_helper(self):
+        response = ET.Element("{DAV:}response")
+        response.append(ET.Element("{DAV:}href"))
+        xml_bytes = dav_views._sync_collection_multistatus_document(
+            [response],
+            "data:,11111111-1111-1111-1111-111111111111/1",
+        )
+        root = ET.fromstring(xml_bytes)
+        token = root.find("{DAV:}sync-token")
+        token_text = token.text if token is not None else None
+        self.assertEqual(
+            token_text,
+            "data:,11111111-1111-1111-1111-111111111111/1",
+        )
+
+    def test_append_date_or_datetime_line_helper(self):
+        lines = []
+        dav_views._append_date_or_datetime_line(
+            lines, "RECURRENCE-ID", "20260220", True
+        )
+        dav_views._append_date_or_datetime_line(
+            lines,
+            "RECURRENCE-ID",
+            "20260220T100000Z",
+            False,
+        )
+        self.assertEqual(lines[0], "RECURRENCE-ID;VALUE=DATE:20260220")
+        self.assertEqual(lines[1], "RECURRENCE-ID:20260220T100000Z")
+
+    def test_uid_drop_recurrence_map_helper(self):
+        class FakeComponent:
+            def __init__(self, uid, recurrence_id):
+                self._uid = uid
+                self._recurrence_id = recurrence_id
+
+            def get(self, name):
+                if name == "UID":
+                    return self._uid
+                return None
+
+            def decoded(self, name, default=None):
+                if name == "RECURRENCE-ID":
+                    return self._recurrence_id
+                return default
+
+        uid = "series-1"
+        components = [
+            FakeComponent(
+                uid, datetime(2026, 2, 21, 10, 0, tzinfo=datetime_timezone.utc)
+            ),
+            FakeComponent(
+                uid, datetime(2026, 2, 20, 10, 0, tzinfo=datetime_timezone.utc)
+            ),
+        ]
+        drop_map = dav_views._uid_drop_recurrence_map(components, None)
+        self.assertEqual(drop_map[uid], "20260220T100000Z")
+
+        components_with_master = [
+            FakeComponent(uid, None),
+            FakeComponent(
+                uid, datetime(2026, 2, 20, 10, 0, tzinfo=datetime_timezone.utc)
+            ),
+            FakeComponent(
+                uid, datetime(2026, 2, 21, 10, 0, tzinfo=datetime_timezone.utc)
+            ),
+        ]
+        drop_map = dav_views._uid_drop_recurrence_map(components_with_master, None)
+        self.assertNotIn(uid, drop_map)
+
+    def test_resolved_recurrence_text_helper(self):
+        class FakeComponent:
+            def __init__(self, recurrence_id=None, rrule=None, exdate=None):
+                self._recurrence_id = recurrence_id
+                self._rrule = rrule
+                self._exdate = exdate
+
+            def decoded(self, name, default=None):
+                if name == "RECURRENCE-ID":
+                    return self._recurrence_id
+                return default
+
+            def get(self, name):
+                if name == "RRULE":
+                    return self._rrule
+                if name == "EXDATE":
+                    return self._exdate
+                return None
+
+        component = FakeComponent(
+            recurrence_id=datetime(2026, 2, 20, 10, 0, tzinfo=datetime_timezone.utc)
+        )
+        rec_text, rec_is_date = dav_views._resolved_recurrence_text(
+            component,
+            "uid-1",
+            None,
+            "20260220T100000Z",
+            False,
+            None,
+            None,
+            {},
+        )
+        self.assertEqual(rec_text, "20260220T100000Z")
+        self.assertFalse(rec_is_date)
+
+        component = FakeComponent()
+        rec_text, _ = dav_views._resolved_recurrence_text(
+            component,
+            "uid-1",
+            None,
+            "20260221T100000Z",
+            False,
+            {"uid-1": datetime(2026, 2, 20, 10, 0, tzinfo=datetime_timezone.utc)},
+            None,
+            {},
+        )
+        self.assertEqual(rec_text, "20260221T100000Z")
+
+        component = FakeComponent(rrule="FREQ=DAILY", exdate="20260220T100000Z")
+        rec_text, _ = dav_views._resolved_recurrence_text(
+            component,
+            "uid-2",
+            None,
+            "20260222T100000Z",
+            False,
+            None,
+            None,
+            {},
+        )
+        self.assertEqual(rec_text, "20260222T100000Z")
+
+        component = FakeComponent()
+        rec_text, _ = dav_views._resolved_recurrence_text(
+            component,
+            "uid-3",
+            None,
+            "20260223T100000Z",
+            False,
+            None,
+            {"uid-3"},
+            {},
+        )
+        self.assertEqual(rec_text, "20260223T100000Z")
+
+        component = FakeComponent(
+            recurrence_id=datetime(2026, 2, 24, 10, 0, tzinfo=datetime_timezone.utc)
+        )
+        rec_text, _ = dav_views._resolved_recurrence_text(
+            component,
+            "uid-4",
+            None,
+            "20260224T100000Z",
+            False,
+            None,
+            None,
+            {"uid-4": "20260224T100000Z"},
+        )
+        self.assertIsNone(rec_text)

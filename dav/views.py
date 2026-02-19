@@ -89,6 +89,14 @@ def _collection_exists(calendar, path):
     return calendar.calendar_objects.filter(filename=marker).exists()
 
 
+def _remap_uid_for_copied_object(uid, target_filename):
+    if uid.startswith("collection:"):
+        return f"collection:{target_filename}"
+    if uid.startswith("dav:"):
+        return f"dav:{target_filename}"
+    return uid
+
+
 def _copy_or_move_calendar_object(
     writable,
     request,
@@ -193,11 +201,7 @@ def _copy_or_move_calendar_object(
         else:
             target_filename = destination_lookup
 
-        target_uid = entry.uid
-        if entry.uid.startswith("collection:"):
-            target_uid = f"collection:{target_filename}"
-        elif entry.uid.startswith("dav:"):
-            target_uid = f"dav:{target_filename}"
+        target_uid = _remap_uid_for_copied_object(entry.uid, target_filename)
 
         writable.calendar_objects.create(
             uid=target_uid,
@@ -311,25 +315,7 @@ def _serialize_expanded_components(
     expanded, tzinfo=None, master_starts=None, first_instance_excluded_uids=None
 ):
     lines = ["BEGIN:VCALENDAR", "VERSION:2.0"]
-    uid_has_master = set()
-    uid_recurrence_ids = {}
-    for comp in expanded:
-        uid = comp.get("UID")
-        if not uid:
-            continue
-        uid_key = str(uid)
-        rec_id = comp.decoded("RECURRENCE-ID", None)
-        rec_text, rec_is_date = core_time.format_value_date_or_datetime(rec_id, tzinfo)
-        if rec_id is None:
-            uid_has_master.add(uid_key)
-        elif rec_text and not rec_is_date:
-            uid_recurrence_ids.setdefault(uid_key, []).append(rec_text)
-
-    uid_drop_recurrence = {
-        uid: min(values)
-        for uid, values in uid_recurrence_ids.items()
-        if uid not in uid_has_master and len(values) > 1
-    }
+    uid_drop_recurrence = _uid_drop_recurrence_map(expanded, tzinfo)
 
     for component in expanded:
         name = (component.name or "").upper()
@@ -361,58 +347,31 @@ def _serialize_expanded_components(
             else:
                 lines.append(f"DTSTART:{dtstart_text}")
 
-        rec_id = component.decoded("RECURRENCE-ID", None)
-        rec_text, rec_is_date = core_time.format_value_date_or_datetime(rec_id, tzinfo)
         uid_key = str(uid or "")
-        if rec_text is None and master_starts is not None and dtstart_text:
-            master_start = master_starts.get(uid_key)
-            master_text, _ = core_time.format_value_date_or_datetime(
-                master_start, tzinfo
-            )
-            if master_text and master_text != dtstart_text:
-                rec_text = dtstart_text
-                rec_is_date = dtstart_is_date
-        if (
-            rec_text is None
-            and dtstart_text
-            and component.get("RRULE") is not None
-            and component.get("EXDATE") is not None
-        ):
-            rec_text = dtstart_text
-            rec_is_date = dtstart_is_date
-        if (
-            rec_text is None
-            and dtstart_text
-            and first_instance_excluded_uids
-            and uid_key in first_instance_excluded_uids
-        ):
-            rec_text = dtstart_text
-            rec_is_date = dtstart_is_date
-        if rec_text and uid_drop_recurrence.get(uid_key) == rec_text:
-            rec_text = None
+        rec_text, rec_is_date = _resolved_recurrence_text(
+            component,
+            uid_key,
+            tzinfo,
+            dtstart_text,
+            dtstart_is_date,
+            master_starts,
+            first_instance_excluded_uids,
+            uid_drop_recurrence,
+        )
         if rec_text:
-            if rec_is_date:
-                lines.append(f"RECURRENCE-ID;VALUE=DATE:{rec_text}")
-            else:
-                lines.append(f"RECURRENCE-ID:{rec_text}")
+            _append_date_or_datetime_line(lines, "RECURRENCE-ID", rec_text, rec_is_date)
 
         dtend = component.decoded("DTEND", None)
         dtend_text, dtend_is_date = core_time.format_value_date_or_datetime(
             dtend, tzinfo
         )
         if dtend_text:
-            if dtend_is_date:
-                lines.append(f"DTEND;VALUE=DATE:{dtend_text}")
-            else:
-                lines.append(f"DTEND:{dtend_text}")
+            _append_date_or_datetime_line(lines, "DTEND", dtend_text, dtend_is_date)
 
         due = component.decoded("DUE", None)
         due_text, due_is_date = core_time.format_value_date_or_datetime(due, tzinfo)
         if due_text:
-            if due_is_date:
-                lines.append(f"DUE;VALUE=DATE:{due_text}")
-            else:
-                lines.append(f"DUE:{due_text}")
+            _append_date_or_datetime_line(lines, "DUE", due_text, due_is_date)
 
         duration = component.decoded("DURATION", None)
         if (
@@ -433,6 +392,74 @@ def _serialize_expanded_components(
 
     lines.extend(["END:VCALENDAR", ""])
     return "\r\n".join(lines)
+
+
+def _append_date_or_datetime_line(lines, prop_name, text, is_date):
+    if is_date:
+        lines.append(f"{prop_name};VALUE=DATE:{text}")
+    else:
+        lines.append(f"{prop_name}:{text}")
+
+
+def _uid_drop_recurrence_map(expanded, tzinfo):
+    uid_has_master = set()
+    uid_recurrence_ids = {}
+    for comp in expanded:
+        uid = comp.get("UID")
+        if not uid:
+            continue
+        uid_key = str(uid)
+        rec_id = comp.decoded("RECURRENCE-ID", None)
+        rec_text, rec_is_date = core_time.format_value_date_or_datetime(rec_id, tzinfo)
+        if rec_id is None:
+            uid_has_master.add(uid_key)
+        elif rec_text and not rec_is_date:
+            uid_recurrence_ids.setdefault(uid_key, []).append(rec_text)
+
+    return {
+        uid: min(values)
+        for uid, values in uid_recurrence_ids.items()
+        if uid not in uid_has_master and len(values) > 1
+    }
+
+
+def _resolved_recurrence_text(
+    component,
+    uid_key,
+    tzinfo,
+    dtstart_text,
+    dtstart_is_date,
+    master_starts,
+    first_instance_excluded_uids,
+    uid_drop_recurrence,
+):
+    rec_id = component.decoded("RECURRENCE-ID", None)
+    rec_text, rec_is_date = core_time.format_value_date_or_datetime(rec_id, tzinfo)
+    if rec_text is None and master_starts is not None and dtstart_text:
+        master_start = master_starts.get(uid_key)
+        master_text, _ = core_time.format_value_date_or_datetime(master_start, tzinfo)
+        if master_text and master_text != dtstart_text:
+            rec_text = dtstart_text
+            rec_is_date = dtstart_is_date
+    if (
+        rec_text is None
+        and dtstart_text
+        and component.get("RRULE") is not None
+        and component.get("EXDATE") is not None
+    ):
+        rec_text = dtstart_text
+        rec_is_date = dtstart_is_date
+    if (
+        rec_text is None
+        and dtstart_text
+        and first_instance_excluded_uids
+        and uid_key in first_instance_excluded_uids
+    ):
+        rec_text = dtstart_text
+        rec_is_date = dtstart_is_date
+    if rec_text and uid_drop_recurrence.get(uid_key) == rec_text:
+        rec_text = None
+    return rec_text, rec_is_date
 
 
 def _caldav_error_response(error_name, status=403):
@@ -475,6 +502,19 @@ def _sync_token_for_calendar(calendar):
     return _build_sync_token(calendar.id, _latest_sync_revision(calendar))
 
 
+def _sync_token_revision_from_parts(parts, expected_calendar_id):
+    if len(parts) != 2:
+        return None
+    try:
+        token_calendar_id = UUID(parts[0])
+        revision = int(parts[1])
+    except (ValueError, TypeError):
+        return None
+    if revision < 0 or token_calendar_id != expected_calendar_id:
+        return None
+    return revision
+
+
 def _parse_sync_token_for_calendar(token, calendar):
     value = (token or "").strip()
     if not value:
@@ -482,15 +522,8 @@ def _parse_sync_token_for_calendar(token, calendar):
 
     if value.startswith(_SYNC_TOKEN_DATA_PREFIX):
         payload = value[len(_SYNC_TOKEN_DATA_PREFIX) :]
-        parts = payload.split("/")
-        if len(parts) != 2:
-            return None, _valid_sync_token_error_response()
-        try:
-            token_calendar_id = UUID(parts[0])
-            revision = int(parts[1])
-        except (ValueError, TypeError):
-            return None, _valid_sync_token_error_response()
-        if revision < 0 or token_calendar_id != calendar.id:
+        revision = _sync_token_revision_from_parts(payload.split("/"), calendar.id)
+        if revision is None:
             return None, _valid_sync_token_error_response()
         return revision, None
 
@@ -504,17 +537,11 @@ def _parse_sync_token_for_calendar(token, calendar):
     ):
         return None, _valid_sync_token_error_response()
 
-    parts = path.removeprefix(_SYNC_TOKEN_PATH_PREFIX).split("/")
-    if len(parts) != 2:
-        return None, _valid_sync_token_error_response()
-
-    try:
-        token_calendar_id = UUID(parts[0])
-        revision = int(parts[1])
-    except (ValueError, TypeError):
-        return None, _valid_sync_token_error_response()
-
-    if revision < 0 or token_calendar_id != calendar.id:
+    revision = _sync_token_revision_from_parts(
+        path.removeprefix(_SYNC_TOKEN_PATH_PREFIX).split("/"),
+        calendar.id,
+    )
+    if revision is None:
         return None, _valid_sync_token_error_response()
 
     return revision, None
@@ -776,6 +803,39 @@ def _report_unknown_type():
     return HttpResponse(status=501)
 
 
+def _build_freebusy_response_lines(
+    window_start, window_end, busy, tentative, unavailable
+):
+    lines = [
+        "BEGIN:VCALENDAR",
+        "VERSION:2.0",
+        "PRODID:-//davhome//EN",
+        "BEGIN:VFREEBUSY",
+        f"DTSTART:{core_freebusy.format_ical_utc(window_start)}",
+        f"DTEND:{core_freebusy.format_ical_utc(window_end)}",
+    ]
+    if busy:
+        values = ",".join(
+            f"{core_freebusy.format_ical_utc(start_i)}/{core_freebusy.format_ical_utc(end_i)}"
+            for start_i, end_i in busy
+        )
+        lines.append(f"FREEBUSY:{values}")
+    if tentative:
+        values = ",".join(
+            f"{core_freebusy.format_ical_utc(start_i)}/{core_freebusy.format_ical_utc(end_i)}"
+            for start_i, end_i in tentative
+        )
+        lines.append(f"FREEBUSY;FBTYPE=BUSY-TENTATIVE:{values}")
+    if unavailable:
+        values = ",".join(
+            f"{core_freebusy.format_ical_utc(start_i)}/{core_freebusy.format_ical_utc(end_i)}"
+            for start_i, end_i in unavailable
+        )
+        lines.append(f"FREEBUSY;FBTYPE=BUSY-UNAVAILABLE:{values}")
+    lines.extend(["END:VFREEBUSY", "END:VCALENDAR", ""])
+    return lines
+
+
 def _render_freebusy_report(calendars, root):
     time_range = root.find(qname(NS_CALDAV, "time-range"))
     if time_range is None:
@@ -818,33 +878,13 @@ def _render_freebusy_report(calendars, root):
     tentative = merge_intervals(tentative)
     unavailable = merge_intervals(unavailable)
 
-    lines = [
-        "BEGIN:VCALENDAR",
-        "VERSION:2.0",
-        "PRODID:-//davhome//EN",
-        "BEGIN:VFREEBUSY",
-        f"DTSTART:{core_freebusy.format_ical_utc(window_start)}",
-        f"DTEND:{core_freebusy.format_ical_utc(window_end)}",
-    ]
-    if busy:
-        values = ",".join(
-            f"{core_freebusy.format_ical_utc(start_i)}/{core_freebusy.format_ical_utc(end_i)}"
-            for start_i, end_i in busy
-        )
-        lines.append(f"FREEBUSY:{values}")
-    if tentative:
-        values = ",".join(
-            f"{core_freebusy.format_ical_utc(start_i)}/{core_freebusy.format_ical_utc(end_i)}"
-            for start_i, end_i in tentative
-        )
-        lines.append(f"FREEBUSY;FBTYPE=BUSY-TENTATIVE:{values}")
-    if unavailable:
-        values = ",".join(
-            f"{core_freebusy.format_ical_utc(start_i)}/{core_freebusy.format_ical_utc(end_i)}"
-            for start_i, end_i in unavailable
-        )
-        lines.append(f"FREEBUSY;FBTYPE=BUSY-UNAVAILABLE:{values}")
-    lines.extend(["END:VFREEBUSY", "END:VCALENDAR", ""])
+    lines = _build_freebusy_response_lines(
+        window_start,
+        window_end,
+        busy,
+        tentative,
+        unavailable,
+    )
     response = HttpResponse(
         "\r\n".join(lines),
         status=200,
@@ -1009,6 +1049,84 @@ def _parse_propfind_payload(request):
         return None, HttpResponse(status=400)
 
     return parsed, None
+
+
+def _calendar_collection_proppatch_plan(root, calendar_slug, current_values):
+    pending_values = dict(current_values)
+    update_fields = set()
+    ok_tags = []
+    bad_tags = []
+
+    for operation in list(root):
+        if operation.tag not in (qname(NS_DAV, "set"), qname(NS_DAV, "remove")):
+            continue
+        prop = operation.find(qname(NS_DAV, "prop"))
+        if prop is None:
+            continue
+        is_set = operation.tag == qname(NS_DAV, "set")
+        for entry in list(prop):
+            if entry.tag == qname(NS_DAV, "displayname"):
+                if is_set:
+                    pending_values["name"] = (entry.text or "").strip() or calendar_slug
+                else:
+                    pending_values["name"] = calendar_slug
+                update_fields.add("name")
+                ok_tags.append(entry.tag)
+                continue
+
+            if entry.tag == qname(NS_CALDAV, "calendar-description"):
+                pending_values["description"] = (
+                    (entry.text or "").strip() if is_set else ""
+                )
+                update_fields.add("description")
+                ok_tags.append(entry.tag)
+                continue
+
+            if entry.tag == qname(NS_CALDAV, "calendar-timezone"):
+                if not is_set:
+                    pending_values["timezone"] = "UTC"
+                    update_fields.add("timezone")
+                    ok_tags.append(entry.tag)
+                    continue
+                timezone_text = (entry.text or "").strip()
+                tzid = core_payloads.extract_tzid_from_timezone_text(timezone_text)
+                if not tzid:
+                    bad_tags.append(entry.tag)
+                    continue
+                try:
+                    ZoneInfo(tzid)
+                except Exception:
+                    bad_tags.append(entry.tag)
+                    continue
+                pending_values["timezone"] = tzid
+                update_fields.add("timezone")
+                ok_tags.append(entry.tag)
+                continue
+
+            if entry.tag == qname(NS_APPLE_ICAL, "calendar-color"):
+                pending_values["color"] = (entry.text or "").strip() if is_set else ""
+                update_fields.add("color")
+                ok_tags.append(entry.tag)
+                continue
+
+            if entry.tag == qname(NS_APPLE_ICAL, "calendar-order"):
+                if not is_set:
+                    pending_values["sort_order"] = None
+                    update_fields.add("sort_order")
+                    ok_tags.append(entry.tag)
+                    continue
+                try:
+                    pending_values["sort_order"] = int((entry.text or "").strip())
+                except ValueError:
+                    bad_tags.append(entry.tag)
+                    continue
+                update_fields.add("sort_order")
+                ok_tags.append(entry.tag)
+                continue
+
+            bad_tags.append(entry.tag)
+
+    return pending_values, update_fields, ok_tags, bad_tags
 
 
 @csrf_exempt
@@ -1828,89 +1946,19 @@ def calendar_collection_view(request, username, slug):
         if root is None or root.tag != qname(NS_DAV, "propertyupdate"):
             return HttpResponse(status=400)
 
-        ok_tags = []
-        bad_tags = []
-        update_fields = set()
-        pending_values = {
-            "name": calendar.name,
-            "description": calendar.description,
-            "timezone": calendar.timezone,
-            "color": calendar.color,
-            "sort_order": calendar.sort_order,
-        }
-
-        for operation in list(root):
-            if operation.tag not in (qname(NS_DAV, "set"), qname(NS_DAV, "remove")):
-                continue
-            prop = operation.find(qname(NS_DAV, "prop"))
-            if prop is None:
-                continue
-            is_set = operation.tag == qname(NS_DAV, "set")
-            for entry in list(prop):
-                if entry.tag == qname(NS_DAV, "displayname"):
-                    if is_set:
-                        pending_values["name"] = (
-                            entry.text or ""
-                        ).strip() or calendar.slug
-                    else:
-                        pending_values["name"] = calendar.slug
-                    update_fields.add("name")
-                    ok_tags.append(entry.tag)
-                    continue
-
-                if entry.tag == qname(NS_CALDAV, "calendar-description"):
-                    pending_values["description"] = (
-                        (entry.text or "").strip() if is_set else ""
-                    )
-                    update_fields.add("description")
-                    ok_tags.append(entry.tag)
-                    continue
-
-                if entry.tag == qname(NS_CALDAV, "calendar-timezone"):
-                    if not is_set:
-                        pending_values["timezone"] = "UTC"
-                        update_fields.add("timezone")
-                        ok_tags.append(entry.tag)
-                        continue
-                    timezone_text = (entry.text or "").strip()
-                    tzid = core_payloads.extract_tzid_from_timezone_text(timezone_text)
-                    if not tzid:
-                        bad_tags.append(entry.tag)
-                        continue
-                    try:
-                        ZoneInfo(tzid)
-                    except Exception:
-                        bad_tags.append(entry.tag)
-                        continue
-                    pending_values["timezone"] = tzid
-                    update_fields.add("timezone")
-                    ok_tags.append(entry.tag)
-                    continue
-
-                if entry.tag == qname(NS_APPLE_ICAL, "calendar-color"):
-                    pending_values["color"] = (
-                        (entry.text or "").strip() if is_set else ""
-                    )
-                    update_fields.add("color")
-                    ok_tags.append(entry.tag)
-                    continue
-
-                if entry.tag == qname(NS_APPLE_ICAL, "calendar-order"):
-                    if not is_set:
-                        pending_values["sort_order"] = None
-                        update_fields.add("sort_order")
-                        ok_tags.append(entry.tag)
-                        continue
-                    try:
-                        pending_values["sort_order"] = int((entry.text or "").strip())
-                    except ValueError:
-                        bad_tags.append(entry.tag)
-                        continue
-                    update_fields.add("sort_order")
-                    ok_tags.append(entry.tag)
-                    continue
-
-                bad_tags.append(entry.tag)
+        pending_values, update_fields, ok_tags, bad_tags = (
+            _calendar_collection_proppatch_plan(
+                root,
+                calendar.slug,
+                {
+                    "name": calendar.name,
+                    "description": calendar.description,
+                    "timezone": calendar.timezone,
+                    "color": calendar.color,
+                    "sort_order": calendar.sort_order,
+                },
+            )
+        )
 
         if update_fields:
             for key, value in pending_values.items():
