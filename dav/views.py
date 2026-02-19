@@ -25,7 +25,9 @@ from calendars.permissions import can_view_calendar, can_write_calendar
 
 from .core import filters as core_filters
 from .core import recurrence as core_recurrence
+from .core import report as core_report
 from .core import time as core_time
+from .shell import repository as shell_repository
 from .auth import get_dav_user, unauthorized_response
 from .report_engine import parse_report_request
 from .resolver import (
@@ -2118,13 +2120,38 @@ def _all_object_hrefs(calendar, obj):
     return hrefs
 
 
+def _object_href_for_style_data(obj_data, style):
+    if style == "uids":
+        guid = _dav_guid_for_username(obj_data.owner_username)
+        if guid is not None:
+            return f"/dav/calendars/__uids__/{guid}/{obj_data.slug}/{obj_data.filename}"
+
+    if style == "users":
+        return f"/dav/calendars/users/{obj_data.owner_username}/{obj_data.slug}/{obj_data.filename}"
+
+    return (
+        f"/dav/calendars/{obj_data.owner_username}/{obj_data.slug}/{obj_data.filename}"
+    )
+
+
+def _all_object_hrefs_for_data(obj_data):
+    hrefs = {
+        f"/dav/calendars/{obj_data.owner_username}/{obj_data.slug}/{obj_data.filename}",
+        f"/dav/calendars/users/{obj_data.owner_username}/{obj_data.slug}/{obj_data.filename}",
+    }
+    guid = _dav_guid_for_username(obj_data.owner_username)
+    if guid is not None:
+        hrefs.add(f"/dav/calendars/__uids__/{guid}/{obj_data.slug}/{obj_data.filename}")
+    return hrefs
+
+
 def _responses_for_multiget(calendars, requested, hrefs, calendar_data_request=None):
     responses = []
     by_path = {}
-    for calendar in calendars:
-        for obj in calendar.calendar_objects.all():
-            for href in _all_object_hrefs(calendar, obj):
-                by_path[href] = obj
+    objects = shell_repository.list_calendar_object_data_for_calendars(calendars)
+    for obj in objects:
+        for href in _all_object_hrefs_for_data(obj):
+            by_path[href] = obj
 
     for href in hrefs:
         normalized = _normalize_href_path(href)
@@ -2149,14 +2176,14 @@ def _responses_for_calendar_query(
 ):
     responses = []
     style = _report_href_style(request_path)
-    for calendar in calendars:
-        for obj in calendar.calendar_objects.all():
-            if not _object_matches_query(obj, query_filter):
-                continue
-            obj_map = _build_prop_map_for_object(obj, calendar_data_request)
-            ok, missing = _select_props(obj_map, requested)
-            href = _object_href_for_style(calendar, obj, style)
-            responses.append(response_with_props(href, ok, missing))
+    objects = shell_repository.list_calendar_object_data_for_calendars(calendars)
+    for obj in objects:
+        if not _object_matches_query(obj, query_filter):
+            continue
+        obj_map = _build_prop_map_for_object(obj, calendar_data_request)
+        ok, missing = _select_props(obj_map, requested)
+        href = _object_href_for_style_data(obj, style)
+        responses.append(response_with_props(href, ok, missing))
     return responses
 
 
@@ -2403,43 +2430,28 @@ def _handle_report(calendars, request, allow_sync_collection=True):
         _ACTIVE_REPORT_TZINFO = None
         return tz_error
 
-    for time_range in root.findall(f".//{qname(NS_CALDAV, 'time-range')}"):
-        start_raw = time_range.get("start")
-        end_raw = time_range.get("end")
-        if not start_raw and not end_raw:
-            return HttpResponse(status=400)
-
-        start = _parse_ical_datetime(start_raw)
-        end = _parse_ical_datetime(end_raw)
-        if start_raw and start is None:
-            return HttpResponse(status=400)
-        if end_raw and end is None:
-            return HttpResponse(status=400)
-
-    current_year = timezone.now().year
-    low_limit = datetime(current_year - 1, 1, 1, tzinfo=datetime_timezone.utc)
-    high_limit = datetime(
-        current_year + 5, 12, 31, 23, 59, 59, tzinfo=datetime_timezone.utc
+    time_range_error = core_report.validate_time_range_payloads(
+        root,
+        _parse_ical_datetime,
     )
-    for comp_filter in root.findall(f".//{qname(NS_CALDAV, 'comp-filter')}"):
-        time_range = comp_filter.find(qname(NS_CALDAV, "time-range"))
-        if time_range is None:
-            continue
-        start = _parse_ical_datetime(time_range.get("start"))
-        end = _parse_ical_datetime(time_range.get("end"))
-        if start is not None and start < low_limit:
-            return _caldav_error_response("min-date-time")
-        if end is not None and end < low_limit:
-            return _caldav_error_response("min-date-time")
-        if start is not None and start > high_limit:
-            return _caldav_error_response("max-date-time")
-        if end is not None and end > high_limit:
-            return _caldav_error_response("max-date-time")
+    if time_range_error is not None:
+        _ACTIVE_REPORT_TZINFO = None
+        return HttpResponse(status=400)
+
+    range_bounds_error = core_report.validate_comp_filter_range_bounds(
+        root,
+        _parse_ical_datetime,
+        timezone.now().year,
+    )
+    if range_bounds_error is not None:
+        _ACTIVE_REPORT_TZINFO = None
+        return _caldav_error_response(range_bounds_error)
 
     requested = parsed_report.requested_props
     calendar_data_request = parsed_report.calendar_data_request
+    report_kind = core_report.classify_report_kind(root.tag)
 
-    if root.tag == qname(NS_CALDAV, "calendar-multiget"):
+    if report_kind == core_report.REPORT_KIND_MULTIGET:
         hrefs = parsed_report.hrefs
         responses = _responses_for_multiget(
             calendars,
@@ -2451,7 +2463,7 @@ def _handle_report(calendars, request, allow_sync_collection=True):
         _ACTIVE_REPORT_TZINFO = None
         return response
 
-    if root.tag == qname(NS_CALDAV, "calendar-query"):
+    if report_kind == core_report.REPORT_KIND_QUERY:
         query_filter = parsed_report.query_filter
         responses = _responses_for_calendar_query(
             calendars,
@@ -2464,19 +2476,23 @@ def _handle_report(calendars, request, allow_sync_collection=True):
         _ACTIVE_REPORT_TZINFO = None
         return response
 
-    if root.tag == qname(NS_CALDAV, "free-busy-query"):
+    if report_kind == core_report.REPORT_KIND_FREEBUSY:
         response = _render_freebusy_report(calendars, root)
         _ACTIVE_REPORT_TZINFO = None
         return response
 
-    if root.tag == qname(NS_DAV, "sync-collection"):
-        requested_limit = _sync_collection_limit(root)
+    if report_kind == core_report.REPORT_KIND_SYNC_COLLECTION:
+        sync_request = core_report.parse_sync_collection_request(
+            root,
+            _sync_collection_limit,
+        )
+        requested_limit = sync_request.requested_limit
 
         if not allow_sync_collection:
             _ACTIVE_REPORT_TZINFO = None
             return HttpResponse(status=501)
 
-        sync_level = (root.findtext(qname(NS_DAV, "sync-level")) or "").strip()
+        sync_level = sync_request.sync_level
         if sync_level and sync_level != "1":
             _ACTIVE_REPORT_TZINFO = None
             return HttpResponse(status=400)
@@ -2485,7 +2501,7 @@ def _handle_report(calendars, request, allow_sync_collection=True):
             _ACTIVE_REPORT_TZINFO = None
             return HttpResponse(status=501)
 
-        sync_token_value = (root.findtext(qname(NS_DAV, "sync-token")) or "").strip()
+        sync_token_value = sync_request.sync_token
         calendar = calendars[0]
         logger.info(
             "dav_sync_collection_request path=%s calendar_id=%s owner=%s slug=%s sync_level=%r token_present=%s sync_token=%r requested_limit=%r",
@@ -2822,6 +2838,16 @@ def calendar_collection_users_view(request, username, slug):
 
 
 def _build_prop_map_for_object(obj, calendar_data_request=None):
+    size = getattr(obj, "size", None)
+    if size is None:
+        size = len(getattr(obj, "ical_blob", "") or "")
+    last_modified = getattr(obj, "updated_at", None) or getattr(
+        obj, "last_modified", None
+    )
+    if last_modified is None:
+        last_modified = timezone.now()
+    dead_properties = getattr(obj, "dead_properties", None) or {}
+
     prop_map = {
         qname(NS_DAV, "resourcetype"): lambda: ET.Element(
             qname(NS_DAV, "resourcetype")
@@ -2837,19 +2863,19 @@ def _build_prop_map_for_object(obj, calendar_data_request=None):
         qname(NS_DAV, "getcontentlength"): lambda: _text_prop(
             NS_DAV,
             "getcontentlength",
-            str(obj.size),
+            str(size),
         ),
         qname(NS_DAV, "getlastmodified"): lambda: _text_prop(
             NS_DAV,
             "getlastmodified",
-            http_date(obj.updated_at.timestamp()),
+            http_date(last_modified.timestamp()),
         ),
         qname(NS_CALDAV, "calendar-data"): lambda: _calendar_data_prop(
             _filter_calendar_data_for_response(obj.ical_blob, calendar_data_request)
         ),
     }
 
-    for tag, xml_value in (obj.dead_properties or {}).items():
+    for tag, xml_value in dead_properties.items():
 
         def _dead_prop_builder(value=xml_value):
             try:

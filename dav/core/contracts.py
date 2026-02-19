@@ -40,6 +40,8 @@ class CalendarObjectData:
     etag: str
     content_type: str
     ical_blob: str
+    size: int = 0
+    dead_properties: dict[str, str] | None = None
     last_modified: datetime | None = None
 
     def __post_init__(self):
@@ -54,6 +56,8 @@ class CalendarObjectData:
         for field_name, value in required.items():
             if not value:
                 raise ValueError(f"CalendarObjectData.{field_name} must be non-empty")
+        if self.size < 0:
+            raise ValueError("CalendarObjectData.size must be non-negative")
 
 
 @dataclass(frozen=True, slots=True)

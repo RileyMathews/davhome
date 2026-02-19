@@ -1,16 +1,33 @@
 from dataclasses import dataclass
 from xml.etree import ElementTree as ET
 
+from .core.contracts import ReportRequest
 from .xml import NS_CALDAV, NS_DAV, qname
 
 
 @dataclass
 class ParsedReportRequest:
     root: ET.Element
-    requested_props: list[str] | None
-    calendar_data_request: ET.Element | None
-    hrefs: list[str]
-    query_filter: ET.Element | None
+    report_request: ReportRequest
+    requested_props_raw: list[str] | None
+
+    @property
+    def requested_props(self):
+        if self.requested_props_raw is None:
+            return None
+        return list(self.report_request.requested_props)
+
+    @property
+    def calendar_data_request(self):
+        return self.report_request.calendar_data_request
+
+    @property
+    def hrefs(self):
+        return list(self.report_request.hrefs)
+
+    @property
+    def query_filter(self):
+        return self.report_request.query_filter
 
 
 def parse_report_request(payload: bytes) -> ParsedReportRequest | None:
@@ -35,8 +52,12 @@ def parse_report_request(payload: bytes) -> ParsedReportRequest | None:
 
     return ParsedReportRequest(
         root=root,
-        requested_props=requested_props,
-        calendar_data_request=calendar_data_request,
-        hrefs=hrefs,
-        query_filter=query_filter,
+        report_request=ReportRequest(
+            report_name=root.tag,
+            requested_props=tuple(requested_props or []),
+            calendar_data_request=calendar_data_request,
+            hrefs=tuple(hrefs),
+            query_filter=query_filter,
+        ),
+        requested_props_raw=requested_props,
     )

@@ -1,3 +1,5 @@
+# pyright: reportAttributeAccessIssue=false, reportGeneralTypeIssues=false
+
 from django.contrib.auth.models import User
 from django.test import RequestFactory, SimpleTestCase, TestCase
 
@@ -7,7 +9,11 @@ from dav.shell.http import (
     protocol_error_to_http_response,
     write_precondition_from_request,
 )
-from dav.shell.repository import calendar_object_to_data, list_calendar_object_data
+from dav.shell.repository import (
+    calendar_object_to_data,
+    list_calendar_object_data,
+    list_calendar_object_data_for_calendars,
+)
 
 
 class DavShellHttpAdapterTests(SimpleTestCase):
@@ -31,11 +37,14 @@ class DavShellHttpAdapterTests(SimpleTestCase):
                 "If-None-Match": '"etag-2"',
             },
         )
-        with self.assertRaisesMessage(
-            ValueError,
-            "WritePrecondition.if_none_match must be '*' or None",
-        ):
+        try:
             write_precondition_from_request(request, None)
+            self.fail("Expected ValueError")
+        except ValueError as exc:
+            self.assertEqual(
+                str(exc),
+                "WritePrecondition.if_none_match must be '*' or None",
+            )
 
     def test_protocol_error_to_http_response(self):
         response = protocol_error_to_http_response(
@@ -79,7 +88,13 @@ class DavShellRepositoryAdapterTests(TestCase):
         self.assertEqual(data.slug, "home")
         self.assertEqual(data.filename, "a.ics")
         self.assertEqual(data.etag, '"etag-a"')
+        self.assertEqual(data.size, 34)
 
     def test_list_calendar_object_data_orders_by_filename(self):
         items = list_calendar_object_data(self.calendar)
         self.assertEqual([item.filename for item in items], ["a.ics", "b.ics"])
+
+    def test_list_calendar_object_data_for_calendars(self):
+        items = list_calendar_object_data_for_calendars([self.calendar])
+        self.assertEqual(len(items), 2)
+        self.assertEqual({item.slug for item in items}, {"home"})
