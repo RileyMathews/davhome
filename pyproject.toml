@@ -11,3 +11,26 @@ dependencies = [
     "psycopg[binary]>=3.2.6",
     "recurring-ical-events>=3.8.0",
 ]
+
+[dependency-groups]
+dev = [
+    "coverage>=7.10.6",
+]
+
+[tool.coverage.run]
+branch = true
+source = [
+    "accounts",
+    "calendars",
+    "dav",
+]
+
+[tool.coverage.report]
+fail_under = 54
+show_missing = true
+skip_covered = false
+omit = [
+    "*/migrations/*",
+    "*/tests.py",
+    "manage.py",
+]

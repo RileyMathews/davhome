@@ -15,3 +15,7 @@ media
 .encryption-password
 .envrc.secret
 debug.log
+.coverage
+.coverage.*
+coverage.xml
+htmlcov/

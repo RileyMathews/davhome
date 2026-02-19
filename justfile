@@ -18,7 +18,22 @@ integration-test:
 	just caldavtester-test-suite
 
 django-test *args:
-	uv run python manage.py test --settings=config.settings_test --parallel {{args}}
+	uv run python manage.py test --settings=config.settings_test {{args}}
+
+django-test-cov *args:
+	uv run coverage erase
+	uv run coverage run manage.py test --settings=config.settings_test {{args}}
+	uv run coverage report
+
+django-test-cov-html *args:
+	uv run coverage erase
+	uv run coverage run manage.py test --settings=config.settings_test {{args}}
+	uv run coverage html
+
+django-test-cov-xml *args:
+	uv run coverage erase
+	uv run coverage run manage.py test --settings=config.settings_test {{args}}
+	uv run coverage xml
 
 django-test-server *args:
 	just setup-integration-fixtures
