@@ -1537,3 +1537,120 @@ class DavPureFunctionTests(SimpleTestCase):
 
         self.assertTrue(dav_views._combine_filter_results([True, False], "anyof"))
         self.assertFalse(dav_views._combine_filter_results([True, False], "allof"))
+
+    def test_matches_param_and_prop_filters(self):
+        component_text = (
+            "BEGIN:VEVENT\n"
+            "SUMMARY:Planning\n"
+            "ATTENDEE;ROLE=REQ-PARTICIPANT:mailto:a@example.com\n"
+            "DTSTART:20260220T100000Z\n"
+            "END:VEVENT\n"
+        )
+        prop_lines = dav_views._property_lines(component_text, "ATTENDEE")
+
+        role_filter = ET.fromstring(
+            '<C:param-filter xmlns:C="urn:ietf:params:xml:ns:caldav" name="ROLE"><C:text-match>REQ</C:text-match></C:param-filter>'
+        )
+        self.assertTrue(dav_views._matches_param_filter(prop_lines, role_filter))
+
+        missing_filter = ET.fromstring(
+            '<C:param-filter xmlns:C="urn:ietf:params:xml:ns:caldav" name="CUTYPE"><C:is-not-defined/></C:param-filter>'
+        )
+        self.assertTrue(dav_views._matches_param_filter(prop_lines, missing_filter))
+
+        summary_filter = ET.fromstring(
+            '<C:prop-filter xmlns:C="urn:ietf:params:xml:ns:caldav" name="SUMMARY"><C:text-match>plan</C:text-match></C:prop-filter>'
+        )
+        self.assertTrue(dav_views._matches_prop_filter(component_text, summary_filter))
+
+        description_missing = ET.fromstring(
+            '<C:prop-filter xmlns:C="urn:ietf:params:xml:ns:caldav" name="DESCRIPTION"><C:is-not-defined/></C:prop-filter>'
+        )
+        self.assertTrue(
+            dav_views._matches_prop_filter(component_text, description_missing)
+        )
+
+    def test_matches_time_range_and_comp_filters(self):
+        event = "BEGIN:VEVENT\nDTSTART;VALUE=DATE:20260220\nEND:VEVENT\n"
+        in_range = {"start": "20260220T000000Z", "end": "20260221T000000Z"}
+        out_of_range = {"start": "20260222T000000Z", "end": "20260223T000000Z"}
+        self.assertTrue(dav_views._matches_time_range(event, in_range))
+        self.assertFalse(dav_views._matches_time_range(event, out_of_range))
+
+        calendar_without_master_alarm = (
+            "BEGIN:VCALENDAR\n"
+            "BEGIN:VEVENT\nUID:evt-1\nDTSTART:20260220T100000Z\nEND:VEVENT\n"
+            "BEGIN:VEVENT\nUID:evt-1\nRECURRENCE-ID:20260221T100000Z\nBEGIN:VALARM\nTRIGGER:-PT15M\nEND:VALARM\nEND:VEVENT\n"
+            "END:VCALENDAR\n"
+        )
+        no_alarm_filter = ET.fromstring(
+            '<C:comp-filter xmlns:C="urn:ietf:params:xml:ns:caldav" name="VEVENT"><C:comp-filter name="VALARM"><C:is-not-defined/></C:comp-filter></C:comp-filter>'
+        )
+        self.assertTrue(
+            dav_views._matches_comp_filter(
+                calendar_without_master_alarm, no_alarm_filter
+            )
+        )
+
+    def test_recurrence_alarm_shift_and_filtered_data_helpers(self):
+        recurring_event = (
+            "BEGIN:VEVENT\n"
+            "UID:evt-2\n"
+            "DTSTART:20260220T100000Z\n"
+            "RRULE:FREQ=DAILY;COUNT=2\n"
+            "BEGIN:VALARM\n"
+            "TRIGGER:-PT15M\n"
+            "END:VALARM\n"
+            "END:VEVENT\n"
+        )
+        self.assertTrue(
+            dav_views._matches_time_range_recurrence(
+                recurring_event,
+                datetime(2026, 2, 20, 0, 0, tzinfo=datetime_timezone.utc),
+                datetime(2026, 2, 22, 0, 0, tzinfo=datetime_timezone.utc),
+                "VEVENT",
+            )
+        )
+        self.assertTrue(
+            dav_views._alarm_matches_time_range(
+                recurring_event,
+                {
+                    "start": "20260220T094000Z",
+                    "end": "20260220T095000Z",
+                },
+            )
+        )
+
+        shifted = dav_views._ensure_shifted_first_occurrence_recurrence_id(
+            "BEGIN:VEVENT\r\nUID:evt-3\r\nDTSTART:20260221T100000Z\r\nEND:VEVENT\r\n",
+            {"evt-3": datetime(2026, 2, 20, 10, 0, tzinfo=datetime_timezone.utc)},
+            None,
+        )
+        self.assertIn("RECURRENCE-ID:20260221T100000Z", shifted)
+
+        calendar_data_request = ET.fromstring(
+            '<C:calendar-data xmlns:C="urn:ietf:params:xml:ns:caldav"><C:prop name="SUMMARY"/></C:calendar-data>'
+        )
+        filtered = dav_views._filter_calendar_data_for_response(
+            "BEGIN:VCALENDAR\r\nDTSTAMP:20260220T100000Z\r\nEND:VCALENDAR\r\n",
+            calendar_data_request,
+        )
+        self.assertNotIn("DTSTAMP", filtered)
+        self.assertTrue(filtered.endswith("\r\n"))
+
+    def test_freebusy_and_object_query_helpers(self):
+        parsed = dav_views._parse_freebusy_value("20260220T100000Z/PT1H")
+        self.assertIsNotNone(parsed)
+        self.assertIsNone(dav_views._parse_freebusy_value("bad-value"))
+
+        query_filter = ET.fromstring(
+            '<C:comp-filter xmlns:C="urn:ietf:params:xml:ns:caldav" name="VEVENT" />'
+        )
+        obj = type(
+            "Obj",
+            (),
+            {
+                "ical_blob": "BEGIN:VCALENDAR\nBEGIN:VEVENT\nUID:ok\nEND:VEVENT\nEND:VCALENDAR\n"
+            },
+        )()
+        self.assertTrue(dav_views._object_matches_query(obj, query_filter))
