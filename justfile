@@ -38,3 +38,5 @@ django-test-cov-xml *args:
 django-test-server *args:
 	just setup-integration-fixtures
 	uv run python manage.py runserver --settings=config.settings_test {{args}}
+
+verify: setup-integration-fixtures django-test litmus-test caldavtester-test-suite

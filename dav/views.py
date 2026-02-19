@@ -57,6 +57,10 @@ from .view_helpers.calendar_mutation_payloads import (
     _calendar_collection_proppatch_plan,
     _mkcalendar_props_from_payload,
 )
+from .view_helpers.copy_move import (
+    _remap_uid_for_copied_object as _remap_uid_for_copied_object_impl,
+    copy_or_move_calendar_object,
+)
 from .view_helpers.identity import (
     _calendar_home_href_for_user,
     _dav_guid_for_username,
@@ -117,14 +121,6 @@ def _collection_exists(calendar, path):
     return calendar.calendar_objects.filter(filename=marker).exists()
 
 
-def _remap_uid_for_copied_object(uid, target_filename):
-    if uid.startswith("collection:"):
-        return f"collection:{target_filename}"
-    if uid.startswith("dav:"):
-        return f"dav:{target_filename}"
-    return uid
-
-
 def _copy_or_move_calendar_object(
     writable,
     request,
@@ -134,149 +130,22 @@ def _copy_or_move_calendar_object(
     next_revision,
     is_move,
 ):
-    source = writable.calendar_objects.filter(filename=filename).first()
-    if source is None and filename.endswith("/"):
-        source = writable.calendar_objects.filter(
-            filename=core_paths.collection_marker(filename)
-        ).first()
-    if source is None:
-        return HttpResponse(status=404)
-
-    destination = core_paths.destination_filename_from_header(
-        request.headers.get("Destination"),
-        username,
-        slug,
+    return copy_or_move_calendar_object(
+        writable=writable,
+        request=request,
+        username=username,
+        slug=slug,
+        filename=filename,
+        next_revision=next_revision,
+        is_move=is_move,
+        collection_exists=_collection_exists,
+        create_calendar_change=_create_calendar_change,
+        dav_common_headers=_dav_common_headers,
     )
-    if destination is None:
-        return HttpResponse(status=400)
 
-    source_is_collection = source.filename.endswith("/")
-    source_marker = source.filename if source_is_collection else None
-    destination_clean = destination.strip("/")
-    if not destination_clean:
-        return HttpResponse(status=403)
 
-    if source_is_collection:
-        destination_marker = core_paths.collection_marker(destination)
-        destination_lookup = destination_marker
-    else:
-        destination_marker = None
-        destination_lookup = destination_clean
-
-    if source.filename == destination_lookup:
-        return HttpResponse(status=204)
-
-    destination_parent, _ = core_paths.split_filename_path(destination_lookup)
-    if not _collection_exists(writable, destination_parent):
-        return HttpResponse(status=409)
-
-    overwrite = request.headers.get("Overwrite", "T").strip().upper() != "F"
-
-    if source_is_collection:
-        destination_entries_qs = writable.calendar_objects.filter(
-            filename__startswith=destination_marker
-        )
-        destination_entries = list(destination_entries_qs.values("filename", "uid"))
-    else:
-        destination_obj = writable.calendar_objects.filter(
-            filename=destination_lookup
-        ).first()
-        destination_entries = []
-        if destination_obj is not None:
-            destination_entries.append(
-                {"filename": destination_obj.filename, "uid": destination_obj.uid}
-            )
-
-    if destination_entries and not overwrite:
-        return HttpResponse(status=412)
-
-    if source_is_collection:
-        copy_depth = (request.headers.get("Depth") or "infinity").strip().lower()
-        if not is_move and copy_depth == "0":
-            source_entries = [source]
-        else:
-            source_entries = list(
-                writable.calendar_objects.filter(filename__startswith=source_marker)
-            )
-    else:
-        source_entries = [source]
-
-    now = timezone.now()
-
-    if destination_entries and overwrite:
-        if source_is_collection:
-            writable.calendar_objects.filter(
-                filename__startswith=destination_marker
-            ).delete()
-        else:
-            writable.calendar_objects.filter(filename=destination_lookup).delete()
-        for item in destination_entries:
-            _create_calendar_change(
-                writable,
-                next_revision,
-                item["filename"],
-                item["uid"],
-                True,
-            )
-            next_revision += 1
-
-    copied_filenames = []
-    marker_value = source_marker or ""
-    for entry in source_entries:
-        if source_is_collection:
-            suffix = entry.filename[len(marker_value) :]
-            target_filename = f"{destination_marker}{suffix}"
-        else:
-            target_filename = destination_lookup
-
-        target_uid = _remap_uid_for_copied_object(entry.uid, target_filename)
-
-        writable.calendar_objects.create(
-            uid=target_uid,
-            filename=target_filename,
-            etag=entry.etag,
-            ical_blob=entry.ical_blob,
-            content_type=entry.content_type,
-            size=entry.size,
-            dead_properties=(entry.dead_properties or {}).copy(),
-            updated_at=now,
-        )
-        _create_calendar_change(
-            writable,
-            next_revision,
-            target_filename,
-            target_uid,
-            False,
-        )
-        next_revision += 1
-        copied_filenames.append(target_filename)
-
-    if is_move:
-        for entry in source_entries:
-            _create_calendar_change(
-                writable,
-                next_revision,
-                entry.filename,
-                entry.uid,
-                True,
-            )
-            next_revision += 1
-        if source_is_collection:
-            writable.calendar_objects.filter(
-                filename__startswith=source_marker
-            ).delete()
-        else:
-            source.delete()
-
-    writable.updated_at = now
-    writable.save(update_fields=["updated_at"])
-
-    status_code = 204 if destination_entries else 201
-    response = HttpResponse(status=status_code)
-    if copied_filenames:
-        escaped_filename = quote(copied_filenames[0], safe="/")
-        response["Location"] = f"/dav/calendars/{username}/{slug}/{escaped_filename}"
-    return _dav_common_headers(response)
+def _remap_uid_for_copied_object(uid, target_filename):
+    return _remap_uid_for_copied_object_impl(uid, target_filename)
 
 
 def _caldav_error_response(error_name, status=403):
