@@ -1876,6 +1876,20 @@ class DavPureFunctionTests(SimpleTestCase):
         self.assertIsNotNone(dav_views._parse_xml_body(b"<root/>"))
         self.assertIsNone(dav_views._parse_xml_body(b"<root>"))
 
+    def test_remote_ip_helper(self):
+        self.assertEqual(
+            dav_views._remote_ip("203.0.113.9, 10.0.0.1", "127.0.0.1"),
+            "203.0.113.9",
+        )
+        self.assertEqual(
+            dav_views._remote_ip("", "127.0.0.1"),
+            "127.0.0.1",
+        )
+        self.assertEqual(
+            dav_views._remote_ip(None, None),
+            "",
+        )
+
     def test_calendar_default_tzinfo_helper(self):
         self.assertEqual(
             dav_views._calendar_default_tzinfo(SimpleNamespace(timezone="")),
