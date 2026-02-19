@@ -28,50 +28,16 @@ Guidance for coding agents working in this repository.
 - For agent-driven local work, prefer `config.settings_test` or `config.settings_dev` to avoid Postgres/env requirements.
 
 ## Build / Run Commands
+To verify correctness of changes we have a series of tests that can be run.
 
-- Run Django dev server with dev settings:
-  - `uv run python manage.py runserver --settings=config.settings_dev`
-- Run Django dev server with test settings and fixtures:
-  - `just django-test-server 127.0.0.1:8000`
-- Apply migrations:
-  - `uv run python manage.py migrate --settings=config.settings_dev`
-- Django system checks:
-  - `uv run python manage.py check --settings=config.settings_dev`
-- Docker build (production-like image):
-  - `docker build -t davhome:local .`
+### Django tests
+The quickest tests are our own django tests. `just django-test`
 
-## Test Commands
+### Integration tests
+We have some vendored test suites that run separately and send web requests to the django server.
+Before running these ensure the django server is running on port 8000.
+Then you can run `just litmus-test` and `just caldavtester-test-suite` to run the integration tests.
 
-- Full Django suite (parallel, test settings):
-  - `just django-test`
-  - Equivalent: `uv run python manage.py test --settings=config.settings_test --parallel`
-- Run one test module:
-  - `just django-test dav.tests`
-  - `uv run python manage.py test --settings=config.settings_test dav.tests`
-- Run one `TestCase` class:
-  - `just django-test dav.tests.DavWriteTests`
-- Run one test method (most useful single-test form):
-  - `just django-test dav.tests.DavWriteTests.test_owner_put_create_returns_201`
-  - `uv run python manage.py test --settings=config.settings_test dav.tests.DavWriteTests.test_owner_put_create_returns_201`
-- Name-pattern filtering:
-  - `uv run python manage.py test --settings=config.settings_test -k recurrence`
-- Keep DB for faster local reruns:
-  - `uv run python manage.py test --settings=config.settings_test --keepdb dav.tests`
-
-## Integration / Protocol Test Commands
-
-- Use `just` recipes for integration/protocol work. They encode the expected
-  settings/profile and avoid fixture drift.
-- Seed integration fixtures:
-  - `just setup-integration-fixtures`
-- Litmus DAV compatibility test:
-  - `just litmus-test`
-- CalDAV tester default suite (explicit supported subset):
-  - `just caldavtester-test-suite`
-- Full CalDAV tester diagnostics (long run):
-  - `just caldavtester-full-suite`
-- Combined integration shortcut:
-  - `just integration-test`
 
 ### CalDAVTester source of truth
 
