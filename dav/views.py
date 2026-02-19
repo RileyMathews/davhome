@@ -23,6 +23,9 @@ from django.utils.http import http_date
 from calendars.models import Calendar, CalendarObjectChange
 from calendars.permissions import can_view_calendar, can_write_calendar
 
+from .core import filters as core_filters
+from .core import recurrence as core_recurrence
+from .core import time as core_time
 from .auth import get_dav_user, unauthorized_response
 from .report_engine import parse_report_request
 from .resolver import (
@@ -394,25 +397,7 @@ def _normalize_href_path(href):
 
 
 def _parse_ical_datetime(value):
-    if not value:
-        return None
-    raw = value.strip()
-    try:
-        if re.fullmatch(r"\d{8}", raw):
-            return datetime.strptime(raw, "%Y%m%d").replace(
-                tzinfo=datetime_timezone.utc
-            )
-        if raw.endswith("Z") and re.fullmatch(r"\d{8}T\d{6}Z", raw):
-            return datetime.strptime(raw, "%Y%m%dT%H%M%SZ").replace(
-                tzinfo=datetime_timezone.utc
-            )
-        if re.fullmatch(r"\d{8}T\d{6}", raw):
-            return datetime.strptime(raw, "%Y%m%dT%H%M%S").replace(
-                tzinfo=datetime_timezone.utc
-            )
-    except ValueError:
-        return None
-    return None
+    return core_time.parse_ical_datetime(value)
 
 
 def _calendar_default_tzinfo(calendar):
@@ -426,75 +411,15 @@ def _calendar_default_tzinfo(calendar):
 
 
 def _parse_ical_duration(value):
-    if not value:
-        return None
-    text = value.strip().upper()
-    sign = -1 if text.startswith("-") else 1
-    if text[0] in "+-":
-        text = text[1:]
-    if not text.startswith("P"):
-        return None
-    text = text[1:]
-    days = hours = minutes = seconds = 0
-    if "T" in text:
-        date_part, time_part = text.split("T", 1)
-    else:
-        date_part, time_part = text, ""
-
-    day_match = re.search(r"(\d+)D", date_part)
-    if day_match:
-        days = int(day_match.group(1))
-    hour_match = re.search(r"(\d+)H", time_part)
-    if hour_match:
-        hours = int(hour_match.group(1))
-    minute_match = re.search(r"(\d+)M", time_part)
-    if minute_match:
-        minutes = int(minute_match.group(1))
-    second_match = re.search(r"(\d+)S", time_part)
-    if second_match:
-        seconds = int(second_match.group(1))
-
-    return sign * timedelta(days=days, hours=hours, minutes=minutes, seconds=seconds)
+    return core_time.parse_ical_duration(value)
 
 
 def _format_ical_duration(value):
-    if value is None:
-        return None
-    seconds = int(value.total_seconds())
-    sign = "-" if seconds < 0 else ""
-    seconds = abs(seconds)
-    days, rem = divmod(seconds, 86400)
-    hours, rem = divmod(rem, 3600)
-    minutes, secs = divmod(rem, 60)
-    parts = []
-    if days:
-        parts.append(f"{days}D")
-    time_parts = []
-    if hours:
-        time_parts.append(f"{hours}H")
-    if minutes:
-        time_parts.append(f"{minutes}M")
-    if secs:
-        time_parts.append(f"{secs}S")
-    if not parts and not time_parts:
-        time_parts.append("0S")
-    if time_parts:
-        return f"{sign}P{''.join(parts)}T{''.join(time_parts)}"
-    return f"{sign}P{''.join(parts)}"
+    return core_time.format_ical_duration(value)
 
 
 def _format_value_date_or_datetime(value, tzinfo=None):
-    if isinstance(value, datetime):
-        return value.astimezone(datetime_timezone.utc).strftime("%Y%m%dT%H%M%SZ"), False
-    if value is None:
-        return None, False
-    out_date = value
-    if tzinfo is not None:
-        probe = datetime(value.year, value.month, value.day, 12, tzinfo=tzinfo)
-        offset = probe.utcoffset() or timedelta(0)
-        if offset.total_seconds() < 0:
-            out_date = value - timedelta(days=1)
-    return out_date.strftime("%Y%m%d"), True
+    return core_time.format_value_date_or_datetime(value, tzinfo=tzinfo)
 
 
 def _serialize_expanded_components(
@@ -917,484 +842,99 @@ def _tzinfo_from_report(root):
 
 
 def _calendar_for_component_text(component_text):
-    unfolded = _unfold_ical(component_text)
-    if "BEGIN:VCALENDAR" in unfolded:
-        return unfolded
-    return f"BEGIN:VCALENDAR\nVERSION:2.0\n{unfolded}\nEND:VCALENDAR\n"
+    return core_recurrence.calendar_for_component_text(component_text)
 
 
 def _parse_rrule_count(component_text):
-    rrule = _first_ical_line_value(component_text, "RRULE")
-    if not rrule:
-        return None
-    match = re.search(r"(?:^|;)COUNT=(\d+)(?:;|$)", rrule)
-    if match is None:
-        return None
-    return int(match.group(1))
+    return core_recurrence.parse_rrule_count(component_text)
 
 
 def _simple_recurrence_instances(component_text):
-    upper_component = component_text.upper()
-    component_name = "VEVENT" if "BEGIN:VEVENT" in upper_component else "VTODO"
-    blocks = _extract_component_blocks(component_text, component_name)
-    if not blocks:
-        return None
-    master_block = next(
-        (block for block in blocks if "RECURRENCE-ID" not in block.upper()),
-        blocks[0],
+    return core_recurrence.simple_recurrence_instances(
+        component_text,
+        active_report_tzinfo=_ACTIVE_REPORT_TZINFO,
     )
-
-    master_start = _parse_line_datetime_with_tz(
-        _first_ical_line(master_block, "DTSTART")
-    )
-    master_due = _parse_line_datetime_with_tz(_first_ical_line(master_block, "DUE"))
-    base_start = master_start or master_due
-    if base_start is None:
-        return None
-
-    rrule = _first_ical_line_value(master_block, "RRULE")
-    if not rrule:
-        return None
-    if "FREQ=DAILY" not in rrule.upper():
-        return None
-    count = _parse_rrule_count(master_block)
-    if not count:
-        return None
-
-    dtend = _parse_line_datetime_with_tz(_first_ical_line(master_block, "DTEND"))
-    duration = _parse_ical_duration(
-        _first_ical_line_value(master_block, "DURATION") or ""
-    )
-    if dtend is not None:
-        duration = dtend - base_start
-    if duration is None:
-        duration = timedelta(0)
-
-    exdates = set()
-    for line in _property_lines(master_block, "EXDATE"):
-        if ":" not in line:
-            continue
-        values = line.split(":", 1)[1].split(",")
-        for value in values:
-            dt = _parse_ical_datetime(value.strip())
-            if dt is None:
-                continue
-            if dt.tzinfo is None:
-                dt = dt.replace(tzinfo=datetime_timezone.utc)
-            exdates.add(dt.astimezone(datetime_timezone.utc))
-
-    overrides = {}
-    this_and_future = None
-    for block in blocks:
-        rec_line = _first_ical_line(block, "RECURRENCE-ID")
-        if rec_line is None:
-            continue
-        rec_id = _parse_line_datetime_with_tz(rec_line)
-        if rec_id is None:
-            continue
-        override_start = _parse_line_datetime_with_tz(
-            _first_ical_line(block, "DTSTART")
-        )
-        if override_start is None:
-            override_start = _parse_line_datetime_with_tz(
-                _first_ical_line(block, "DUE")
-            )
-        if override_start is None:
-            continue
-        if "RANGE=THISANDFUTURE" in rec_line.upper():
-            this_and_future = (rec_id, override_start)
-        else:
-            overrides[rec_id] = override_start
-
-    instances = []
-    for index in range(count):
-        occ_start = base_start + timedelta(days=index)
-        occ_start_utc = occ_start.astimezone(datetime_timezone.utc)
-        if occ_start_utc in exdates:
-            continue
-        if this_and_future is not None and occ_start_utc >= this_and_future[0]:
-            delta = this_and_future[1] - this_and_future[0]
-            occ_start_utc = occ_start_utc + delta
-        occ_start_utc = overrides.get(occ_start_utc, occ_start_utc)
-        instances.append((occ_start_utc, occ_start_utc + duration))
-
-    return instances
 
 
 def _matches_time_range_recurrence(component_text, start, end, component_name):
-    simple = _simple_recurrence_instances(component_text)
-    if simple is not None:
-        for occ_start, occ_end in simple:
-            if start is not None and occ_end <= start:
-                continue
-            if end is not None and occ_start >= end:
-                continue
-            return True
-        return False
-
-    try:
-        calendar_text = _calendar_for_component_text(component_text)
-        cal = icalendar.Calendar.from_ical(calendar_text)
-    except Exception:
-        return False
-
-    window_start = start or datetime.now(datetime_timezone.utc) - timedelta(
-        days=365 * 20
+    return core_recurrence.matches_time_range_recurrence(
+        component_text,
+        start,
+        end,
+        component_name,
+        active_report_tzinfo=_ACTIVE_REPORT_TZINFO,
     )
-    window_end = end or datetime.now(datetime_timezone.utc) + timedelta(days=365 * 20)
-
-    query = recurring_of(cal)
-    occurrences = query.between(window_start, window_end)
-    return any((comp.name or "").upper() == component_name for comp in occurrences)
 
 
 def _alarm_matches_time_range(component_text, time_range):
-    start = _parse_ical_datetime(time_range.get("start"))
-    end = _parse_ical_datetime(time_range.get("end"))
-    if start is None and end is None:
-        return False
-
-    window_start = _as_utc_datetime(start) or datetime.now(
-        datetime_timezone.utc
-    ) - timedelta(days=365 * 20)
-    window_end = _as_utc_datetime(end) or datetime.now(
-        datetime_timezone.utc
-    ) + timedelta(days=365 * 20)
-
-    simple_instances = _simple_recurrence_instances(component_text)
-    has_override_alarm = any(
-        "RECURRENCE-ID" in block.upper() and "BEGIN:VALARM" in block.upper()
-        for block in _extract_component_blocks(component_text, "VEVENT")
+    return core_recurrence.alarm_matches_time_range(
+        component_text,
+        time_range,
+        active_report_tzinfo=_ACTIVE_REPORT_TZINFO,
     )
-    if simple_instances and not has_override_alarm:
-        upper = component_text.upper()
-        component_name = "VEVENT" if "BEGIN:VEVENT" in upper else "VTODO"
-        blocks = _extract_component_blocks(component_text, component_name)
-        master_block = next(
-            (block for block in blocks if "RECURRENCE-ID" not in block.upper()),
-            blocks[0] if blocks else "",
-        )
-        alarms = _extract_component_blocks(master_block, "VALARM")
-        for alarm_block in alarms:
-            trigger_line = _first_ical_line(alarm_block, "TRIGGER")
-            if trigger_line is None:
-                continue
-            trigger_delta = _parse_ical_duration(trigger_line.split(":", 1)[1])
-            if trigger_delta is None:
-                continue
-            related_end = "RELATED=END" in trigger_line.upper()
-            repeat = int(_first_ical_line_value(alarm_block, "REPEAT") or 0)
-            repeat_duration = _parse_ical_duration(
-                _first_ical_line_value(alarm_block, "DURATION") or ""
-            )
-            for occ_start, occ_end in simple_instances:
-                base = occ_end if related_end else occ_start
-                trigger_time = base + trigger_delta
-                trigger_times = [trigger_time]
-                if repeat > 0 and repeat_duration is not None:
-                    for i in range(1, repeat + 1):
-                        trigger_times.append(trigger_time + i * repeat_duration)
-                for t in trigger_times:
-                    if window_start <= t <= window_end:
-                        return True
-        return False
-
-    try:
-        cal = icalendar.Calendar.from_ical(_calendar_for_component_text(component_text))
-        query = recurring_of(cal)
-        query.keep_recurrence_attributes = True
-        occurrences = query.between(window_start, window_end)
-    except Exception:
-        return False
-
-    if not occurrences:
-        occurrences = [
-            component
-            for component in cal.walk()
-            if (component.name or "").upper() in ("VEVENT", "VTODO")
-        ]
-
-    cutoff_without_alarm = None
-    for block in _extract_component_blocks(component_text, "VEVENT"):
-        rec_line = _first_ical_line(block, "RECURRENCE-ID")
-        if rec_line is None or "RANGE=THISANDFUTURE" not in rec_line.upper():
-            continue
-        if "BEGIN:VALARM" in block.upper():
-            continue
-        rec_id = _parse_line_datetime_with_tz(rec_line)
-        if rec_id is not None:
-            cutoff_without_alarm = rec_id
-
-    for component in occurrences:
-        component_name = (component.name or "").upper()
-        if component_name not in ("VEVENT", "VTODO"):
-            continue
-        base_start = _as_utc_datetime(component.decoded("DTSTART", None))
-        base_end = _as_utc_datetime(component.decoded("DTEND", None))
-        due = _as_utc_datetime(component.decoded("DUE", None))
-        if base_start is None:
-            base_start = due
-        if base_end is None:
-            base_end = due or base_start
-        if base_start is None:
-            continue
-
-        if cutoff_without_alarm is not None:
-            if base_start >= cutoff_without_alarm:
-                continue
-
-        for alarm in component.subcomponents:
-            if (alarm.name or "").upper() != "VALARM":
-                continue
-            trigger = alarm.decoded("TRIGGER", None)
-            if trigger is None:
-                continue
-            if isinstance(trigger, datetime):
-                trigger_time = _as_utc_datetime(trigger)
-            else:
-                related = str(
-                    alarm.get("TRIGGER").params.get("RELATED", "START")
-                ).upper()
-                base = base_end if related == "END" else base_start
-                if base is None:
-                    continue
-                trigger_time = base + trigger
-
-            repeat = int(alarm.get("REPEAT", 0) or 0)
-            duration = alarm.decoded("DURATION", None)
-            trigger_times = [trigger_time]
-            if repeat > 0 and duration is not None:
-                for i in range(1, repeat + 1):
-                    trigger_times.append(trigger_time + i * duration)
-
-            for t in trigger_times:
-                if t is None:
-                    continue
-                if window_start <= t <= window_end:
-                    return True
-
-    return False
 
 
 def _first_ical_line_value(ical_text, key):
-    pattern = rf"^{key}(?:;[^:]*)?:(.+)$"
-    match = re.search(pattern, ical_text, flags=re.MULTILINE)
-    if match is None:
-        return None
-    return match.group(1).strip()
+    return core_time.first_ical_line_value(ical_text, key)
 
 
 def _first_ical_line(ical_text, key):
-    pattern = rf"^{key}(?:;[^:]*)?:(.+)$"
-    match = re.search(pattern, ical_text, flags=re.MULTILINE)
-    if match is None:
-        return None
-    return match.group(0)
+    return core_time.first_ical_line(ical_text, key)
 
 
 def _parse_line_datetime_with_tz(line):
-    if not line or ":" not in line:
-        return None
-    params = _parse_property_params(line)
-    value = line.split(":", 1)[1]
-    raw = value.strip()
-    dt = None
-    if len(raw) == 8 and raw.isdigit():
-        try:
-            dt = datetime.strptime(raw, "%Y%m%d")
-        except ValueError:
-            dt = None
-    elif len(raw) == 16 and raw.endswith("Z"):
-        try:
-            dt = datetime.strptime(raw, "%Y%m%dT%H%M%SZ").replace(
-                tzinfo=datetime_timezone.utc
-            )
-        except ValueError:
-            dt = None
-    elif len(raw) == 15 and "T" in raw:
-        try:
-            dt = datetime.strptime(raw, "%Y%m%dT%H%M%S")
-        except ValueError:
-            dt = None
-
-    if dt is None:
-        return None
-
-    tzids = params.get("TZID", [])
-    if dt.tzinfo is None and tzids:
-        tzid = tzids[0].strip('"')
-        try:
-            dt = dt.replace(tzinfo=ZoneInfo(tzid)).astimezone(datetime_timezone.utc)
-        except Exception:
-            dt = dt.replace(tzinfo=datetime_timezone.utc)
-    elif dt.tzinfo is None:
-        default_tz = _ACTIVE_REPORT_TZINFO or datetime_timezone.utc
-        dt = dt.replace(tzinfo=default_tz).astimezone(datetime_timezone.utc)
-    return dt
-
-
-def _line_matches_time_range(line, time_range):
-    prop_dt = _parse_line_datetime_with_tz(line)
-    if prop_dt is None:
-        return False
-    start = _parse_ical_datetime(time_range.get("start"))
-    end = _parse_ical_datetime(time_range.get("end"))
-    if start is not None and prop_dt < start:
-        return False
-    if end is not None and prop_dt >= end:
-        return False
-    return True
-
-
-def _as_utc_datetime(value, default_tz=None):
-    if default_tz is None:
-        default_tz = datetime_timezone.utc
-    if value is None:
-        return None
-    if isinstance(value, datetime):
-        if value.tzinfo is None:
-            return value.replace(tzinfo=default_tz).astimezone(datetime_timezone.utc)
-        return value.astimezone(datetime_timezone.utc)
-    return datetime.combine(value, datetime.min.time(), tzinfo=default_tz).astimezone(
-        datetime_timezone.utc
+    return core_recurrence.parse_line_datetime_with_tz(
+        line,
+        active_report_tzinfo=_ACTIVE_REPORT_TZINFO,
     )
 
 
+def _line_matches_time_range(line, time_range):
+    return core_recurrence.line_matches_time_range(
+        line,
+        time_range,
+        active_report_tzinfo=_ACTIVE_REPORT_TZINFO,
+    )
+
+
+def _as_utc_datetime(value, default_tz=None):
+    return core_time.as_utc_datetime(value, default_tz=default_tz)
+
+
 def _unfold_ical(ical_text):
-    return re.sub(r"\r?\n[ \t]", "", ical_text)
+    return core_time.unfold_ical(ical_text)
 
 
 def _extract_component_blocks(ical_text, component_name):
-    pattern = rf"BEGIN:{re.escape(component_name)}\r?\n(.*?)\r?\nEND:{re.escape(component_name)}"
-    matches = re.finditer(pattern, ical_text, flags=re.DOTALL | re.IGNORECASE)
-    return [match.group(0) for match in matches]
+    return core_recurrence.extract_component_blocks(ical_text, component_name)
 
 
 def _property_lines(component_text, property_name):
-    lines = component_text.replace("\r\n", "\n").split("\n")
-    prefix = f"{property_name.upper()}"
-    result = []
-    for line in lines:
-        if not line:
-            continue
-        upper = line.upper()
-        if upper.startswith(prefix + ":") or upper.startswith(prefix + ";"):
-            result.append(line)
-    return result
+    return core_filters.property_lines(component_text, property_name)
 
 
 def _parse_property_params(prop_line):
-    head = prop_line.split(":", 1)[0]
-    parts = head.split(";")
-    params = {}
-    for part in parts[1:]:
-        if "=" not in part:
-            continue
-        key, value = part.split("=", 1)
-        params.setdefault(key.upper(), []).append(value)
-    return params
+    return core_filters.parse_property_params(prop_line)
 
 
 def _text_match(value, matcher):
-    if value is None:
-        return False
-    text = matcher.text or ""
-    negate = (matcher.get("negate-condition") or "").lower() == "yes"
-    coll = (matcher.get("collation") or "i;ascii-casemap").lower()
-
-    left = value
-    right = text
-    if coll == "i;ascii-casemap":
-        left = left.lower()
-        right = right.lower()
-
-    match_type = (matcher.get("match-type") or "contains").lower()
-    if match_type == "starts-with":
-        ok = left.startswith(right)
-    elif match_type == "ends-with":
-        ok = left.endswith(right)
-    elif match_type == "equals":
-        ok = left == right
-    else:
-        ok = right in left
-    return (not ok) if negate else ok
+    return core_filters.text_match(value, matcher)
 
 
 def _combine_filter_results(results, test_attr):
-    test = (test_attr or "allof").lower()
-    if test == "anyof":
-        return any(results)
-    return all(results)
+    return core_filters.combine_filter_results(results, test_attr)
 
 
 def _matches_param_filter(prop_lines, param_filter):
-    param_name = (param_filter.get("name") or "").upper()
-    if not param_name:
-        return True
-
-    is_not_defined = param_filter.find(qname(NS_CALDAV, "is-not-defined")) is not None
-    text_match = param_filter.find(qname(NS_CALDAV, "text-match"))
-
-    params_present = []
-    for line in prop_lines:
-        params = _parse_property_params(line)
-        values = params.get(param_name, [])
-        params_present.extend(values)
-
-    if is_not_defined:
-        return len(params_present) == 0
-
-    if text_match is None:
-        return len(params_present) > 0
-
-    if not params_present:
-        return False
-
-    return any(_text_match(value, text_match) for value in params_present)
+    return core_filters.matches_param_filter(prop_lines, param_filter)
 
 
 def _matches_prop_filter(component_text, prop_filter):
-    prop_name = (prop_filter.get("name") or "").upper()
-    if not prop_name:
-        return True
-
-    lines = _property_lines(component_text, prop_name)
-    is_not_defined = prop_filter.find(qname(NS_CALDAV, "is-not-defined")) is not None
-    text_matches = prop_filter.findall(qname(NS_CALDAV, "text-match"))
-    param_filters = prop_filter.findall(qname(NS_CALDAV, "param-filter"))
-    time_ranges = prop_filter.findall(qname(NS_CALDAV, "time-range"))
-    test_attr = prop_filter.get("test")
-
-    if is_not_defined:
-        return len(lines) == 0
-
-    if not lines:
-        return False
-
-    if text_matches:
-        values = [line.split(":", 1)[1] if ":" in line else "" for line in lines]
-        matches = [
-            any(_text_match(value, matcher) for value in values)
-            for matcher in text_matches
-        ]
-        if not _combine_filter_results(matches, test_attr):
-            return False
-
-    param_results = [
-        _matches_param_filter(lines, param_filter) for param_filter in param_filters
-    ]
-    if param_results and not _combine_filter_results(param_results, test_attr):
-        return False
-
-    if time_ranges:
-        range_results = [
-            any(_line_matches_time_range(line, timerange) for line in lines)
-            for timerange in time_ranges
-        ]
-        if not _combine_filter_results(range_results, test_attr):
-            return False
-
-    return True
+    return core_filters.matches_prop_filter(
+        component_text,
+        prop_filter,
+        _line_matches_time_range,
+    )
 
 
 def _matches_time_range(component_text, time_range):
