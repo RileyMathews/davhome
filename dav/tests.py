@@ -1,10 +1,11 @@
 # pyright: reportGeneralTypeIssues=false, reportAttributeAccessIssue=false, reportArgumentType=false, reportCallIssue=false, reportOperatorIssue=false
 
 import base64
+from datetime import date, datetime, timedelta, timezone as datetime_timezone
 from xml.etree import ElementTree as ET
 
 from django.contrib.auth.models import User
-from django.test import TestCase
+from django.test import SimpleTestCase, TestCase
 from django.utils import timezone
 
 from calendars.models import (
@@ -13,6 +14,7 @@ from calendars.models import (
     CalendarObjectChange,
     CalendarShare,
 )
+from dav import views as dav_views
 
 
 class DavDiscoveryTests(TestCase):
@@ -1322,3 +1324,216 @@ class DavPrincipalAliasTests(TestCase):
             **self._basic_auth(),
         )
         self.assertEqual(response.status_code, 207)
+
+
+class DavPureFunctionTests(SimpleTestCase):
+    def test_validate_ical_and_generic_payloads(self):
+        valid_payload = (
+            b"BEGIN:VCALENDAR\nBEGIN:VEVENT\nUID:test-uid\nEND:VEVENT\nEND:VCALENDAR\n"
+        )
+        parsed, error = dav_views._validate_ical_payload(valid_payload)
+        self.assertIsNone(error)
+        if parsed is None:
+            self.fail("Expected parsed payload")
+        self.assertEqual(parsed["uid"], "test-uid")
+
+        parsed, error = dav_views._validate_ical_payload(b"\xff")
+        self.assertIsNone(parsed)
+        self.assertEqual(error, "Calendar payload must be UTF-8 text.")
+
+        parsed, error = dav_views._validate_ical_payload(
+            b"BEGIN:VEVENT\nUID:x\nEND:VEVENT"
+        )
+        self.assertIsNone(parsed)
+        self.assertEqual(
+            error,
+            "Calendar payload must contain VCALENDAR boundaries.",
+        )
+
+        parsed, error = dav_views._validate_generic_payload(b"hello")
+        self.assertIsNone(error)
+        self.assertEqual(parsed, {"text": "hello", "uid": None})
+
+    def test_if_match_and_precondition_helpers(self):
+        self.assertEqual(
+            dav_views._if_match_values('"a", "b" ,'),
+            ['"a"', '"b"'],
+        )
+
+        request = type("Request", (), {"headers": {"If-None-Match": "*"}})()
+        existing = type("Obj", (), {"etag": '"etag-1"'})()
+        self.assertTrue(dav_views._precondition_failed_for_write(request, existing))
+
+        request = type("Request", (), {"headers": {"If-Match": '"etag-2"'}})()
+        self.assertTrue(dav_views._precondition_failed_for_write(request, None))
+        self.assertTrue(dav_views._precondition_failed_for_write(request, existing))
+
+        request = type("Request", (), {"headers": {"If-Match": "*"}})()
+        self.assertFalse(dav_views._precondition_failed_for_write(request, existing))
+
+    def test_collection_and_path_helpers(self):
+        self.assertEqual(dav_views._collection_marker(""), "")
+        self.assertEqual(dav_views._collection_marker("foo/bar"), "foo/bar/")
+        self.assertEqual(
+            dav_views._split_filename_path("foo/bar.ics"),
+            ("foo", "bar.ics"),
+        )
+        self.assertEqual(dav_views._split_filename_path("/"), ("", ""))
+
+    def test_destination_filename_from_header(self):
+        filename = dav_views._destination_filename_from_header(
+            "https://example.com/dav/calendars/alice/home/file.ics",
+            "alice",
+            "home",
+        )
+        self.assertEqual(filename, "file.ics")
+
+        filename = dav_views._destination_filename_from_header(
+            "/dav/calendars/users/alice/home/folder/item.ics",
+            "alice",
+            "home",
+        )
+        self.assertEqual(filename, "folder/item.ics")
+
+        filename = dav_views._destination_filename_from_header(
+            "/dav/calendars/bob/home/file.ics",
+            "alice",
+            "home",
+        )
+        self.assertIsNone(filename)
+
+    def test_content_type_and_href_helpers(self):
+        self.assertTrue(
+            dav_views._is_ical_resource("event.ics", "application/octet-stream")
+        )
+        self.assertTrue(
+            dav_views._is_ical_resource("event.txt", "text/calendar; charset=utf-8")
+        )
+        self.assertFalse(dav_views._is_ical_resource("event.txt", "text/plain"))
+
+        self.assertEqual(
+            dav_views._normalize_content_type("text/calendar; charset=utf-8"),
+            "text/calendar;charset=utf-8",
+        )
+        self.assertEqual(
+            dav_views._normalize_content_type(None),
+            "application/octet-stream",
+        )
+
+        root = dav_views._parse_xml_body(b"<root><child/></root>")
+        if root is None:
+            self.fail("Expected parsed xml root")
+        self.assertEqual(root.tag, "root")
+        self.assertIsNone(dav_views._parse_xml_body(b"<root>"))
+
+        self.assertEqual(
+            dav_views._normalize_href_path("calendar/file.ics"),
+            "/calendar/file.ics",
+        )
+        self.assertEqual(
+            dav_views._normalize_href_path("https://example.com/a/b"),
+            "/a/b",
+        )
+
+    def test_datetime_and_duration_helpers(self):
+        parsed = dav_views._parse_ical_datetime("20260220")
+        self.assertEqual(parsed, datetime(2026, 2, 20, tzinfo=datetime_timezone.utc))
+
+        parsed = dav_views._parse_ical_datetime("20260220T101112Z")
+        self.assertEqual(
+            parsed,
+            datetime(2026, 2, 20, 10, 11, 12, tzinfo=datetime_timezone.utc),
+        )
+        self.assertIsNone(dav_views._parse_ical_datetime("not-a-date"))
+
+        duration = dav_views._parse_ical_duration("-P1DT2H3M4S")
+        self.assertEqual(duration, -timedelta(days=1, hours=2, minutes=3, seconds=4))
+        self.assertEqual(dav_views._format_ical_duration(timedelta(0)), "PT0S")
+        self.assertEqual(
+            dav_views._format_ical_duration(timedelta(days=1, minutes=5)),
+            "P1DT5M",
+        )
+
+    def test_ical_line_and_filter_helpers(self):
+        ical_text = (
+            "BEGIN:VEVENT\r\n"
+            "SUMMARY;LANGUAGE=en:Hello\r\n"
+            "DTSTART;TZID=UTC:20260220T101112\r\n"
+            "END:VEVENT\r\n"
+        )
+        self.assertEqual(
+            dav_views._first_ical_line_value(ical_text, "SUMMARY"),
+            "Hello",
+        )
+        dtstart_line = dav_views._first_ical_line(ical_text, "DTSTART")
+        if dtstart_line is None:
+            self.fail("Expected DTSTART line")
+        self.assertEqual(dtstart_line.rstrip("\r"), "DTSTART;TZID=UTC:20260220T101112")
+
+        dt = dav_views._parse_line_datetime_with_tz("DTSTART;TZID=UTC:20260220T101112")
+        self.assertEqual(
+            dt,
+            datetime(2026, 2, 20, 10, 11, 12, tzinfo=datetime_timezone.utc),
+        )
+
+        self.assertTrue(
+            dav_views._line_matches_time_range(
+                "DTSTART:20260220T101112Z",
+                {"start": "20260220T090000Z", "end": "20260220T110000Z"},
+            )
+        )
+        self.assertFalse(
+            dav_views._line_matches_time_range(
+                "DTSTART:20260220T101112Z",
+                {"start": "20260220T120000Z", "end": "20260220T130000Z"},
+            )
+        )
+
+    def test_utc_and_property_helpers(self):
+        naive = datetime(2026, 2, 20, 10, 11, 12)
+        aware = datetime(2026, 2, 20, 10, 11, 12, tzinfo=datetime_timezone.utc)
+        day = date(2026, 2, 20)
+        self.assertEqual(
+            dav_views._as_utc_datetime(naive),
+            datetime(2026, 2, 20, 10, 11, 12, tzinfo=datetime_timezone.utc),
+        )
+        self.assertEqual(dav_views._as_utc_datetime(aware), aware)
+        self.assertEqual(
+            dav_views._as_utc_datetime(day),
+            datetime(2026, 2, 20, 0, 0, tzinfo=datetime_timezone.utc),
+        )
+
+        unfolded = dav_views._unfold_ical("SUMMARY:Hello\r\n World")
+        self.assertEqual(unfolded, "SUMMARY:HelloWorld")
+
+        blocks = dav_views._extract_component_blocks(
+            "BEGIN:VEVENT\nUID:1\nEND:VEVENT\nBEGIN:VTODO\nUID:2\nEND:VTODO\n",
+            "VEVENT",
+        )
+        self.assertEqual(len(blocks), 1)
+
+        lines = dav_views._property_lines(
+            "SUMMARY:One\nSUMMARY;LANG=en:Two\nUID:1\n",
+            "summary",
+        )
+        self.assertEqual(lines, ["SUMMARY:One", "SUMMARY;LANG=en:Two"])
+
+        params = dav_views._parse_property_params(
+            "ATTENDEE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL:mailto:a@example.com"
+        )
+        self.assertEqual(params["ROLE"], ["REQ-PARTICIPANT"])
+        self.assertEqual(params["CUTYPE"], ["INDIVIDUAL"])
+
+    def test_text_match_and_combine_filter_results(self):
+        matcher = ET.fromstring(
+            '<C:text-match xmlns:C="urn:ietf:params:xml:ns:caldav" match-type="starts-with">hel</C:text-match>'
+        )
+        self.assertTrue(dav_views._text_match("Hello", matcher))
+
+        negate_matcher = ET.fromstring(
+            '<C:text-match xmlns:C="urn:ietf:params:xml:ns:caldav" negate-condition="yes">zzz</C:text-match>'
+        )
+        self.assertTrue(dav_views._text_match("Hello", negate_matcher))
+
+        self.assertTrue(dav_views._combine_filter_results([True, False], "anyof"))
+        self.assertFalse(dav_views._combine_filter_results([True, False], "allof"))
