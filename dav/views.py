@@ -18,7 +18,7 @@ from django.utils import timezone
 from django.utils.http import http_date
 
 from calendars.models import Calendar, CalendarObjectChange
-from calendars.permissions import can_view_calendar, can_write_calendar
+from calendars.permissions import can_view_calendar
 
 from .core import filters as core_filters
 from .core import calendar_data as core_calendar_data
@@ -26,11 +26,15 @@ from .core import davxml as core_davxml
 from .core import freebusy as core_freebusy
 from .core import paths as core_paths
 from .core import payloads as core_payloads
+from .core import propmap as core_propmap
 from .core import props as core_props
 from .core import query as core_query
 from .core import recurrence as core_recurrence
 from .core import report as core_report
+from .core import report_dispatch as core_report_dispatch
+from .core import sync as core_sync
 from .core import time as core_time
+from .core import write_ops as core_write_ops
 from .shell import repository as shell_repository
 from .auth import get_dav_user, unauthorized_response
 from .report_engine import parse_report_request
@@ -43,7 +47,6 @@ from .resolver import (
 from .xml import (
     NS_APPLE_ICAL,
     NS_CALDAV,
-    NS_CS,
     NS_DAV,
     multistatus_document,
     parse_propfind_request,
@@ -894,41 +897,6 @@ def _xml_response(status, body, headers=None):
     return _dav_common_headers(response)
 
 
-def _build_prop_map_for_root(user):
-    def current_user_principal():
-        elem = ET.Element(qname(NS_DAV, "current-user-principal"))
-        href = ET.SubElement(elem, qname(NS_DAV, "href"))
-        href.text = _principal_href_for_user(user)
-        return elem
-
-    return {
-        qname(NS_DAV, "resourcetype"): lambda: ET.Element(
-            qname(NS_DAV, "resourcetype")
-        ),
-        qname(NS_DAV, "displayname"): lambda: core_props.text_prop(
-            qname, NS_DAV, "displayname", "davhome"
-        ),
-        qname(NS_DAV, "current-user-principal"): current_user_principal,
-    }
-
-
-def _build_prop_map_for_root_unauthenticated():
-    def current_user_principal():
-        elem = ET.Element(qname(NS_DAV, "current-user-principal"))
-        ET.SubElement(elem, qname(NS_DAV, "unauthenticated"))
-        return elem
-
-    return {
-        qname(NS_DAV, "resourcetype"): lambda: ET.Element(
-            qname(NS_DAV, "resourcetype")
-        ),
-        qname(NS_DAV, "displayname"): lambda: core_props.text_prop(
-            qname, NS_DAV, "displayname", "davhome"
-        ),
-        qname(NS_DAV, "current-user-principal"): current_user_principal,
-    }
-
-
 def _require_dav_user(request):
     user = get_dav_user(request)
     if user is None:
@@ -1074,7 +1042,7 @@ def dav_root(request):
     if parse_error is not None:
         return parse_error
 
-    prop_map = _build_prop_map_for_root(user)
+    prop_map = core_propmap.build_root_prop_map(user, _principal_href_for_user)
 
     depth = request.headers.get("Depth", "infinity")
     if parsed is None:
@@ -1088,7 +1056,12 @@ def dav_root(request):
         principal_href = _principal_href_for_user(user)
         home_href = _calendar_home_href_for_user(user)
 
-        principal_map = _build_prop_map_for_principal(user, user)
+        principal_map = core_propmap.build_principal_prop_map(
+            user,
+            user,
+            _principal_href_for_user,
+            _calendar_home_href_for_user,
+        )
         principal_ok, principal_missing = core_props.select_props(
             principal_map, requested
         )
@@ -1096,39 +1069,15 @@ def dav_root(request):
             response_with_props(principal_href, principal_ok, principal_missing)
         )
 
-        home_map = _build_prop_map_for_calendar_home(user, user)
+        home_map = core_propmap.build_calendar_home_prop_map(
+            user,
+            user,
+            _principal_href_for_user,
+        )
         home_ok, home_missing = core_props.select_props(home_map, requested)
         responses.append(response_with_props(home_href, home_ok, home_missing))
 
     return _xml_response(207, multistatus_document(responses))
-
-
-def _build_prop_map_for_principal(auth_user, principal_user):
-    def current_user_principal():
-        elem = ET.Element(qname(NS_DAV, "current-user-principal"))
-        href = ET.SubElement(elem, qname(NS_DAV, "href"))
-        href.text = _principal_href_for_user(auth_user)
-        return elem
-
-    def calendar_home_set():
-        elem = ET.Element(qname(NS_CALDAV, "calendar-home-set"))
-        href = ET.SubElement(elem, qname(NS_DAV, "href"))
-        href.text = _calendar_home_href_for_user(principal_user)
-        return elem
-
-    return {
-        qname(NS_DAV, "resourcetype"): lambda: core_props.resourcetype_prop(
-            qname, NS_DAV, (NS_DAV, "principal")
-        ),
-        qname(NS_DAV, "displayname"): lambda: core_props.text_prop(
-            qname,
-            NS_DAV,
-            "displayname",
-            principal_user.username,
-        ),
-        qname(NS_DAV, "current-user-principal"): current_user_principal,
-        qname(NS_CALDAV, "calendar-home-set"): calendar_home_set,
-    }
 
 
 @csrf_exempt
@@ -1169,7 +1118,12 @@ def principal_view(request, username):
         return HttpResponse(status=400)
 
     requested = parsed["requested"] if parsed["mode"] == "prop" else None
-    principal_map = _build_prop_map_for_principal(user, principal)
+    principal_map = core_propmap.build_principal_prop_map(
+        user,
+        principal,
+        _principal_href_for_user,
+        _calendar_home_href_for_user,
+    )
     ok, missing = core_props.select_props(principal_map, requested)
     responses = [
         response_with_props(f"/dav/principals/{principal.username}/", ok, missing)
@@ -1201,74 +1155,6 @@ def principal_users_view(request, username):
     return principal_view(request, username)
 
 
-def _build_prop_map_for_calendar_home(owner, auth_user):
-    can_write = owner == auth_user
-    return {
-        qname(NS_DAV, "resourcetype"): lambda: core_props.resourcetype_prop(
-            qname, NS_DAV, (NS_DAV, "collection")
-        ),
-        qname(NS_DAV, "getcontentlength"): lambda: core_props.text_prop(
-            qname,
-            NS_DAV,
-            "getcontentlength",
-            "",
-        ),
-        qname(NS_DAV, "displayname"): lambda: core_props.text_prop(
-            qname,
-            NS_DAV,
-            "displayname",
-            f"{owner.username} calendars",
-        ),
-        qname(NS_DAV, "owner"): lambda: core_davxml.owner_prop(
-            qname,
-            NS_DAV,
-            _principal_href_for_user,
-            owner,
-        ),
-        qname(
-            NS_DAV, "current-user-privilege-set"
-        ): lambda: core_davxml.current_user_privilege_set_prop(
-            qname, NS_DAV, can_write
-        ),
-        qname(
-            NS_DAV, "supported-report-set"
-        ): lambda: core_davxml.supported_report_set_prop(
-            qname, NS_DAV, NS_CALDAV, include_freebusy=True
-        ),
-        qname(
-            NS_CALDAV,
-            "supported-calendar-component-sets",
-        ): lambda: core_props.supported_component_sets_prop(
-            qname,
-            NS_CALDAV,
-            (Calendar.COMPONENT_VEVENT, Calendar.COMPONENT_VTODO),
-        ),
-    }
-
-
-def _build_prop_map_for_collection(display_name):
-    def current_user_principal_for_requester(auth_user):
-        elem = ET.Element(qname(NS_DAV, "current-user-principal"))
-        href = ET.SubElement(elem, qname(NS_DAV, "href"))
-        href.text = _principal_href_for_user(auth_user)
-        return elem
-
-    return {
-        qname(NS_DAV, "resourcetype"): lambda: core_props.resourcetype_prop(
-            qname, NS_DAV, (NS_DAV, "collection")
-        ),
-        qname(NS_DAV, "displayname"): lambda: core_props.text_prop(
-            qname, NS_DAV, "displayname", display_name
-        ),
-        qname(NS_DAV, "current-user-principal"): current_user_principal_for_requester,
-        qname(
-            NS_DAV, "supported-report-set"
-        ): lambda: core_davxml.supported_report_set_prop(
-            qname, NS_DAV, NS_CALDAV, include_freebusy=True
-        ),
-    }
-
-
 def _collection_view(request, href, display_name):
     allowed = ["OPTIONS", "PROPFIND", "GET", "HEAD"]
     if request.method == "OPTIONS":
@@ -1298,13 +1184,11 @@ def _collection_view(request, href, display_name):
     if parsed is None:
         return HttpResponse(status=400)
 
-    prop_map = _build_prop_map_for_collection(display_name)
-    resolved_map = {}
-    for key, builder in prop_map.items():
-        if key == qname(NS_DAV, "current-user-principal"):
-            resolved_map[key] = lambda b=builder: b(user)
-        else:
-            resolved_map[key] = builder
+    resolved_map = core_propmap.build_collection_prop_map(
+        display_name,
+        user,
+        _principal_href_for_user,
+    )
 
     requested = parsed["requested"] if parsed["mode"] == "prop" else None
     ok, missing = core_props.select_props(resolved_map, requested)
@@ -1364,7 +1248,11 @@ def calendar_home_view(request, username):
 
     depth = request.headers.get("Depth", "infinity")
     requested = parsed["requested"] if parsed["mode"] == "prop" else None
-    home_map = _build_prop_map_for_calendar_home(owner, user)
+    home_map = core_propmap.build_calendar_home_prop_map(
+        owner,
+        user,
+        _principal_href_for_user,
+    )
     home_ok, home_missing = core_props.select_props(home_map, requested)
     responses = [
         response_with_props(f"/dav/calendars/{owner.username}/", home_ok, home_missing)
@@ -1372,7 +1260,12 @@ def calendar_home_view(request, username):
 
     if depth == "1":
         for calendar in calendars:
-            cal_map = _build_prop_map_for_calendar_collection(calendar, user)
+            cal_map = core_propmap.build_calendar_collection_prop_map(
+                calendar,
+                user,
+                _principal_href_for_user,
+                _sync_token_for_calendar,
+            )
             cal_ok, cal_missing = core_props.select_props(cal_map, requested)
             href = f"/dav/calendars/{owner.username}/{calendar.slug}/"
             responses.append(response_with_props(href, cal_ok, cal_missing))
@@ -1406,98 +1299,6 @@ def calendar_home_uid_view(request, guid):
 @csrf_exempt
 def calendar_home_users_view(request, username):
     return calendar_home_view(request, username)
-
-
-def _build_prop_map_for_calendar_collection(calendar, auth_user):
-    can_write = can_write_calendar(calendar, auth_user)
-    return {
-        qname(NS_DAV, "resourcetype"): lambda: core_props.resourcetype_prop(
-            qname,
-            NS_DAV,
-            (NS_DAV, "collection"),
-            (NS_CALDAV, "calendar"),
-        ),
-        qname(NS_DAV, "getcontentlength"): lambda: core_props.text_prop(
-            qname,
-            NS_DAV,
-            "getcontentlength",
-            "",
-        ),
-        qname(NS_DAV, "getcontenttype"): lambda: core_props.text_prop(
-            qname,
-            NS_DAV,
-            "getcontenttype",
-            "text/calendar",
-        ),
-        qname(NS_DAV, "displayname"): lambda: core_props.text_prop(
-            qname, NS_DAV, "displayname", calendar.name
-        ),
-        qname(NS_CS, "getctag"): lambda: core_props.text_prop(
-            qname,
-            NS_CS,
-            "getctag",
-            str(int(calendar.updated_at.timestamp())),
-        ),
-        qname(
-            NS_CALDAV, "supported-calendar-component-set"
-        ): lambda: core_props.supported_components_prop(
-            qname,
-            NS_CALDAV,
-            calendar.component_kind,
-        ),
-        qname(
-            NS_CALDAV, "calendar-timezone"
-        ): lambda: core_props.calendar_timezone_prop(
-            qname,
-            NS_CALDAV,
-            calendar.timezone,
-        ),
-        qname(NS_CALDAV, "calendar-description"): lambda: core_props.text_prop(
-            qname,
-            NS_CALDAV,
-            "calendar-description",
-            calendar.description,
-        ),
-        qname(NS_APPLE_ICAL, "calendar-color"): lambda: core_props.calendar_color_prop(
-            qname,
-            NS_APPLE_ICAL,
-            calendar.color,
-        ),
-        qname(NS_APPLE_ICAL, "calendar-order"): lambda: core_props.calendar_order_prop(
-            qname,
-            NS_APPLE_ICAL,
-            calendar.sort_order if calendar.sort_order is not None else 0,
-        ),
-        qname(NS_DAV, "getetag"): lambda: core_props.text_prop(
-            qname, NS_DAV, "getetag", _etag_for_calendar(calendar)
-        ),
-        qname(NS_DAV, "owner"): lambda: core_davxml.owner_prop(
-            qname,
-            NS_DAV,
-            _principal_href_for_user,
-            calendar.owner,
-        ),
-        qname(
-            NS_DAV, "current-user-privilege-set"
-        ): lambda: core_davxml.current_user_privilege_set_prop(
-            qname, NS_DAV, can_write
-        ),
-        qname(
-            NS_DAV, "supported-report-set"
-        ): lambda: core_davxml.supported_report_set_prop(
-            qname,
-            NS_DAV,
-            NS_CALDAV,
-            include_freebusy=True,
-            include_sync_collection=True,
-        ),
-        qname(NS_DAV, "sync-token"): lambda: core_props.text_prop(
-            qname,
-            NS_DAV,
-            "sync-token",
-            _sync_token_for_calendar(calendar),
-        ),
-    }
 
 
 def _visible_calendars_for_home(owner, user):
@@ -1671,135 +1472,83 @@ def _sync_collection_response(
         ok, missing = core_props.select_props(prop_map, requested)
         return response_with_props(href, ok, missing)
 
-    style = _report_href_style(request_path)
     latest_revision = _latest_sync_revision(calendar)
-    if token_revision is not None and token_revision > latest_revision:
+    style = _report_href_style(request_path)
+    changes = [
+        core_sync.SyncChange(
+            revision=change.revision,
+            filename=change.filename,
+            is_deleted=change.is_deleted,
+        )
+        for change in CalendarObjectChange.objects.filter(calendar=calendar).order_by(
+            "revision"
+        )
+    ]
+    current_filenames = [obj.filename for obj in calendar.calendar_objects.all()]
+    selection = core_sync.select_sync_collection_items(
+        token_revision=token_revision,
+        latest_revision=latest_revision,
+        changes=changes,
+        current_filenames=current_filenames,
+        limit=limit,
+    )
+
+    if selection.invalid_token:
         return _valid_sync_token_error_response()
 
     responses = []
-    next_revision = latest_revision
     selected_items = []
-    selected_items_source = ""
+    selected_items_source = selection.source
+    next_revision = selection.next_revision
 
     if token_revision is None:
-        cal_map = _build_prop_map_for_calendar_collection(calendar, calendar.owner)
+        cal_map = core_propmap.build_calendar_collection_prop_map(
+            calendar,
+            calendar.owner,
+            _principal_href_for_user,
+            _sync_token_for_calendar,
+        )
         responses.append(
             response_for_props(
                 _collection_href_for_style(calendar, style),
                 cal_map,
             )
         )
-        changes = list(
-            CalendarObjectChange.objects.filter(calendar=calendar).order_by("revision")
-        )
-        if changes:
-            selected_items_source = "initial-latest-by-filename"
-            latest_by_filename = {}
-            for change in changes:
-                latest_by_filename[change.filename] = change
-            selected_changes = sorted(
-                latest_by_filename.values(),
-                key=lambda change: change.revision,
-            )
-            if limit is not None:
-                selected_changes = selected_changes[:limit]
-            if selected_changes:
-                next_revision = selected_changes[-1].revision
+    selected_filenames = [
+        item.filename for item in selection.items if not item.is_deleted
+    ]
+    current_objects = {
+        obj.filename: obj
+        for obj in calendar.calendar_objects.filter(filename__in=selected_filenames)
+    }
 
-            current_objects = {
-                obj.filename: obj
-                for obj in calendar.calendar_objects.filter(
-                    filename__in=[change.filename for change in selected_changes]
-                )
+    for item in selection.items:
+        obj = current_objects.get(item.filename)
+        selected_items.append(
+            {
+                "revision": item.revision,
+                "filename": item.filename,
+                "is_deleted": item.is_deleted,
+                "object_found": obj is not None,
             }
-            for change in selected_changes:
-                if change.is_deleted:
-                    selected_items.append(
-                        {
-                            "revision": change.revision,
-                            "filename": change.filename,
-                            "is_deleted": True,
-                            "object_found": False,
-                        }
-                    )
-                    continue
-                obj = current_objects.get(change.filename)
-                selected_items.append(
-                    {
-                        "revision": change.revision,
-                        "filename": change.filename,
-                        "is_deleted": False,
-                        "object_found": obj is not None,
-                    }
-                )
-                if obj is None:
-                    continue
-                href = _object_href_for_style(calendar, obj, style)
-                obj_map = _build_prop_map_for_object(obj, calendar_data_request)
-                responses.append(response_for_props(href, obj_map))
-        else:
-            selected_items_source = "initial-current-objects"
-            objects = list(calendar.calendar_objects.all())
-            if limit is not None:
-                objects = objects[:limit]
-            for obj in objects:
-                selected_items.append(
-                    {
-                        "revision": None,
-                        "filename": obj.filename,
-                        "is_deleted": False,
-                        "object_found": True,
-                    }
-                )
-                href = _object_href_for_style(calendar, obj, style)
-                obj_map = _build_prop_map_for_object(obj, calendar_data_request)
-                responses.append(response_for_props(href, obj_map))
-    else:
-        selected_items_source = "incremental-latest-by-filename"
-        changes = list(
-            CalendarObjectChange.objects.filter(
-                calendar=calendar,
-                revision__gt=token_revision,
-            ).order_by("revision")
         )
-        latest_by_filename = {}
-        for change in changes:
-            latest_by_filename[change.filename] = change
-        ordered_changes = sorted(
-            latest_by_filename.values(),
-            key=lambda change: change.revision,
-        )
-        if limit is not None:
-            ordered_changes = ordered_changes[:limit]
-        if ordered_changes:
-            next_revision = ordered_changes[-1].revision
+        if item.is_deleted:
+            if token_revision is not None:
+                href = _object_href_for_filename(calendar, item.filename, style)
+                responses.append(response_with_status(href, "404 Not Found"))
+            continue
 
-        current_objects = {
-            obj.filename: obj
-            for obj in calendar.calendar_objects.filter(
-                filename__in=[change.filename for change in ordered_changes]
-            )
-        }
-        for change in ordered_changes:
-            filename = change.filename
-            href = _object_href_for_filename(calendar, filename, style)
-            obj = current_objects.get(filename)
-            selected_items.append(
-                {
-                    "revision": change.revision,
-                    "filename": filename,
-                    "is_deleted": change.is_deleted,
-                    "object_found": obj is not None,
-                }
-            )
-            if change.is_deleted:
+        if obj is None:
+            if token_revision is not None:
+                href = _object_href_for_filename(calendar, item.filename, style)
                 responses.append(response_with_status(href, "404 Not Found"))
-                continue
-            if obj is None:
-                responses.append(response_with_status(href, "404 Not Found"))
-                continue
-            obj_map = _build_prop_map_for_object(obj, calendar_data_request)
-            responses.append(response_for_props(href, obj_map))
+            continue
+
+        href = _object_href_for_style(calendar, obj, style)
+        if token_revision is not None:
+            href = _object_href_for_filename(calendar, item.filename, style)
+        obj_map = _build_prop_map_for_object(obj, calendar_data_request)
+        responses.append(response_for_props(href, obj_map))
 
     max_items_to_log = 200
     logger.info(
@@ -1866,65 +1615,57 @@ def _handle_report(calendars, request, allow_sync_collection=True):
         _ACTIVE_REPORT_TZINFO = None
         return _caldav_error_response(range_bounds_error)
 
-    requested = parsed_report.requested_props
-    calendar_data_request = parsed_report.calendar_data_request
-    report_kind = core_report.classify_report_kind(root.tag)
+    context = core_report_dispatch.build_report_execution_context(
+        parsed_report=parsed_report,
+        calendars=calendars,
+        request_path=request.path,
+        classify_report_kind=core_report.classify_report_kind,
+    )
 
-    if report_kind == core_report.REPORT_KIND_MULTIGET:
-        hrefs = parsed_report.hrefs
+    def handle_multiget(exec_context):
         responses = _responses_for_multiget(
-            calendars,
-            requested,
-            hrefs,
-            calendar_data_request,
+            exec_context.calendars,
+            exec_context.requested_props,
+            exec_context.parsed_report.hrefs,
+            exec_context.calendar_data_request,
         )
-        response = _xml_response(207, multistatus_document(responses))
-        _ACTIVE_REPORT_TZINFO = None
-        return response
+        return _xml_response(207, multistatus_document(responses))
 
-    if report_kind == core_report.REPORT_KIND_QUERY:
-        query_filter = parsed_report.query_filter
+    def handle_query(exec_context):
         responses = _responses_for_calendar_query(
-            calendars,
-            requested,
-            query_filter,
-            request.path,
-            calendar_data_request,
+            exec_context.calendars,
+            exec_context.requested_props,
+            exec_context.parsed_report.query_filter,
+            exec_context.request_path,
+            exec_context.calendar_data_request,
         )
-        response = _xml_response(207, multistatus_document(responses))
-        _ACTIVE_REPORT_TZINFO = None
-        return response
+        return _xml_response(207, multistatus_document(responses))
 
-    if report_kind == core_report.REPORT_KIND_FREEBUSY:
-        response = _render_freebusy_report(calendars, root)
-        _ACTIVE_REPORT_TZINFO = None
-        return response
+    def handle_freebusy(exec_context):
+        return _render_freebusy_report(exec_context.calendars, exec_context.root)
 
-    if report_kind == core_report.REPORT_KIND_SYNC_COLLECTION:
+    def handle_sync_collection(exec_context):
         sync_request = core_report.parse_sync_collection_request(
-            root,
+            exec_context.root,
             _sync_collection_limit,
         )
         requested_limit = sync_request.requested_limit
 
         if not allow_sync_collection:
-            _ACTIVE_REPORT_TZINFO = None
             return HttpResponse(status=501)
 
         sync_level = sync_request.sync_level
         if sync_level and sync_level != "1":
-            _ACTIVE_REPORT_TZINFO = None
             return HttpResponse(status=400)
 
-        if len(calendars) != 1:
-            _ACTIVE_REPORT_TZINFO = None
+        if len(exec_context.calendars) != 1:
             return HttpResponse(status=501)
 
         sync_token_value = sync_request.sync_token
-        calendar = calendars[0]
+        calendar = exec_context.calendars[0]
         logger.info(
             "dav_sync_collection_request path=%s calendar_id=%s owner=%s slug=%s sync_level=%r token_present=%s sync_token=%r requested_limit=%r",
-            request.path,
+            exec_context.request_path,
             calendar.id,
             calendar.owner.username,
             calendar.slug,
@@ -1942,32 +1683,41 @@ def _handle_report(calendars, request, allow_sync_collection=True):
             if token_error is not None:
                 logger.info(
                     "dav_sync_collection_token_rejected path=%s calendar_id=%s sync_token=%r",
-                    request.path,
+                    exec_context.request_path,
                     calendar.id,
                     sync_token_value,
                 )
-                _ACTIVE_REPORT_TZINFO = None
                 return token_error
             logger.info(
                 "dav_sync_collection_token_parsed path=%s calendar_id=%s token_revision=%s",
-                request.path,
+                exec_context.request_path,
                 calendar.id,
                 token_revision,
             )
 
-        response = _sync_collection_response(
+        return _sync_collection_response(
             calendar,
-            request.path,
-            requested,
-            calendar_data_request,
+            exec_context.request_path,
+            exec_context.requested_props,
+            exec_context.calendar_data_request,
             token_revision,
             requested_limit,
         )
-        _ACTIVE_REPORT_TZINFO = None
-        return response
 
+    response = core_report_dispatch.dispatch_report(
+        context=context,
+        report_kind_multiget=core_report.REPORT_KIND_MULTIGET,
+        report_kind_query=core_report.REPORT_KIND_QUERY,
+        report_kind_freebusy=core_report.REPORT_KIND_FREEBUSY,
+        report_kind_sync_collection=core_report.REPORT_KIND_SYNC_COLLECTION,
+        handle_multiget=handle_multiget,
+        handle_query=handle_query,
+        handle_freebusy=handle_freebusy,
+        handle_sync_collection=handle_sync_collection,
+        handle_unknown=lambda _exec_context: _report_unknown_type(),
+    )
     _ACTIVE_REPORT_TZINFO = None
-    return _report_unknown_type()
+    return response
 
 
 @csrf_exempt
@@ -2216,7 +1966,12 @@ def calendar_collection_view(request, username, slug):
 
     depth = request.headers.get("Depth", "infinity")
     requested = parsed["requested"] if parsed["mode"] == "prop" else None
-    cal_map = _build_prop_map_for_calendar_collection(calendar, user)
+    cal_map = core_propmap.build_calendar_collection_prop_map(
+        calendar,
+        user,
+        _principal_href_for_user,
+        _sync_token_for_calendar,
+    )
     cal_ok, cal_missing = core_props.select_props(cal_map, requested)
     responses = [
         response_with_props(
@@ -2265,63 +2020,17 @@ def _build_prop_map_for_object(obj, calendar_data_request=None):
     )
     if last_modified is None:
         last_modified = timezone.now()
-    dead_properties = getattr(obj, "dead_properties", None) or {}
-
-    prop_map = {
-        qname(NS_DAV, "resourcetype"): lambda: ET.Element(
-            qname(NS_DAV, "resourcetype")
-        ),
-        qname(NS_DAV, "getetag"): lambda: core_props.text_prop(
-            qname, NS_DAV, "getetag", _etag_for_object(obj)
-        ),
-        qname(NS_DAV, "getcontenttype"): lambda: core_props.text_prop(
-            qname,
-            NS_DAV,
-            "getcontenttype",
-            obj.content_type,
-        ),
-        qname(NS_DAV, "getcontentlength"): lambda: core_props.text_prop(
-            qname,
-            NS_DAV,
-            "getcontentlength",
-            str(size),
-        ),
-        qname(NS_DAV, "getlastmodified"): lambda: core_props.text_prop(
-            qname,
-            NS_DAV,
-            "getlastmodified",
-            http_date(last_modified.timestamp()),
-        ),
-        qname(NS_CALDAV, "calendar-data"): lambda: _calendar_data_prop(
+    return core_propmap.build_object_prop_map(
+        obj=obj,
+        etag_for_object=_etag_for_object,
+        getlastmodified_text=http_date(last_modified.timestamp()),
+        calendar_data_element=_calendar_data_prop(
             _filter_calendar_data_with_active_tz(
                 obj.ical_blob,
                 calendar_data_request,
             )
         ),
-    }
-
-    for tag, xml_value in dead_properties.items():
-
-        def _dead_prop_builder(value=xml_value):
-            try:
-                return ET.fromstring(value)
-            except ET.ParseError:
-                return ET.Element(qname(NS_DAV, "invalid-dead-property"))
-
-        prop_map[tag] = _dead_prop_builder
-
-    return prop_map
-
-
-def _object_live_property_tags():
-    return {
-        qname(NS_DAV, "resourcetype"),
-        qname(NS_DAV, "getetag"),
-        qname(NS_DAV, "getcontenttype"),
-        qname(NS_DAV, "getcontentlength"),
-        qname(NS_DAV, "getlastmodified"),
-        qname(NS_CALDAV, "calendar-data"),
-    }
+    )
 
 
 @csrf_exempt
@@ -2411,7 +2120,7 @@ def calendar_object_view(request, username, slug, filename):
                     return HttpResponse(status=404)
 
                 dead_props = dict(existing.dead_properties or {})
-                protected = _object_live_property_tags()
+                protected = core_propmap.object_live_property_tags()
                 ok_tags = []
                 bad_tags = []
 
@@ -2542,15 +2251,29 @@ def calendar_object_view(request, username, slug, filename):
                 response = HttpResponse(status=204)
                 return _dav_common_headers(response)
 
-            if core_payloads.precondition_failed_for_write(request, existing):
+            precondition = core_write_ops.build_write_precondition(
+                if_match_header=request.headers.get("If-Match"),
+                if_none_match_header=request.headers.get("If-None-Match"),
+                existing_etag=getattr(existing, "etag", None),
+                parse_if_match_values=core_payloads.if_match_values,
+            )
+            precondition_decision = core_write_ops.decide_precondition(precondition)
+            if not precondition_decision.allowed:
                 return HttpResponse(status=412)
 
             if not _collection_exists(writable, parent_path):
                 return HttpResponse(status=409)
 
-            raw_content_type = request.META.get("CONTENT_TYPE") or request.content_type
-            content_type = core_paths.normalize_content_type(raw_content_type)
-            if core_paths.is_ical_resource(filename, content_type):
+            payload_plan = core_write_ops.build_payload_validation_plan(
+                filename=filename,
+                raw_content_type=(
+                    request.META.get("CONTENT_TYPE") or request.content_type
+                ),
+                normalize_content_type=core_paths.normalize_content_type,
+                is_ical_resource=core_paths.is_ical_resource,
+            )
+            content_type = payload_plan.content_type
+            if payload_plan.is_ical:
                 parsed, error = core_payloads.validate_ical_payload(request.body)
             else:
                 parsed, error = core_payloads.validate_generic_payload(request.body)
@@ -2564,9 +2287,14 @@ def calendar_object_view(request, username, slug, filename):
 
             now = timezone.now()
             payload_text = parsed["text"]
-            if core_paths.is_ical_resource(filename, content_type):
-                component_kind = core_payloads.component_kind_from_payload(payload_text)
-                if component_kind is None or component_kind != writable.component_kind:
+            if payload_plan.is_ical:
+                component_decision = core_write_ops.decide_component_kind(
+                    parsed_component_kind=core_payloads.component_kind_from_payload(
+                        payload_text
+                    ),
+                    calendar_component_kind=writable.component_kind,
+                )
+                if not component_decision.allowed:
                     return _caldav_error_response(
                         "supported-calendar-component", status=403
                     )
