@@ -14,7 +14,14 @@ from calendars.models import (
     CalendarObjectChange,
     CalendarShare,
 )
-from dav import views as dav_views
+from dav.core import calendar_data as core_calendar_data
+from dav.core import filters as core_filters
+from dav.core import freebusy as core_freebusy
+from dav.core import paths as core_paths
+from dav.core import payloads as core_payloads
+from dav.core import query as core_query
+from dav.core import recurrence as core_recurrence
+from dav.core import time as core_time
 
 
 class DavDiscoveryTests(TestCase):
@@ -1327,21 +1334,54 @@ class DavPrincipalAliasTests(TestCase):
 
 
 class DavPureFunctionTests(SimpleTestCase):
+    @staticmethod
+    def _matches_time_range(component_text, time_range):
+        return core_query.matches_time_range(
+            component_text,
+            time_range,
+            core_time.parse_ical_datetime,
+            core_recurrence.matches_time_range_recurrence,
+            core_recurrence.parse_line_datetime_with_tz,
+            core_time.first_ical_line,
+            core_time.parse_ical_duration,
+            core_time.first_ical_line_value,
+        )
+
+    @classmethod
+    def _matches_comp_filter(cls, context_text, comp_filter):
+        return core_query.matches_comp_filter(
+            context_text,
+            comp_filter,
+            core_recurrence.extract_component_blocks,
+            cls._matches_time_range,
+            cls._matches_prop_filter,
+            core_recurrence.alarm_matches_time_range,
+            core_filters.combine_filter_results,
+        )
+
+    @staticmethod
+    def _matches_prop_filter(component_text, prop_filter):
+        return core_filters.matches_prop_filter(
+            component_text,
+            prop_filter,
+            core_recurrence.line_matches_time_range,
+        )
+
     def test_validate_ical_and_generic_payloads(self):
         valid_payload = (
             b"BEGIN:VCALENDAR\nBEGIN:VEVENT\nUID:test-uid\nEND:VEVENT\nEND:VCALENDAR\n"
         )
-        parsed, error = dav_views._validate_ical_payload(valid_payload)
+        parsed, error = core_payloads.validate_ical_payload(valid_payload)
         self.assertIsNone(error)
         if parsed is None:
             self.fail("Expected parsed payload")
         self.assertEqual(parsed["uid"], "test-uid")
 
-        parsed, error = dav_views._validate_ical_payload(b"\xff")
+        parsed, error = core_payloads.validate_ical_payload(b"\xff")
         self.assertIsNone(parsed)
         self.assertEqual(error, "Calendar payload must be UTF-8 text.")
 
-        parsed, error = dav_views._validate_ical_payload(
+        parsed, error = core_payloads.validate_ical_payload(
             b"BEGIN:VEVENT\nUID:x\nEND:VEVENT"
         )
         self.assertIsNone(parsed)
@@ -1350,52 +1390,52 @@ class DavPureFunctionTests(SimpleTestCase):
             "Calendar payload must contain VCALENDAR boundaries.",
         )
 
-        parsed, error = dav_views._validate_generic_payload(b"hello")
+        parsed, error = core_payloads.validate_generic_payload(b"hello")
         self.assertIsNone(error)
         self.assertEqual(parsed, {"text": "hello", "uid": None})
 
     def test_if_match_and_precondition_helpers(self):
         self.assertEqual(
-            dav_views._if_match_values('"a", "b" ,'),
+            core_payloads.if_match_values('"a", "b" ,'),
             ['"a"', '"b"'],
         )
 
         request = type("Request", (), {"headers": {"If-None-Match": "*"}})()
         existing = type("Obj", (), {"etag": '"etag-1"'})()
-        self.assertTrue(dav_views._precondition_failed_for_write(request, existing))
+        self.assertTrue(core_payloads.precondition_failed_for_write(request, existing))
 
         request = type("Request", (), {"headers": {"If-Match": '"etag-2"'}})()
-        self.assertTrue(dav_views._precondition_failed_for_write(request, None))
-        self.assertTrue(dav_views._precondition_failed_for_write(request, existing))
+        self.assertTrue(core_payloads.precondition_failed_for_write(request, None))
+        self.assertTrue(core_payloads.precondition_failed_for_write(request, existing))
 
         request = type("Request", (), {"headers": {"If-Match": "*"}})()
-        self.assertFalse(dav_views._precondition_failed_for_write(request, existing))
+        self.assertFalse(core_payloads.precondition_failed_for_write(request, existing))
 
     def test_collection_and_path_helpers(self):
-        self.assertEqual(dav_views._collection_marker(""), "")
-        self.assertEqual(dav_views._collection_marker("foo/bar"), "foo/bar/")
+        self.assertEqual(core_paths.collection_marker(""), "")
+        self.assertEqual(core_paths.collection_marker("foo/bar"), "foo/bar/")
         self.assertEqual(
-            dav_views._split_filename_path("foo/bar.ics"),
+            core_paths.split_filename_path("foo/bar.ics"),
             ("foo", "bar.ics"),
         )
-        self.assertEqual(dav_views._split_filename_path("/"), ("", ""))
+        self.assertEqual(core_paths.split_filename_path("/"), ("", ""))
 
     def test_destination_filename_from_header(self):
-        filename = dav_views._destination_filename_from_header(
+        filename = core_paths.destination_filename_from_header(
             "https://example.com/dav/calendars/alice/home/file.ics",
             "alice",
             "home",
         )
         self.assertEqual(filename, "file.ics")
 
-        filename = dav_views._destination_filename_from_header(
+        filename = core_paths.destination_filename_from_header(
             "/dav/calendars/users/alice/home/folder/item.ics",
             "alice",
             "home",
         )
         self.assertEqual(filename, "folder/item.ics")
 
-        filename = dav_views._destination_filename_from_header(
+        filename = core_paths.destination_filename_from_header(
             "/dav/calendars/bob/home/file.ics",
             "alice",
             "home",
@@ -1404,53 +1444,54 @@ class DavPureFunctionTests(SimpleTestCase):
 
     def test_content_type_and_href_helpers(self):
         self.assertTrue(
-            dav_views._is_ical_resource("event.ics", "application/octet-stream")
+            core_paths.is_ical_resource("event.ics", "application/octet-stream")
         )
         self.assertTrue(
-            dav_views._is_ical_resource("event.txt", "text/calendar; charset=utf-8")
+            core_paths.is_ical_resource("event.txt", "text/calendar; charset=utf-8")
         )
-        self.assertFalse(dav_views._is_ical_resource("event.txt", "text/plain"))
+        self.assertFalse(core_paths.is_ical_resource("event.txt", "text/plain"))
 
         self.assertEqual(
-            dav_views._normalize_content_type("text/calendar; charset=utf-8"),
+            core_paths.normalize_content_type("text/calendar; charset=utf-8"),
             "text/calendar;charset=utf-8",
         )
         self.assertEqual(
-            dav_views._normalize_content_type(None),
+            core_paths.normalize_content_type(None),
             "application/octet-stream",
         )
 
-        root = dav_views._parse_xml_body(b"<root><child/></root>")
+        root = ET.fromstring(b"<root><child/></root>")
         if root is None:
             self.fail("Expected parsed xml root")
         self.assertEqual(root.tag, "root")
-        self.assertIsNone(dav_views._parse_xml_body(b"<root>"))
+        with self.assertRaises(ET.ParseError):
+            ET.fromstring(b"<root>")
 
         self.assertEqual(
-            dav_views._normalize_href_path("calendar/file.ics"),
+            core_paths.normalize_href_path("calendar/file.ics"),
             "/calendar/file.ics",
         )
         self.assertEqual(
-            dav_views._normalize_href_path("https://example.com/a/b"),
+            core_paths.normalize_href_path("https://example.com/a/b"),
             "/a/b",
         )
 
     def test_datetime_and_duration_helpers(self):
-        parsed = dav_views._parse_ical_datetime("20260220")
+        parsed = core_time.parse_ical_datetime("20260220")
         self.assertEqual(parsed, datetime(2026, 2, 20, tzinfo=datetime_timezone.utc))
 
-        parsed = dav_views._parse_ical_datetime("20260220T101112Z")
+        parsed = core_time.parse_ical_datetime("20260220T101112Z")
         self.assertEqual(
             parsed,
             datetime(2026, 2, 20, 10, 11, 12, tzinfo=datetime_timezone.utc),
         )
-        self.assertIsNone(dav_views._parse_ical_datetime("not-a-date"))
+        self.assertIsNone(core_time.parse_ical_datetime("not-a-date"))
 
-        duration = dav_views._parse_ical_duration("-P1DT2H3M4S")
+        duration = core_time.parse_ical_duration("-P1DT2H3M4S")
         self.assertEqual(duration, -timedelta(days=1, hours=2, minutes=3, seconds=4))
-        self.assertEqual(dav_views._format_ical_duration(timedelta(0)), "PT0S")
+        self.assertEqual(core_time.format_ical_duration(timedelta(0)), "PT0S")
         self.assertEqual(
-            dav_views._format_ical_duration(timedelta(days=1, minutes=5)),
+            core_time.format_ical_duration(timedelta(days=1, minutes=5)),
             "P1DT5M",
         )
 
@@ -1462,28 +1503,30 @@ class DavPureFunctionTests(SimpleTestCase):
             "END:VEVENT\r\n"
         )
         self.assertEqual(
-            dav_views._first_ical_line_value(ical_text, "SUMMARY"),
+            core_time.first_ical_line_value(ical_text, "SUMMARY"),
             "Hello",
         )
-        dtstart_line = dav_views._first_ical_line(ical_text, "DTSTART")
+        dtstart_line = core_time.first_ical_line(ical_text, "DTSTART")
         if dtstart_line is None:
             self.fail("Expected DTSTART line")
         self.assertEqual(dtstart_line.rstrip("\r"), "DTSTART;TZID=UTC:20260220T101112")
 
-        dt = dav_views._parse_line_datetime_with_tz("DTSTART;TZID=UTC:20260220T101112")
+        dt = core_recurrence.parse_line_datetime_with_tz(
+            "DTSTART;TZID=UTC:20260220T101112"
+        )
         self.assertEqual(
             dt,
             datetime(2026, 2, 20, 10, 11, 12, tzinfo=datetime_timezone.utc),
         )
 
         self.assertTrue(
-            dav_views._line_matches_time_range(
+            core_recurrence.line_matches_time_range(
                 "DTSTART:20260220T101112Z",
                 {"start": "20260220T090000Z", "end": "20260220T110000Z"},
             )
         )
         self.assertFalse(
-            dav_views._line_matches_time_range(
+            core_recurrence.line_matches_time_range(
                 "DTSTART:20260220T101112Z",
                 {"start": "20260220T120000Z", "end": "20260220T130000Z"},
             )
@@ -1494,31 +1537,31 @@ class DavPureFunctionTests(SimpleTestCase):
         aware = datetime(2026, 2, 20, 10, 11, 12, tzinfo=datetime_timezone.utc)
         day = date(2026, 2, 20)
         self.assertEqual(
-            dav_views._as_utc_datetime(naive),
+            core_time.as_utc_datetime(naive),
             datetime(2026, 2, 20, 10, 11, 12, tzinfo=datetime_timezone.utc),
         )
-        self.assertEqual(dav_views._as_utc_datetime(aware), aware)
+        self.assertEqual(core_time.as_utc_datetime(aware), aware)
         self.assertEqual(
-            dav_views._as_utc_datetime(day),
+            core_time.as_utc_datetime(day),
             datetime(2026, 2, 20, 0, 0, tzinfo=datetime_timezone.utc),
         )
 
-        unfolded = dav_views._unfold_ical("SUMMARY:Hello\r\n World")
+        unfolded = core_time.unfold_ical("SUMMARY:Hello\r\n World")
         self.assertEqual(unfolded, "SUMMARY:HelloWorld")
 
-        blocks = dav_views._extract_component_blocks(
+        blocks = core_recurrence.extract_component_blocks(
             "BEGIN:VEVENT\nUID:1\nEND:VEVENT\nBEGIN:VTODO\nUID:2\nEND:VTODO\n",
             "VEVENT",
         )
         self.assertEqual(len(blocks), 1)
 
-        lines = dav_views._property_lines(
+        lines = core_filters.property_lines(
             "SUMMARY:One\nSUMMARY;LANG=en:Two\nUID:1\n",
             "summary",
         )
         self.assertEqual(lines, ["SUMMARY:One", "SUMMARY;LANG=en:Two"])
 
-        params = dav_views._parse_property_params(
+        params = core_filters.parse_property_params(
             "ATTENDEE;ROLE=REQ-PARTICIPANT;CUTYPE=INDIVIDUAL:mailto:a@example.com"
         )
         self.assertEqual(params["ROLE"], ["REQ-PARTICIPANT"])
@@ -1528,15 +1571,15 @@ class DavPureFunctionTests(SimpleTestCase):
         matcher = ET.fromstring(
             '<C:text-match xmlns:C="urn:ietf:params:xml:ns:caldav" match-type="starts-with">hel</C:text-match>'
         )
-        self.assertTrue(dav_views._text_match("Hello", matcher))
+        self.assertTrue(core_filters.text_match("Hello", matcher))
 
         negate_matcher = ET.fromstring(
             '<C:text-match xmlns:C="urn:ietf:params:xml:ns:caldav" negate-condition="yes">zzz</C:text-match>'
         )
-        self.assertTrue(dav_views._text_match("Hello", negate_matcher))
+        self.assertTrue(core_filters.text_match("Hello", negate_matcher))
 
-        self.assertTrue(dav_views._combine_filter_results([True, False], "anyof"))
-        self.assertFalse(dav_views._combine_filter_results([True, False], "allof"))
+        self.assertTrue(core_filters.combine_filter_results([True, False], "anyof"))
+        self.assertFalse(core_filters.combine_filter_results([True, False], "allof"))
 
     def test_matches_param_and_prop_filters(self):
         component_text = (
@@ -1546,36 +1589,34 @@ class DavPureFunctionTests(SimpleTestCase):
             "DTSTART:20260220T100000Z\n"
             "END:VEVENT\n"
         )
-        prop_lines = dav_views._property_lines(component_text, "ATTENDEE")
+        prop_lines = core_filters.property_lines(component_text, "ATTENDEE")
 
         role_filter = ET.fromstring(
             '<C:param-filter xmlns:C="urn:ietf:params:xml:ns:caldav" name="ROLE"><C:text-match>REQ</C:text-match></C:param-filter>'
         )
-        self.assertTrue(dav_views._matches_param_filter(prop_lines, role_filter))
+        self.assertTrue(core_filters.matches_param_filter(prop_lines, role_filter))
 
         missing_filter = ET.fromstring(
             '<C:param-filter xmlns:C="urn:ietf:params:xml:ns:caldav" name="CUTYPE"><C:is-not-defined/></C:param-filter>'
         )
-        self.assertTrue(dav_views._matches_param_filter(prop_lines, missing_filter))
+        self.assertTrue(core_filters.matches_param_filter(prop_lines, missing_filter))
 
         summary_filter = ET.fromstring(
             '<C:prop-filter xmlns:C="urn:ietf:params:xml:ns:caldav" name="SUMMARY"><C:text-match>plan</C:text-match></C:prop-filter>'
         )
-        self.assertTrue(dav_views._matches_prop_filter(component_text, summary_filter))
+        self.assertTrue(self._matches_prop_filter(component_text, summary_filter))
 
         description_missing = ET.fromstring(
             '<C:prop-filter xmlns:C="urn:ietf:params:xml:ns:caldav" name="DESCRIPTION"><C:is-not-defined/></C:prop-filter>'
         )
-        self.assertTrue(
-            dav_views._matches_prop_filter(component_text, description_missing)
-        )
+        self.assertTrue(self._matches_prop_filter(component_text, description_missing))
 
     def test_matches_time_range_and_comp_filters(self):
         event = "BEGIN:VEVENT\nDTSTART;VALUE=DATE:20260220\nEND:VEVENT\n"
         in_range = {"start": "20260220T000000Z", "end": "20260221T000000Z"}
         out_of_range = {"start": "20260222T000000Z", "end": "20260223T000000Z"}
-        self.assertTrue(dav_views._matches_time_range(event, in_range))
-        self.assertFalse(dav_views._matches_time_range(event, out_of_range))
+        self.assertTrue(self._matches_time_range(event, in_range))
+        self.assertFalse(self._matches_time_range(event, out_of_range))
 
         calendar_without_master_alarm = (
             "BEGIN:VCALENDAR\n"
@@ -1587,9 +1628,7 @@ class DavPureFunctionTests(SimpleTestCase):
             '<C:comp-filter xmlns:C="urn:ietf:params:xml:ns:caldav" name="VEVENT"><C:comp-filter name="VALARM"><C:is-not-defined/></C:comp-filter></C:comp-filter>'
         )
         self.assertTrue(
-            dav_views._matches_comp_filter(
-                calendar_without_master_alarm, no_alarm_filter
-            )
+            self._matches_comp_filter(calendar_without_master_alarm, no_alarm_filter)
         )
 
     def test_recurrence_alarm_shift_and_filtered_data_helpers(self):
@@ -1604,7 +1643,7 @@ class DavPureFunctionTests(SimpleTestCase):
             "END:VEVENT\n"
         )
         self.assertTrue(
-            dav_views._matches_time_range_recurrence(
+            core_recurrence.matches_time_range_recurrence(
                 recurring_event,
                 datetime(2026, 2, 20, 0, 0, tzinfo=datetime_timezone.utc),
                 datetime(2026, 2, 22, 0, 0, tzinfo=datetime_timezone.utc),
@@ -1612,7 +1651,7 @@ class DavPureFunctionTests(SimpleTestCase):
             )
         )
         self.assertTrue(
-            dav_views._alarm_matches_time_range(
+            core_recurrence.alarm_matches_time_range(
                 recurring_event,
                 {
                     "start": "20260220T094000Z",
@@ -1621,27 +1660,48 @@ class DavPureFunctionTests(SimpleTestCase):
             )
         )
 
-        shifted = dav_views._ensure_shifted_first_occurrence_recurrence_id(
+        shifted = core_calendar_data.ensure_shifted_first_occurrence_recurrence_id(
             "BEGIN:VEVENT\r\nUID:evt-3\r\nDTSTART:20260221T100000Z\r\nEND:VEVENT\r\n",
             {"evt-3": datetime(2026, 2, 20, 10, 0, tzinfo=datetime_timezone.utc)},
             None,
+            core_recurrence.extract_component_blocks,
+            core_time.first_ical_line_value,
+            core_time.first_ical_line,
+            core_time.format_value_date_or_datetime,
         )
         self.assertIn("RECURRENCE-ID:20260221T100000Z", shifted)
 
         calendar_data_request = ET.fromstring(
             '<C:calendar-data xmlns:C="urn:ietf:params:xml:ns:caldav"><C:prop name="SUMMARY"/></C:calendar-data>'
         )
-        filtered = dav_views._filter_calendar_data_for_response(
+        filtered = core_calendar_data.filter_calendar_data_for_response(
             "BEGIN:VCALENDAR\r\nDTSTAMP:20260220T100000Z\r\nEND:VCALENDAR\r\n",
             calendar_data_request,
+            None,
+            core_time.parse_ical_datetime,
+            core_time.as_utc_datetime,
+            lambda *args, **kwargs: "",
+            lambda ical_blob, _master_starts, _tzinfo: ical_blob,
         )
         self.assertNotIn("DTSTAMP", filtered)
         self.assertTrue(filtered.endswith("\r\n"))
 
     def test_freebusy_and_object_query_helpers(self):
-        parsed = dav_views._parse_freebusy_value("20260220T100000Z/PT1H")
+        parsed = core_freebusy.parse_freebusy_value(
+            "20260220T100000Z/PT1H",
+            core_time.parse_ical_datetime,
+            core_time.parse_ical_duration,
+            core_time.as_utc_datetime,
+        )
         self.assertIsNotNone(parsed)
-        self.assertIsNone(dav_views._parse_freebusy_value("bad-value"))
+        self.assertIsNone(
+            core_freebusy.parse_freebusy_value(
+                "bad-value",
+                core_time.parse_ical_datetime,
+                core_time.parse_ical_duration,
+                core_time.as_utc_datetime,
+            )
+        )
 
         query_filter = ET.fromstring(
             '<C:comp-filter xmlns:C="urn:ietf:params:xml:ns:caldav" name="VEVENT" />'
@@ -1653,4 +1713,11 @@ class DavPureFunctionTests(SimpleTestCase):
                 "ical_blob": "BEGIN:VCALENDAR\nBEGIN:VEVENT\nUID:ok\nEND:VEVENT\nEND:VCALENDAR\n"
             },
         )()
-        self.assertTrue(dav_views._object_matches_query(obj, query_filter))
+        self.assertTrue(
+            core_query.object_matches_query(
+                obj.ical_blob,
+                query_filter,
+                core_time.unfold_ical,
+                self._matches_comp_filter,
+            )
+        )

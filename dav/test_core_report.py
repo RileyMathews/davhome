@@ -1,3 +1,4 @@
+from datetime import datetime, timezone
 from xml.etree import ElementTree as ET
 
 from django.test import SimpleTestCase
@@ -39,6 +40,60 @@ class DavCoreReportTests(SimpleTestCase):
         self.assertEqual(
             core_report.validate_time_range_payloads(bad, lambda value: value),
             "bad-request",
+        )
+
+        invalid_date = ET.fromstring(
+            '<C:calendar-query xmlns:C="urn:ietf:params:xml:ns:caldav"><C:filter><C:comp-filter name="VCALENDAR"><C:comp-filter name="VEVENT"><C:time-range start="BAD"/></C:comp-filter></C:comp-filter></C:filter></C:calendar-query>'
+        )
+        self.assertEqual(
+            core_report.validate_time_range_payloads(
+                invalid_date,
+                lambda value: None if value == "BAD" else value,
+            ),
+            "bad-request",
+        )
+
+    def test_validate_comp_filter_range_bounds(self):
+        def _parse(value):
+            if not value:
+                return None
+            return datetime.strptime(value, "%Y%m%dT%H%M%SZ").replace(
+                tzinfo=timezone.utc
+            )
+
+        root = ET.fromstring(
+            '<C:calendar-query xmlns:C="urn:ietf:params:xml:ns:caldav"><C:filter><C:comp-filter name="VCALENDAR"><C:comp-filter name="VEVENT"><C:time-range start="20260101T000000Z" end="20270101T000000Z"/></C:comp-filter></C:comp-filter></C:filter></C:calendar-query>'
+        )
+        self.assertIsNone(
+            core_report.validate_comp_filter_range_bounds(
+                root,
+                _parse,
+                2026,
+            )
+        )
+
+        too_low = ET.fromstring(
+            '<C:calendar-query xmlns:C="urn:ietf:params:xml:ns:caldav"><C:filter><C:comp-filter name="VEVENT"><C:time-range start="20200101T000000Z"/></C:comp-filter></C:filter></C:calendar-query>'
+        )
+        self.assertEqual(
+            core_report.validate_comp_filter_range_bounds(
+                too_low,
+                _parse,
+                2026,
+            ),
+            "min-date-time",
+        )
+
+        too_high = ET.fromstring(
+            '<C:calendar-query xmlns:C="urn:ietf:params:xml:ns:caldav"><C:filter><C:comp-filter name="VEVENT"><C:time-range end="20350101T000000Z"/></C:comp-filter></C:filter></C:calendar-query>'
+        )
+        self.assertEqual(
+            core_report.validate_comp_filter_range_bounds(
+                too_high,
+                _parse,
+                2026,
+            ),
+            "max-date-time",
         )
 
     def test_parse_sync_collection_request(self):

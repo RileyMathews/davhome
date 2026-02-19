@@ -1,4 +1,5 @@
 from datetime import date, datetime, timedelta, timezone
+from zoneinfo import ZoneInfo
 
 from django.test import SimpleTestCase
 
@@ -20,6 +21,8 @@ class DavCoreTimeTests(SimpleTestCase):
             datetime(2026, 2, 20, 10, 11, 12, tzinfo=timezone.utc),
         )
         self.assertIsNone(core_time.parse_ical_datetime("bad"))
+        self.assertIsNone(core_time.parse_ical_datetime("20260230"))
+        self.assertIsNone(core_time.parse_ical_datetime(""))
 
     def test_parse_and_format_ical_duration(self):
         self.assertEqual(
@@ -27,10 +30,16 @@ class DavCoreTimeTests(SimpleTestCase):
             -timedelta(days=1, hours=2, minutes=3, seconds=4),
         )
         self.assertEqual(core_time.parse_ical_duration("nope"), None)
+        self.assertEqual(core_time.parse_ical_duration("P2D"), timedelta(days=2))
+        self.assertEqual(core_time.parse_ical_duration("+PT1H"), timedelta(hours=1))
         self.assertEqual(core_time.format_ical_duration(timedelta(0)), "PT0S")
         self.assertEqual(
             core_time.format_ical_duration(timedelta(days=2, minutes=5)),
             "P2DT5M",
+        )
+        self.assertEqual(
+            core_time.format_ical_duration(-timedelta(hours=1, minutes=2)),
+            "-PT1H2M",
         )
 
     def test_format_value_date_or_datetime(self):
@@ -44,6 +53,17 @@ class DavCoreTimeTests(SimpleTestCase):
         self.assertEqual(text, "20260220")
         self.assertTrue(is_date)
 
+        text, is_date = core_time.format_value_date_or_datetime(
+            date(2026, 2, 20),
+            tzinfo=ZoneInfo("America/Los_Angeles"),
+        )
+        self.assertEqual(text, "20260219")
+        self.assertTrue(is_date)
+
+        text, is_date = core_time.format_value_date_or_datetime(None)
+        self.assertIsNone(text)
+        self.assertFalse(is_date)
+
     def test_as_utc_datetime(self):
         naive = datetime(2026, 2, 20, 10, 11, 12)
         self.assertEqual(
@@ -54,6 +74,13 @@ class DavCoreTimeTests(SimpleTestCase):
             core_time.as_utc_datetime(date(2026, 2, 20)),
             datetime(2026, 2, 20, 0, 0, tzinfo=timezone.utc),
         )
+        self.assertEqual(
+            core_time.as_utc_datetime(
+                datetime(2026, 2, 20, 10, 0, tzinfo=ZoneInfo("America/New_York"))
+            ),
+            datetime(2026, 2, 20, 15, 0, tzinfo=timezone.utc),
+        )
+        self.assertIsNone(core_time.as_utc_datetime(None))
 
     def test_unfold_and_line_helpers(self):
         ical = "SUMMARY:Hello\r\n World\r\nDTSTART:20260220T101112Z"
@@ -66,3 +93,4 @@ class DavCoreTimeTests(SimpleTestCase):
             core_time.first_ical_line(ical, "DTSTART"),
             "DTSTART:20260220T101112Z",
         )
+        self.assertIsNone(core_time.first_ical_line_value(ical, "UID"))

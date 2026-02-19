@@ -3,15 +3,12 @@
 import hashlib
 import logging
 import re
-from datetime import datetime, timedelta, timezone as datetime_timezone
-from email.utils import parsedate_to_datetime
+from datetime import datetime, timezone as datetime_timezone
 from urllib.parse import quote, urlparse
 from uuid import UUID
 from xml.etree import ElementTree as ET
 from zoneinfo import ZoneInfo
 
-import icalendar
-from recurring_ical_events import of as recurring_of
 from django.http import HttpResponse, HttpResponseNotAllowed
 from django.shortcuts import redirect
 from django.views.decorators.csrf import csrf_exempt
@@ -24,6 +21,13 @@ from calendars.models import Calendar, CalendarObjectChange
 from calendars.permissions import can_view_calendar, can_write_calendar
 
 from .core import filters as core_filters
+from .core import calendar_data as core_calendar_data
+from .core import davxml as core_davxml
+from .core import freebusy as core_freebusy
+from .core import paths as core_paths
+from .core import payloads as core_payloads
+from .core import props as core_props
+from .core import query as core_query
 from .core import recurrence as core_recurrence
 from .core import report as core_report
 from .core import time as core_time
@@ -75,98 +79,11 @@ def _generate_strong_etag(payload):
     return f'"{digest}"'
 
 
-def _extract_uid(ical_text):
-    match = re.search(r"^UID:(.+)$", ical_text, flags=re.MULTILINE)
-    if match is None:
-        return None
-    return match.group(1).strip()
-
-
-def _validate_ical_payload(payload):
-    try:
-        text = payload.decode("utf-8")
-    except UnicodeDecodeError:
-        return None, "Calendar payload must be UTF-8 text."
-
-    if "BEGIN:VCALENDAR" not in text or "END:VCALENDAR" not in text:
-        return None, "Calendar payload must contain VCALENDAR boundaries."
-
-    uid = _extract_uid(text)
-    if uid is None:
-        return None, "Calendar payload must contain a UID property."
-
-    return {"text": text, "uid": uid}, None
-
-
-def _validate_generic_payload(payload):
-    try:
-        text = payload.decode("utf-8")
-    except UnicodeDecodeError:
-        return None, "Generic DAV payload must be UTF-8 text."
-
-    return {"text": text, "uid": None}, None
-
-
-def _if_match_values(header):
-    return [value.strip() for value in header.split(",") if value.strip()]
-
-
-def _precondition_failed_for_write(request, existing_obj):
-    if_none_match = request.headers.get("If-None-Match")
-    if if_none_match == "*" and existing_obj is not None:
-        return True
-
-    if_match = request.headers.get("If-Match")
-    if if_match:
-        if existing_obj is None:
-            return True
-        allowed = _if_match_values(if_match)
-        if "*" not in allowed and existing_obj.etag not in allowed:
-            return True
-
-    return False
-
-
-def _collection_marker(path):
-    trimmed = path.strip("/")
-    if not trimmed:
-        return ""
-    return f"{trimmed}/"
-
-
-def _split_filename_path(filename):
-    clean = filename.strip("/")
-    if not clean:
-        return "", ""
-    parts = [part for part in clean.split("/") if part]
-    parent = "/".join(parts[:-1])
-    leaf = parts[-1]
-    return parent, leaf
-
-
 def _collection_exists(calendar, path):
-    marker = _collection_marker(path)
+    marker = core_paths.collection_marker(path)
     if not marker:
         return True
     return calendar.calendar_objects.filter(filename=marker).exists()
-
-
-def _destination_filename_from_header(destination, username, slug):
-    if not destination:
-        return None
-
-    parsed = urlparse(destination)
-    destination_path = parsed.path if parsed.scheme else destination
-    destination_path = (destination_path or "").strip()
-
-    prefixes = (
-        f"/dav/calendars/{username}/{slug}/",
-        f"/dav/calendars/users/{username}/{slug}/",
-    )
-    for prefix in prefixes:
-        if destination_path.startswith(prefix):
-            return destination_path[len(prefix) :]
-    return None
 
 
 def _copy_or_move_calendar_object(
@@ -181,12 +98,12 @@ def _copy_or_move_calendar_object(
     source = writable.calendar_objects.filter(filename=filename).first()
     if source is None and filename.endswith("/"):
         source = writable.calendar_objects.filter(
-            filename=_collection_marker(filename)
+            filename=core_paths.collection_marker(filename)
         ).first()
     if source is None:
         return HttpResponse(status=404)
 
-    destination = _destination_filename_from_header(
+    destination = core_paths.destination_filename_from_header(
         request.headers.get("Destination"),
         username,
         slug,
@@ -201,7 +118,7 @@ def _copy_or_move_calendar_object(
         return HttpResponse(status=403)
 
     if source_is_collection:
-        destination_marker = _collection_marker(destination)
+        destination_marker = core_paths.collection_marker(destination)
         destination_lookup = destination_marker
     else:
         destination_marker = None
@@ -210,7 +127,7 @@ def _copy_or_move_calendar_object(
     if source.filename == destination_lookup:
         return HttpResponse(status=204)
 
-    destination_parent, _ = _split_filename_path(destination_lookup)
+    destination_parent, _ = core_paths.split_filename_path(destination_lookup)
     if not _collection_exists(writable, destination_parent):
         return HttpResponse(status=409)
 
@@ -327,19 +244,6 @@ def _copy_or_move_calendar_object(
     return _dav_common_headers(response)
 
 
-def _is_ical_resource(filename, content_type):
-    if filename.lower().endswith(".ics"):
-        return True
-    if content_type and "text/calendar" in content_type.lower():
-        return True
-    return False
-
-
-def _normalize_content_type(raw):
-    value = (raw or "application/octet-stream").strip()
-    return value.replace("; ", ";")
-
-
 def _dedupe_duplicate_alarms(ical_text):
     lines = ical_text.splitlines()
     result = []
@@ -390,18 +294,6 @@ def _parse_xml_body(payload):
         return None
 
 
-def _normalize_href_path(href):
-    parsed = urlparse(href)
-    path = parsed.path if parsed.scheme else href
-    if not path.startswith("/"):
-        path = f"/{path}"
-    return path
-
-
-def _parse_ical_datetime(value):
-    return core_time.parse_ical_datetime(value)
-
-
 def _calendar_default_tzinfo(calendar):
     tz_name = (getattr(calendar, "timezone", "") or "").strip()
     if not tz_name:
@@ -410,18 +302,6 @@ def _calendar_default_tzinfo(calendar):
         return ZoneInfo(tz_name)
     except Exception:
         return datetime_timezone.utc
-
-
-def _parse_ical_duration(value):
-    return core_time.parse_ical_duration(value)
-
-
-def _format_ical_duration(value):
-    return core_time.format_ical_duration(value)
-
-
-def _format_value_date_or_datetime(value, tzinfo=None):
-    return core_time.format_value_date_or_datetime(value, tzinfo=tzinfo)
 
 
 def _serialize_expanded_components(
@@ -436,7 +316,7 @@ def _serialize_expanded_components(
             continue
         uid_key = str(uid)
         rec_id = comp.decoded("RECURRENCE-ID", None)
-        rec_text, rec_is_date = _format_value_date_or_datetime(rec_id, tzinfo)
+        rec_text, rec_is_date = core_time.format_value_date_or_datetime(rec_id, tzinfo)
         if rec_id is None:
             uid_has_master.add(uid_key)
         elif rec_text and not rec_is_date:
@@ -459,7 +339,10 @@ def _serialize_expanded_components(
             lines.append(f"UID:{uid}")
 
         dtstart = component.decoded("DTSTART", None)
-        dtstart_text, dtstart_is_date = _format_value_date_or_datetime(dtstart, tzinfo)
+        dtstart_text, dtstart_is_date = core_time.format_value_date_or_datetime(
+            dtstart,
+            tzinfo,
+        )
         if dtstart_text:
             if dtstart_is_date:
                 lines.append(f"DTSTART;VALUE=DATE:{dtstart_text}")
@@ -476,11 +359,13 @@ def _serialize_expanded_components(
                 lines.append(f"DTSTART:{dtstart_text}")
 
         rec_id = component.decoded("RECURRENCE-ID", None)
-        rec_text, rec_is_date = _format_value_date_or_datetime(rec_id, tzinfo)
+        rec_text, rec_is_date = core_time.format_value_date_or_datetime(rec_id, tzinfo)
         uid_key = str(uid or "")
         if rec_text is None and master_starts is not None and dtstart_text:
             master_start = master_starts.get(uid_key)
-            master_text, _ = _format_value_date_or_datetime(master_start, tzinfo)
+            master_text, _ = core_time.format_value_date_or_datetime(
+                master_start, tzinfo
+            )
             if master_text and master_text != dtstart_text:
                 rec_text = dtstart_text
                 rec_is_date = dtstart_is_date
@@ -509,7 +394,9 @@ def _serialize_expanded_components(
                 lines.append(f"RECURRENCE-ID:{rec_text}")
 
         dtend = component.decoded("DTEND", None)
-        dtend_text, dtend_is_date = _format_value_date_or_datetime(dtend, tzinfo)
+        dtend_text, dtend_is_date = core_time.format_value_date_or_datetime(
+            dtend, tzinfo
+        )
         if dtend_text:
             if dtend_is_date:
                 lines.append(f"DTEND;VALUE=DATE:{dtend_text}")
@@ -517,7 +404,7 @@ def _serialize_expanded_components(
                 lines.append(f"DTEND:{dtend_text}")
 
         due = component.decoded("DUE", None)
-        due_text, due_is_date = _format_value_date_or_datetime(due, tzinfo)
+        due_text, due_is_date = core_time.format_value_date_or_datetime(due, tzinfo)
         if due_text:
             if due_is_date:
                 lines.append(f"DUE;VALUE=DATE:{due_text}")
@@ -531,7 +418,7 @@ def _serialize_expanded_components(
             and isinstance(dtend, datetime)
         ):
             duration = dtend - dtstart
-        duration_text = _format_ical_duration(duration)
+        duration_text = core_time.format_ical_duration(duration)
         if duration_text:
             lines.append(f"DURATION:{duration_text}")
 
@@ -546,25 +433,28 @@ def _serialize_expanded_components(
 
 
 def _caldav_error_response(error_name, status=403):
-    error = ET.Element(qname(NS_DAV, "error"))
-    ET.SubElement(error, qname(NS_CALDAV, error_name))
-    return _xml_response(
-        status,
-        ET.tostring(error, encoding="utf-8", xml_declaration=True),
+    return core_davxml.caldav_error_response(
+        _xml_response,
+        qname,
+        NS_DAV,
+        NS_CALDAV,
+        error_name,
+        status=status,
     )
 
 
 def _dav_error_response(error_name, status=403):
-    error = ET.Element(qname(NS_DAV, "error"))
-    ET.SubElement(error, qname(NS_DAV, error_name))
-    return _xml_response(
-        status,
-        ET.tostring(error, encoding="utf-8", xml_declaration=True),
+    return core_davxml.dav_error_response(
+        _xml_response,
+        qname,
+        NS_DAV,
+        error_name,
+        status=status,
     )
 
 
 def _valid_sync_token_error_response():
-    return _dav_error_response("valid-sync-token", status=403)
+    return core_davxml.valid_sync_token_error_response(_xml_response, qname, NS_DAV)
 
 
 def _build_sync_token(calendar_id, revision):
@@ -637,56 +527,6 @@ def _create_calendar_change(calendar, revision, filename, uid, is_deleted):
     )
 
 
-def _extract_tzid_from_timezone_text(timezone_text):
-    if not timezone_text:
-        return None
-    match = re.search(r"^TZID:(.+)$", timezone_text, flags=re.MULTILINE)
-    if match is None:
-        return None
-    return match.group(1).strip()
-
-
-def _supported_components_prop(component_kind=Calendar.COMPONENT_VEVENT):
-    elem = ET.Element(qname(NS_CALDAV, "supported-calendar-component-set"))
-    ET.SubElement(elem, qname(NS_CALDAV, "comp"), name=component_kind)
-    return elem
-
-
-def _supported_component_sets_prop():
-    elem = ET.Element(qname(NS_CALDAV, "supported-calendar-component-sets"))
-    for component_kind in (Calendar.COMPONENT_VEVENT, Calendar.COMPONENT_VTODO):
-        subset = ET.SubElement(
-            elem, qname(NS_CALDAV, "supported-calendar-component-set")
-        )
-        ET.SubElement(subset, qname(NS_CALDAV, "comp"), name=component_kind)
-    return elem
-
-
-def _calendar_timezone_prop(timezone_name):
-    elem = ET.Element(qname(NS_CALDAV, "calendar-timezone"))
-    elem.text = (
-        "BEGIN:VCALENDAR\r\n"
-        "VERSION:2.0\r\n"
-        "BEGIN:VTIMEZONE\r\n"
-        f"TZID:{timezone_name}\r\n"
-        "END:VTIMEZONE\r\n"
-        "END:VCALENDAR\r\n"
-    )
-    return elem
-
-
-def _calendar_color_prop(color):
-    elem = ET.Element(qname(NS_APPLE_ICAL, "calendar-color"))
-    elem.text = color
-    return elem
-
-
-def _calendar_order_prop(sort_order):
-    elem = ET.Element(qname(NS_APPLE_ICAL, "calendar-order"))
-    elem.text = str(sort_order)
-    return elem
-
-
 def _mkcalendar_props_from_payload(payload):
     defaults = {
         "display_name": None,
@@ -732,7 +572,9 @@ def _mkcalendar_props_from_payload(payload):
 
     timezone_elem = prop.find(qname(NS_CALDAV, "calendar-timezone"))
     if timezone_elem is not None and (timezone_elem.text or "").strip():
-        tzid = _extract_tzid_from_timezone_text((timezone_elem.text or "").strip())
+        tzid = core_payloads.extract_tzid_from_timezone_text(
+            (timezone_elem.text or "").strip()
+        )
         if not tzid:
             return None, [], _caldav_error_response("valid-calendar-data", status=400)
         try:
@@ -774,19 +616,6 @@ def _mkcalendar_props_from_payload(payload):
         defaults["component_kind"] = names.pop()
 
     return defaults, [], None
-
-
-def _component_kind_from_payload(payload_text):
-    upper = payload_text.upper()
-    has_event = "BEGIN:VEVENT" in upper
-    has_todo = "BEGIN:VTODO" in upper
-    if has_event and has_todo:
-        return None
-    if has_todo:
-        return Calendar.COMPONENT_VTODO
-    if has_event:
-        return Calendar.COMPONENT_VEVENT
-    return None
 
 
 def _proppatch_multistatus_response(path, ok_props, bad_props):
@@ -834,7 +663,7 @@ def _tzinfo_from_report(root):
     ):
         return None, _caldav_error_response("valid-calendar-data")
 
-    tzid = _extract_tzid_from_timezone_text(timezone_text)
+    tzid = core_payloads.extract_tzid_from_timezone_text(timezone_text)
     if not tzid:
         return None, _caldav_error_response("valid-calendar-data")
     try:
@@ -843,248 +672,72 @@ def _tzinfo_from_report(root):
         return None, _caldav_error_response("valid-calendar-data")
 
 
-def _calendar_for_component_text(component_text):
-    return core_recurrence.calendar_for_component_text(component_text)
-
-
-def _parse_rrule_count(component_text):
-    return core_recurrence.parse_rrule_count(component_text)
-
-
-def _simple_recurrence_instances(component_text):
-    return core_recurrence.simple_recurrence_instances(
-        component_text,
-        active_report_tzinfo=_ACTIVE_REPORT_TZINFO,
-    )
-
-
-def _matches_time_range_recurrence(component_text, start, end, component_name):
-    return core_recurrence.matches_time_range_recurrence(
-        component_text,
-        start,
-        end,
-        component_name,
-        active_report_tzinfo=_ACTIVE_REPORT_TZINFO,
-    )
-
-
-def _alarm_matches_time_range(component_text, time_range):
-    return core_recurrence.alarm_matches_time_range(
-        component_text,
-        time_range,
-        active_report_tzinfo=_ACTIVE_REPORT_TZINFO,
-    )
-
-
-def _first_ical_line_value(ical_text, key):
-    return core_time.first_ical_line_value(ical_text, key)
-
-
-def _first_ical_line(ical_text, key):
-    return core_time.first_ical_line(ical_text, key)
-
-
-def _parse_line_datetime_with_tz(line):
-    return core_recurrence.parse_line_datetime_with_tz(
-        line,
-        active_report_tzinfo=_ACTIVE_REPORT_TZINFO,
-    )
-
-
-def _line_matches_time_range(line, time_range):
-    return core_recurrence.line_matches_time_range(
-        line,
-        time_range,
-        active_report_tzinfo=_ACTIVE_REPORT_TZINFO,
-    )
-
-
-def _as_utc_datetime(value, default_tz=None):
-    return core_time.as_utc_datetime(value, default_tz=default_tz)
-
-
-def _unfold_ical(ical_text):
-    return core_time.unfold_ical(ical_text)
-
-
-def _extract_component_blocks(ical_text, component_name):
-    return core_recurrence.extract_component_blocks(ical_text, component_name)
-
-
-def _property_lines(component_text, property_name):
-    return core_filters.property_lines(component_text, property_name)
-
-
-def _parse_property_params(prop_line):
-    return core_filters.parse_property_params(prop_line)
-
-
-def _text_match(value, matcher):
-    return core_filters.text_match(value, matcher)
-
-
-def _combine_filter_results(results, test_attr):
-    return core_filters.combine_filter_results(results, test_attr)
-
-
-def _matches_param_filter(prop_lines, param_filter):
-    return core_filters.matches_param_filter(prop_lines, param_filter)
-
-
-def _matches_prop_filter(component_text, prop_filter):
-    return core_filters.matches_prop_filter(
-        component_text,
-        prop_filter,
-        _line_matches_time_range,
-    )
-
-
-def _matches_time_range(component_text, time_range):
-    start = _parse_ical_datetime(time_range.get("start"))
-    end = _parse_ical_datetime(time_range.get("end"))
-
-    if start is None and end is None:
-        return False
-
-    component_upper = component_text.upper()
-    if "BEGIN:VTODO" in component_upper and "RRULE:" in component_upper:
-        if "DTSTART" not in component_upper and "DUE" in component_upper:
-            synthetic = component_text.replace("BEGIN:VTODO", "BEGIN:VEVENT").replace(
-                "END:VTODO", "END:VEVENT"
-            )
-            synthetic = re.sub(
-                r"^DUE(;[^:]*)?:", r"DTSTART\1:", synthetic, flags=re.MULTILINE
-            )
-            return _matches_time_range_recurrence(synthetic, start, end, "VEVENT")
-
-    if "RRULE:" in component_upper or "RECURRENCE-ID" in component_upper:
-        if "BEGIN:VTODO" in component_upper:
-            return _matches_time_range_recurrence(component_text, start, end, "VTODO")
-        return _matches_time_range_recurrence(component_text, start, end, "VEVENT")
-
-    event_start = _parse_line_datetime_with_tz(
-        _first_ical_line(component_text, "DTSTART")
-    )
-    event_end = _parse_line_datetime_with_tz(_first_ical_line(component_text, "DTEND"))
-    due = _parse_line_datetime_with_tz(_first_ical_line(component_text, "DUE"))
-    duration = _parse_ical_duration(
-        _first_ical_line_value(component_text, "DURATION") or ""
-    )
-
-    if event_start is None:
-        event_start = due
-    if event_start is None:
-        return True
-    if event_end is None:
-        dtstart_line = _first_ical_line(component_text, "DTSTART") or ""
-        if due is not None:
-            event_end = due
-        elif duration is not None and event_start is not None:
-            event_end = event_start + duration
-        elif ";VALUE=DATE:" in dtstart_line.upper():
-            event_end = event_start + timedelta(days=1)
-        else:
-            event_end = event_start
-
-    if start is not None and event_end <= start:
-        return False
-    if end is not None and event_start >= end:
-        return False
-    return True
-
-
-def _matches_comp_filter(context_text, comp_filter):
-    name = (comp_filter.get("name") or "").upper()
-    if not name:
-        return True
-
-    if name == "VCALENDAR":
-        candidates = [context_text]
-    else:
-        candidates = _extract_component_blocks(context_text, name)
-
-    is_not_defined = comp_filter.find(qname(NS_CALDAV, "is-not-defined")) is not None
-    if is_not_defined:
-        return len(candidates) == 0
-
-    if not candidates:
-        return False
-
-    child_comp_filters = comp_filter.findall(qname(NS_CALDAV, "comp-filter"))
-    prop_filters = comp_filter.findall(qname(NS_CALDAV, "prop-filter"))
-    time_range = comp_filter.find(qname(NS_CALDAV, "time-range"))
-    test_attr = comp_filter.get("test")
-
-    if (
-        name == "VEVENT"
-        and time_range is not None
-        and not prop_filters
-        and not child_comp_filters
-    ):
-        return _matches_time_range(context_text, time_range)
-
-    if name == "VEVENT":
-        asks_no_alarm = any(
-            (child.get("name") or "").upper() == "VALARM"
-            and child.find(qname(NS_CALDAV, "is-not-defined")) is not None
-            for child in child_comp_filters
-        )
-        if asks_no_alarm:
-            vevents = _extract_component_blocks(context_text, "VEVENT")
-            if not vevents:
-                return False
-            master = next(
-                (block for block in vevents if "RECURRENCE-ID" not in block.upper()),
-                vevents[0],
-            )
-            return "BEGIN:VALARM" not in master.upper()
-
-    if name == "VALARM" and time_range is not None:
-        return _alarm_matches_time_range(context_text, time_range)
-
-    candidate_results = []
-    for candidate in candidates:
-        checks = []
-        if time_range is not None:
-            checks.append(_matches_time_range(candidate, time_range))
-        checks.extend(
-            _matches_prop_filter(candidate, prop_filter) for prop_filter in prop_filters
-        )
-        checks.extend(
-            _matches_comp_filter(
-                context_text
-                if (
-                    name == "VEVENT"
-                    and (child_comp_filter.get("name") or "").upper() == "VALARM"
-                    and child_comp_filter.find(qname(NS_CALDAV, "time-range"))
-                    is not None
-                )
-                else candidate,
-                child_comp_filter,
-            )
-            for child_comp_filter in child_comp_filters
-        )
-        candidate_results.append(
-            _combine_filter_results(checks, test_attr) if checks else True
+def _object_matches_query_with_active_tz(obj, query_filter):
+    def parse_line_datetime_with_tz(line):
+        return core_recurrence.parse_line_datetime_with_tz(
+            line,
+            active_report_tzinfo=_ACTIVE_REPORT_TZINFO,
         )
 
-    if not candidate_results:
-        return False
+    def line_matches_time_range(line, time_range):
+        return core_recurrence.line_matches_time_range(
+            line,
+            time_range,
+            active_report_tzinfo=_ACTIVE_REPORT_TZINFO,
+        )
 
-    has_is_not_defined_child = any(
-        child.find(qname(NS_CALDAV, "is-not-defined")) is not None
-        for child in child_comp_filters
+    def matches_prop_filter(component_text, prop_filter):
+        return core_filters.matches_prop_filter(
+            component_text,
+            prop_filter,
+            line_matches_time_range,
+        )
+
+    def matches_time_range_recurrence(component_text, start, end, component_name):
+        return core_recurrence.matches_time_range_recurrence(
+            component_text,
+            start,
+            end,
+            component_name,
+            active_report_tzinfo=_ACTIVE_REPORT_TZINFO,
+        )
+
+    def matches_time_range(component_text, time_range):
+        return core_query.matches_time_range(
+            component_text,
+            time_range,
+            core_time.parse_ical_datetime,
+            matches_time_range_recurrence,
+            parse_line_datetime_with_tz,
+            core_time.first_ical_line,
+            core_time.parse_ical_duration,
+            core_time.first_ical_line_value,
+        )
+
+    def alarm_matches_time_range(component_text, time_range):
+        return core_recurrence.alarm_matches_time_range(
+            component_text,
+            time_range,
+            active_report_tzinfo=_ACTIVE_REPORT_TZINFO,
+        )
+
+    def matches_comp_filter(context_text, comp_filter):
+        return core_query.matches_comp_filter(
+            context_text,
+            comp_filter,
+            core_recurrence.extract_component_blocks,
+            matches_time_range,
+            matches_prop_filter,
+            alarm_matches_time_range,
+            core_filters.combine_filter_results,
+        )
+
+    return core_query.object_matches_query(
+        obj.ical_blob,
+        query_filter,
+        core_time.unfold_ical,
+        matches_comp_filter,
     )
-    if has_is_not_defined_child:
-        return all(candidate_results)
-    return any(candidate_results)
-
-
-def _object_matches_query(obj, query_filter):
-    if query_filter is None:
-        return True
-    unfolded = _unfold_ical(obj.ical_blob)
-    return _matches_comp_filter(unfolded, query_filter)
 
 
 def _calendar_data_prop(ical_blob):
@@ -1093,228 +746,31 @@ def _calendar_data_prop(ical_blob):
     return elem
 
 
-def _ensure_shifted_first_occurrence_recurrence_id(ical_blob, master_starts, tzinfo):
-    if not master_starts:
-        return ical_blob
+def _filter_calendar_data_with_active_tz(ical_blob, calendar_data_request):
+    def ensure_shifted_recurrence_id(ical_text, master_starts, tzinfo):
+        return core_calendar_data.ensure_shifted_first_occurrence_recurrence_id(
+            ical_text,
+            master_starts,
+            tzinfo,
+            core_recurrence.extract_component_blocks,
+            core_time.first_ical_line_value,
+            core_time.first_ical_line,
+            core_time.format_value_date_or_datetime,
+        )
 
-    updated = ical_blob
-    for component_name in ("VEVENT", "VTODO"):
-        blocks = _extract_component_blocks(updated, component_name)
-        for block in blocks:
-            if "RECURRENCE-ID" in block.upper():
-                continue
-            uid = _first_ical_line_value(block, "UID")
-            if not uid:
-                continue
-
-            dt_line = _first_ical_line(block, "DTSTART") or _first_ical_line(
-                block, "DUE"
-            )
-            if dt_line is None or ":" not in dt_line:
-                continue
-            dt_text = dt_line.split(":", 1)[1].strip()
-
-            master_text, master_is_date = _format_value_date_or_datetime(
-                master_starts.get(uid), tzinfo
-            )
-            if not master_text or master_text == dt_text:
-                continue
-
-            rec_line = f"RECURRENCE-ID:{dt_text}"
-            if master_is_date or "VALUE=DATE" in dt_line.upper():
-                rec_line = f"RECURRENCE-ID;VALUE=DATE:{dt_text}"
-
-            lines = block.replace("\r\n", "\n").split("\n")
-            insert_at = next(
-                (
-                    i + 1
-                    for i, line in enumerate(lines)
-                    if line.upper().startswith("DTSTART")
-                    or line.upper().startswith("DUE")
-                ),
-                None,
-            )
-            if insert_at is None:
-                continue
-            lines.insert(insert_at, rec_line)
-            replacement = "\r\n".join(lines)
-            updated = updated.replace(block, replacement, 1)
-
-    return updated
-
-
-def _filter_calendar_data_for_response(ical_blob, calendar_data_request):
-    if calendar_data_request is None or len(list(calendar_data_request)) == 0:
-        return ical_blob
-
-    expand = calendar_data_request.find(qname(NS_CALDAV, "expand"))
-    if expand is not None:
-        start = _parse_ical_datetime(expand.get("start"))
-        end = _parse_ical_datetime(expand.get("end"))
-        if start is not None and end is not None:
-            try:
-                cal = icalendar.Calendar.from_ical(ical_blob)
-                master_starts = {}
-                first_instance_excluded_uids = set()
-                for component in cal.walk():
-                    name = (component.name or "").upper()
-                    if name not in ("VEVENT", "VTODO"):
-                        continue
-                    if component.get("RECURRENCE-ID") is not None:
-                        continue
-                    uid = component.get("UID")
-                    if not uid:
-                        continue
-                    start_value = component.decoded("DTSTART", None)
-                    if start_value is None:
-                        start_value = component.decoded("DUE", None)
-                    if start_value is None:
-                        continue
-                    uid_key = str(uid)
-                    master_starts[uid_key] = start_value
-
-                    exdate_prop = component.get("EXDATE")
-                    if exdate_prop is None:
-                        continue
-                    exdate_props = (
-                        exdate_prop if isinstance(exdate_prop, list) else [exdate_prop]
-                    )
-                    start_utc = _as_utc_datetime(start_value)
-                    for ex_prop in exdate_props:
-                        for ex_entry in getattr(ex_prop, "dts", []):
-                            ex_value = getattr(ex_entry, "dt", None)
-                            if ex_value is None:
-                                continue
-                            ex_utc = _as_utc_datetime(ex_value)
-                            if start_utc is not None and ex_utc == start_utc:
-                                first_instance_excluded_uids.add(uid_key)
-                                break
-                query = recurring_of(cal)
-                query.keep_recurrence_attributes = True
-                expanded = query.between(start, end)
-                ical_blob = _serialize_expanded_components(
-                    expanded,
-                    _ACTIVE_REPORT_TZINFO,
-                    master_starts,
-                    first_instance_excluded_uids,
-                )
-                ical_blob = _ensure_shifted_first_occurrence_recurrence_id(
-                    ical_blob,
-                    master_starts,
-                    _ACTIVE_REPORT_TZINFO,
-                )
-            except Exception:
-                pass
-
-    # Minimal filtered-data support for the CalDAVTester suite.
-    lines = ical_blob.replace("\r\n", "\n").split("\n")
-    filtered = [line for line in lines if not line.upper().startswith("DTSTAMP")]
-    return "\r\n".join(filtered).rstrip("\r\n") + "\r\n"
+    return core_calendar_data.filter_calendar_data_for_response(
+        ical_blob,
+        calendar_data_request,
+        _ACTIVE_REPORT_TZINFO,
+        core_time.parse_ical_datetime,
+        core_time.as_utc_datetime,
+        _serialize_expanded_components,
+        ensure_shifted_recurrence_id,
+    )
 
 
 def _report_unknown_type():
     return HttpResponse(status=501)
-
-
-def _format_ical_utc(dt):
-    return dt.astimezone(datetime_timezone.utc).strftime("%Y%m%dT%H%M%SZ")
-
-
-def _parse_freebusy_value(value):
-    if "/" not in value:
-        return None
-    start_raw, end_raw = value.split("/", 1)
-    start = _parse_ical_datetime(start_raw)
-    if start is None:
-        return None
-    if end_raw.startswith("P") or end_raw.startswith("-P"):
-        duration = _parse_ical_duration(end_raw)
-        if duration is None:
-            return None
-        end = start + duration
-    else:
-        end = _parse_ical_datetime(end_raw)
-        if end is None:
-            return None
-    return _as_utc_datetime(start), _as_utc_datetime(end)
-
-
-def _freebusy_intervals_for_object(obj, window_start, window_end, default_tz):
-    busy = []
-    tentative = []
-    unavailable = []
-
-    try:
-        cal = icalendar.Calendar.from_ical(obj.ical_blob)
-    except Exception:
-        return busy, tentative, unavailable
-
-    for component in cal.walk():
-        name = (component.name or "").upper()
-        if name == "VFREEBUSY":
-            for prop in component.getall("FREEBUSY"):
-                params = {k.upper(): str(v) for k, v in prop.params.items()}
-                fbtype = params.get("FBTYPE", "BUSY").upper()
-                values = prop.to_ical().decode("utf-8").split(":", 1)[1].split(",")
-                for value in values:
-                    parsed = _parse_freebusy_value(value.strip())
-                    if parsed is None:
-                        continue
-                    start, end = parsed
-                    if end <= window_start or start >= window_end:
-                        continue
-                    start = max(start, window_start)
-                    end = min(end, window_end)
-                    if fbtype == "BUSY-TENTATIVE":
-                        tentative.append((start, end))
-                    elif fbtype == "BUSY-UNAVAILABLE":
-                        unavailable.append((start, end))
-                    else:
-                        busy.append((start, end))
-
-    try:
-        query = recurring_of(cal)
-        query.keep_recurrence_attributes = True
-        for component in query.between(window_start, window_end):
-            if (component.name or "").upper() != "VEVENT":
-                continue
-            status = str(component.get("STATUS", "")).upper()
-            transp = str(component.get("TRANSP", "OPAQUE")).upper()
-            if status == "CANCELLED" or transp == "TRANSPARENT":
-                continue
-
-            start_raw = component.decoded("DTSTART")
-            end_raw = component.decoded("DTEND", None)
-            start = _as_utc_datetime(start_raw, default_tz)
-            end = _as_utc_datetime(end_raw, default_tz)
-            if end is None:
-                duration = component.decoded("DURATION", None)
-                if duration is not None and start is not None:
-                    end = start + duration
-                elif (
-                    start is not None
-                    and start_raw is not None
-                    and not isinstance(start_raw, datetime)
-                ):
-                    end = start + timedelta(days=1)
-                else:
-                    end = start
-            if start is None or end is None:
-                continue
-            if end <= window_start or start >= window_end:
-                continue
-
-            interval = (max(start, window_start), min(end, window_end))
-            if status == "TENTATIVE":
-                tentative.append(interval)
-            elif status == "UNAVAILABLE":
-                unavailable.append(interval)
-            else:
-                busy.append(interval)
-    except Exception:
-        pass
-
-    return busy, tentative, unavailable
 
 
 def _render_freebusy_report(calendars, root):
@@ -1322,12 +778,12 @@ def _render_freebusy_report(calendars, root):
     if time_range is None:
         return HttpResponse(status=400)
 
-    start = _parse_ical_datetime(time_range.get("start"))
-    end = _parse_ical_datetime(time_range.get("end"))
+    start = core_time.parse_ical_datetime(time_range.get("start"))
+    end = core_time.parse_ical_datetime(time_range.get("end"))
     if start is None or end is None:
         return HttpResponse(status=400)
-    window_start = _as_utc_datetime(start)
-    window_end = _as_utc_datetime(end)
+    window_start = core_time.as_utc_datetime(start)
+    window_end = core_time.as_utc_datetime(end)
 
     busy = []
     tentative = []
@@ -1335,25 +791,25 @@ def _render_freebusy_report(calendars, root):
     for calendar in calendars:
         default_tz = _calendar_default_tzinfo(calendar)
         for obj in calendar.calendar_objects.all():
-            b, t, u = _freebusy_intervals_for_object(
-                obj, window_start, window_end, default_tz
+            b, t, u = core_freebusy.freebusy_intervals_for_object(
+                obj.ical_blob,
+                window_start,
+                window_end,
+                default_tz,
+                lambda value: core_freebusy.parse_freebusy_value(
+                    value,
+                    core_time.parse_ical_datetime,
+                    core_time.parse_ical_duration,
+                    core_time.as_utc_datetime,
+                ),
+                core_time.as_utc_datetime,
             )
             busy.extend(b)
             tentative.extend(t)
             unavailable.extend(u)
 
     def merge_intervals(intervals):
-        if not intervals:
-            return []
-        ordered = sorted(intervals, key=lambda item: item[0])
-        merged = [ordered[0]]
-        for start_i, end_i in ordered[1:]:
-            last_start, last_end = merged[-1]
-            if start_i <= last_end:
-                merged[-1] = (last_start, max(last_end, end_i))
-            else:
-                merged.append((start_i, end_i))
-        return merged
+        return core_freebusy.merge_intervals(intervals)
 
     busy = merge_intervals(busy)
     tentative = merge_intervals(tentative)
@@ -1364,24 +820,24 @@ def _render_freebusy_report(calendars, root):
         "VERSION:2.0",
         "PRODID:-//davhome//EN",
         "BEGIN:VFREEBUSY",
-        f"DTSTART:{_format_ical_utc(window_start)}",
-        f"DTEND:{_format_ical_utc(window_end)}",
+        f"DTSTART:{core_freebusy.format_ical_utc(window_start)}",
+        f"DTEND:{core_freebusy.format_ical_utc(window_end)}",
     ]
     if busy:
         values = ",".join(
-            f"{_format_ical_utc(start_i)}/{_format_ical_utc(end_i)}"
+            f"{core_freebusy.format_ical_utc(start_i)}/{core_freebusy.format_ical_utc(end_i)}"
             for start_i, end_i in busy
         )
         lines.append(f"FREEBUSY:{values}")
     if tentative:
         values = ",".join(
-            f"{_format_ical_utc(start_i)}/{_format_ical_utc(end_i)}"
+            f"{core_freebusy.format_ical_utc(start_i)}/{core_freebusy.format_ical_utc(end_i)}"
             for start_i, end_i in tentative
         )
         lines.append(f"FREEBUSY;FBTYPE=BUSY-TENTATIVE:{values}")
     if unavailable:
         values = ",".join(
-            f"{_format_ical_utc(start_i)}/{_format_ical_utc(end_i)}"
+            f"{core_freebusy.format_ical_utc(start_i)}/{core_freebusy.format_ical_utc(end_i)}"
             for start_i, end_i in unavailable
         )
         lines.append(f"FREEBUSY;FBTYPE=BUSY-UNAVAILABLE:{values}")
@@ -1449,8 +905,8 @@ def _build_prop_map_for_root(user):
         qname(NS_DAV, "resourcetype"): lambda: ET.Element(
             qname(NS_DAV, "resourcetype")
         ),
-        qname(NS_DAV, "displayname"): lambda: _text_prop(
-            NS_DAV, "displayname", "davhome"
+        qname(NS_DAV, "displayname"): lambda: core_props.text_prop(
+            qname, NS_DAV, "displayname", "davhome"
         ),
         qname(NS_DAV, "current-user-principal"): current_user_principal,
     }
@@ -1466,77 +922,11 @@ def _build_prop_map_for_root_unauthenticated():
         qname(NS_DAV, "resourcetype"): lambda: ET.Element(
             qname(NS_DAV, "resourcetype")
         ),
-        qname(NS_DAV, "displayname"): lambda: _text_prop(
-            NS_DAV, "displayname", "davhome"
+        qname(NS_DAV, "displayname"): lambda: core_props.text_prop(
+            qname, NS_DAV, "displayname", "davhome"
         ),
         qname(NS_DAV, "current-user-principal"): current_user_principal,
     }
-
-
-def _text_prop(namespace, name, value):
-    elem = ET.Element(qname(namespace, name))
-    elem.text = value
-    return elem
-
-
-def _resourcetype_prop(*types):
-    elem = ET.Element(qname(NS_DAV, "resourcetype"))
-    for resource_type in types:
-        ET.SubElement(elem, qname(*resource_type))
-    return elem
-
-
-def _owner_prop(owner_user):
-    elem = ET.Element(qname(NS_DAV, "owner"))
-    href = ET.SubElement(elem, qname(NS_DAV, "href"))
-    href.text = _principal_href_for_user(owner_user)
-    return elem
-
-
-def _current_user_privilege_set_prop(can_write):
-    elem = ET.Element(qname(NS_DAV, "current-user-privilege-set"))
-    privileges = ["read", "read-current-user-privilege-set"]
-    if can_write:
-        privileges.extend(["write", "write-content", "bind", "unbind"])
-
-    for privilege_name in privileges:
-        privilege = ET.SubElement(elem, qname(NS_DAV, "privilege"))
-        ET.SubElement(privilege, qname(NS_DAV, privilege_name))
-
-    return elem
-
-
-def _supported_report_set_prop(include_freebusy=False, include_sync_collection=False):
-    elem = ET.Element(qname(NS_DAV, "supported-report-set"))
-
-    def add_report(namespace, name):
-        supported_report = ET.SubElement(elem, qname(NS_DAV, "supported-report"))
-        report = ET.SubElement(supported_report, qname(NS_DAV, "report"))
-        ET.SubElement(report, qname(namespace, name))
-
-    add_report(NS_CALDAV, "calendar-query")
-    add_report(NS_CALDAV, "calendar-multiget")
-    if include_freebusy:
-        add_report(NS_CALDAV, "free-busy-query")
-    if include_sync_collection:
-        add_report(NS_DAV, "sync-collection")
-
-    return elem
-
-
-def _select_props(prop_map, requested_tags):
-    if requested_tags is None:
-        return [builder() for builder in prop_map.values()], []
-
-    ok = []
-    missing = []
-    for tag in requested_tags:
-        builder = prop_map.get(tag)
-        if builder is None:
-            missing.append(ET.Element(tag))
-        else:
-            ok.append(builder())
-    return ok, missing
 
 
 def _require_dav_user(request):
@@ -1606,44 +996,17 @@ def _calendar_home_href_for_user(user):
     return f"/dav/calendars/__uids__/{guid}/"
 
 
-def _propfind_finite_depth_error():
-    error = ET.Element(qname(NS_DAV, "error"))
-    ET.SubElement(error, qname(NS_DAV, "propfind-finite-depth"))
-    response = HttpResponse(
-        ET.tostring(error, encoding="utf-8", xml_declaration=True),
-        status=403,
-        content_type="application/xml; charset=utf-8",
-    )
-    return _dav_common_headers(response)
-
-
-def _if_none_match_matches(request, etag):
-    header = request.headers.get("If-None-Match")
-    if not header:
-        return False
-    values = _if_match_values(header)
-    return "*" in values or etag in values
-
-
-def _if_modified_since_not_modified(request, timestamp):
-    header = request.headers.get("If-Modified-Since")
-    if not header:
-        return False
-    try:
-        date = parsedate_to_datetime(header)
-    except (TypeError, ValueError):
-        return False
-    if date is None:
-        return False
-    if date.tzinfo is None:
-        date = date.replace(tzinfo=datetime_timezone.utc)
-    return int(timestamp) <= int(date.timestamp())
-
-
 def _conditional_not_modified(request, etag, timestamp):
-    if _if_none_match_matches(request, etag):
+    if core_davxml.if_none_match_matches(
+        request.headers.get("If-None-Match"),
+        core_payloads.if_match_values,
+        etag,
+    ):
         return True
-    if _if_modified_since_not_modified(request, timestamp):
+    if core_davxml.if_modified_since_not_modified(
+        request.headers.get("If-Modified-Since"),
+        timestamp,
+    ):
         return True
     return False
 
@@ -1671,7 +1034,9 @@ def _parse_propfind_payload(request):
 
     depth = request.headers.get("Depth", "infinity")
     if depth == "infinity":
-        return None, _propfind_finite_depth_error()
+        return None, core_davxml.propfind_finite_depth_error(
+            _xml_response, qname, NS_DAV
+        )
     if depth not in ("0", "1"):
         return None, HttpResponse(status=400)
 
@@ -1716,7 +1081,7 @@ def dav_root(request):
         return HttpResponse(status=400)
 
     requested = parsed["requested"] if parsed["mode"] == "prop" else None
-    root_ok, root_missing = _select_props(prop_map, requested)
+    root_ok, root_missing = core_props.select_props(prop_map, requested)
     responses = [response_with_props("/dav/", root_ok, root_missing)]
 
     if depth == "1":
@@ -1724,13 +1089,15 @@ def dav_root(request):
         home_href = _calendar_home_href_for_user(user)
 
         principal_map = _build_prop_map_for_principal(user, user)
-        principal_ok, principal_missing = _select_props(principal_map, requested)
+        principal_ok, principal_missing = core_props.select_props(
+            principal_map, requested
+        )
         responses.append(
             response_with_props(principal_href, principal_ok, principal_missing)
         )
 
         home_map = _build_prop_map_for_calendar_home(user, user)
-        home_ok, home_missing = _select_props(home_map, requested)
+        home_ok, home_missing = core_props.select_props(home_map, requested)
         responses.append(response_with_props(home_href, home_ok, home_missing))
 
     return _xml_response(207, multistatus_document(responses))
@@ -1750,10 +1117,11 @@ def _build_prop_map_for_principal(auth_user, principal_user):
         return elem
 
     return {
-        qname(NS_DAV, "resourcetype"): lambda: _resourcetype_prop(
-            (NS_DAV, "principal")
+        qname(NS_DAV, "resourcetype"): lambda: core_props.resourcetype_prop(
+            qname, NS_DAV, (NS_DAV, "principal")
         ),
-        qname(NS_DAV, "displayname"): lambda: _text_prop(
+        qname(NS_DAV, "displayname"): lambda: core_props.text_prop(
+            qname,
             NS_DAV,
             "displayname",
             principal_user.username,
@@ -1802,7 +1170,7 @@ def principal_view(request, username):
 
     requested = parsed["requested"] if parsed["mode"] == "prop" else None
     principal_map = _build_prop_map_for_principal(user, principal)
-    ok, missing = _select_props(principal_map, requested)
+    ok, missing = core_props.select_props(principal_map, requested)
     responses = [
         response_with_props(f"/dav/principals/{principal.username}/", ok, missing)
     ]
@@ -1836,30 +1204,45 @@ def principal_users_view(request, username):
 def _build_prop_map_for_calendar_home(owner, auth_user):
     can_write = owner == auth_user
     return {
-        qname(NS_DAV, "resourcetype"): lambda: _resourcetype_prop(
-            (NS_DAV, "collection")
+        qname(NS_DAV, "resourcetype"): lambda: core_props.resourcetype_prop(
+            qname, NS_DAV, (NS_DAV, "collection")
         ),
-        qname(NS_DAV, "getcontentlength"): lambda: _text_prop(
+        qname(NS_DAV, "getcontentlength"): lambda: core_props.text_prop(
+            qname,
             NS_DAV,
             "getcontentlength",
             "",
         ),
-        qname(NS_DAV, "displayname"): lambda: _text_prop(
+        qname(NS_DAV, "displayname"): lambda: core_props.text_prop(
+            qname,
             NS_DAV,
             "displayname",
             f"{owner.username} calendars",
         ),
-        qname(NS_DAV, "owner"): lambda: _owner_prop(owner),
+        qname(NS_DAV, "owner"): lambda: core_davxml.owner_prop(
+            qname,
+            NS_DAV,
+            _principal_href_for_user,
+            owner,
+        ),
         qname(
             NS_DAV, "current-user-privilege-set"
-        ): lambda: _current_user_privilege_set_prop(can_write),
-        qname(NS_DAV, "supported-report-set"): lambda: _supported_report_set_prop(
-            include_freebusy=True
+        ): lambda: core_davxml.current_user_privilege_set_prop(
+            qname, NS_DAV, can_write
+        ),
+        qname(
+            NS_DAV, "supported-report-set"
+        ): lambda: core_davxml.supported_report_set_prop(
+            qname, NS_DAV, NS_CALDAV, include_freebusy=True
         ),
         qname(
             NS_CALDAV,
             "supported-calendar-component-sets",
-        ): _supported_component_sets_prop,
+        ): lambda: core_props.supported_component_sets_prop(
+            qname,
+            NS_CALDAV,
+            (Calendar.COMPONENT_VEVENT, Calendar.COMPONENT_VTODO),
+        ),
     }
 
 
@@ -1871,15 +1254,17 @@ def _build_prop_map_for_collection(display_name):
         return elem
 
     return {
-        qname(NS_DAV, "resourcetype"): lambda: _resourcetype_prop(
-            (NS_DAV, "collection")
+        qname(NS_DAV, "resourcetype"): lambda: core_props.resourcetype_prop(
+            qname, NS_DAV, (NS_DAV, "collection")
         ),
-        qname(NS_DAV, "displayname"): lambda: _text_prop(
-            NS_DAV, "displayname", display_name
+        qname(NS_DAV, "displayname"): lambda: core_props.text_prop(
+            qname, NS_DAV, "displayname", display_name
         ),
         qname(NS_DAV, "current-user-principal"): current_user_principal_for_requester,
-        qname(NS_DAV, "supported-report-set"): lambda: _supported_report_set_prop(
-            include_freebusy=True
+        qname(
+            NS_DAV, "supported-report-set"
+        ): lambda: core_davxml.supported_report_set_prop(
+            qname, NS_DAV, NS_CALDAV, include_freebusy=True
         ),
     }
 
@@ -1922,7 +1307,7 @@ def _collection_view(request, href, display_name):
             resolved_map[key] = builder
 
     requested = parsed["requested"] if parsed["mode"] == "prop" else None
-    ok, missing = _select_props(resolved_map, requested)
+    ok, missing = core_props.select_props(resolved_map, requested)
     return _xml_response(
         207, multistatus_document([response_with_props(href, ok, missing)])
     )
@@ -1980,7 +1365,7 @@ def calendar_home_view(request, username):
     depth = request.headers.get("Depth", "infinity")
     requested = parsed["requested"] if parsed["mode"] == "prop" else None
     home_map = _build_prop_map_for_calendar_home(owner, user)
-    home_ok, home_missing = _select_props(home_map, requested)
+    home_ok, home_missing = core_props.select_props(home_map, requested)
     responses = [
         response_with_props(f"/dav/calendars/{owner.username}/", home_ok, home_missing)
     ]
@@ -1988,7 +1373,7 @@ def calendar_home_view(request, username):
     if depth == "1":
         for calendar in calendars:
             cal_map = _build_prop_map_for_calendar_collection(calendar, user)
-            cal_ok, cal_missing = _select_props(cal_map, requested)
+            cal_ok, cal_missing = core_props.select_props(cal_map, requested)
             href = f"/dav/calendars/{owner.username}/{calendar.slug}/"
             responses.append(response_with_props(href, cal_ok, cal_missing))
 
@@ -2026,57 +1411,88 @@ def calendar_home_users_view(request, username):
 def _build_prop_map_for_calendar_collection(calendar, auth_user):
     can_write = can_write_calendar(calendar, auth_user)
     return {
-        qname(NS_DAV, "resourcetype"): lambda: _resourcetype_prop(
+        qname(NS_DAV, "resourcetype"): lambda: core_props.resourcetype_prop(
+            qname,
+            NS_DAV,
             (NS_DAV, "collection"),
             (NS_CALDAV, "calendar"),
         ),
-        qname(NS_DAV, "getcontentlength"): lambda: _text_prop(
+        qname(NS_DAV, "getcontentlength"): lambda: core_props.text_prop(
+            qname,
             NS_DAV,
             "getcontentlength",
             "",
         ),
-        qname(NS_DAV, "getcontenttype"): lambda: _text_prop(
+        qname(NS_DAV, "getcontenttype"): lambda: core_props.text_prop(
+            qname,
             NS_DAV,
             "getcontenttype",
             "text/calendar",
         ),
-        qname(NS_DAV, "displayname"): lambda: _text_prop(
-            NS_DAV, "displayname", calendar.name
+        qname(NS_DAV, "displayname"): lambda: core_props.text_prop(
+            qname, NS_DAV, "displayname", calendar.name
         ),
-        qname(NS_CS, "getctag"): lambda: _text_prop(
+        qname(NS_CS, "getctag"): lambda: core_props.text_prop(
+            qname,
             NS_CS,
             "getctag",
             str(int(calendar.updated_at.timestamp())),
         ),
         qname(
             NS_CALDAV, "supported-calendar-component-set"
-        ): lambda: _supported_components_prop(calendar.component_kind),
-        qname(NS_CALDAV, "calendar-timezone"): lambda: _calendar_timezone_prop(
-            calendar.timezone
+        ): lambda: core_props.supported_components_prop(
+            qname,
+            NS_CALDAV,
+            calendar.component_kind,
         ),
-        qname(NS_CALDAV, "calendar-description"): lambda: _text_prop(
+        qname(
+            NS_CALDAV, "calendar-timezone"
+        ): lambda: core_props.calendar_timezone_prop(
+            qname,
+            NS_CALDAV,
+            calendar.timezone,
+        ),
+        qname(NS_CALDAV, "calendar-description"): lambda: core_props.text_prop(
+            qname,
             NS_CALDAV,
             "calendar-description",
             calendar.description,
         ),
-        qname(NS_APPLE_ICAL, "calendar-color"): lambda: _calendar_color_prop(
-            calendar.color
+        qname(NS_APPLE_ICAL, "calendar-color"): lambda: core_props.calendar_color_prop(
+            qname,
+            NS_APPLE_ICAL,
+            calendar.color,
         ),
-        qname(NS_APPLE_ICAL, "calendar-order"): lambda: _calendar_order_prop(
-            calendar.sort_order if calendar.sort_order is not None else 0
+        qname(NS_APPLE_ICAL, "calendar-order"): lambda: core_props.calendar_order_prop(
+            qname,
+            NS_APPLE_ICAL,
+            calendar.sort_order if calendar.sort_order is not None else 0,
         ),
-        qname(NS_DAV, "getetag"): lambda: _text_prop(
-            NS_DAV, "getetag", _etag_for_calendar(calendar)
+        qname(NS_DAV, "getetag"): lambda: core_props.text_prop(
+            qname, NS_DAV, "getetag", _etag_for_calendar(calendar)
         ),
-        qname(NS_DAV, "owner"): lambda: _owner_prop(calendar.owner),
+        qname(NS_DAV, "owner"): lambda: core_davxml.owner_prop(
+            qname,
+            NS_DAV,
+            _principal_href_for_user,
+            calendar.owner,
+        ),
         qname(
             NS_DAV, "current-user-privilege-set"
-        ): lambda: _current_user_privilege_set_prop(can_write),
-        qname(NS_DAV, "supported-report-set"): lambda: _supported_report_set_prop(
+        ): lambda: core_davxml.current_user_privilege_set_prop(
+            qname, NS_DAV, can_write
+        ),
+        qname(
+            NS_DAV, "supported-report-set"
+        ): lambda: core_davxml.supported_report_set_prop(
+            qname,
+            NS_DAV,
+            NS_CALDAV,
             include_freebusy=True,
             include_sync_collection=True,
         ),
-        qname(NS_DAV, "sync-token"): lambda: _text_prop(
+        qname(NS_DAV, "sync-token"): lambda: core_props.text_prop(
+            qname,
             NS_DAV,
             "sync-token",
             _sync_token_for_calendar(calendar),
@@ -2149,7 +1565,11 @@ def _responses_for_multiget(calendars, requested, hrefs, calendar_data_request=N
     responses = []
     objects = shell_repository.list_calendar_object_data_for_calendars(calendars)
     by_path = core_report.build_href_index(objects, _all_object_hrefs_for_data)
-    resolved = core_report.resolve_multiget_hrefs(hrefs, by_path, _normalize_href_path)
+    resolved = core_report.resolve_multiget_hrefs(
+        hrefs,
+        by_path,
+        core_paths.normalize_href_path,
+    )
 
     for normalized, obj in resolved:
         if obj is None:
@@ -2157,7 +1577,7 @@ def _responses_for_multiget(calendars, requested, hrefs, calendar_data_request=N
             continue
 
         obj_map = _build_prop_map_for_object(obj, calendar_data_request)
-        ok, missing = _select_props(obj_map, requested)
+        ok, missing = core_props.select_props(obj_map, requested)
         responses.append(response_with_props(normalized, ok, missing))
 
     return responses
@@ -2174,11 +1594,13 @@ def _responses_for_calendar_query(
     style = _report_href_style(request_path)
     objects = shell_repository.list_calendar_object_data_for_calendars(calendars)
     matched = core_report.select_query_objects(
-        objects, query_filter, _object_matches_query
+        objects,
+        query_filter,
+        _object_matches_query_with_active_tz,
     )
     for obj in matched:
         obj_map = _build_prop_map_for_object(obj, calendar_data_request)
-        ok, missing = _select_props(obj_map, requested)
+        ok, missing = core_props.select_props(obj_map, requested)
         href = _object_href_for_style_data(obj, style)
         responses.append(response_with_props(href, ok, missing))
     return responses
@@ -2246,7 +1668,7 @@ def _sync_collection_response(
     def response_for_props(href, prop_map):
         if requested == []:
             return response_with_status(href, "200 OK")
-        ok, missing = _select_props(prop_map, requested)
+        ok, missing = core_props.select_props(prop_map, requested)
         return response_with_props(href, ok, missing)
 
     style = _report_href_style(request_path)
@@ -2429,7 +1851,7 @@ def _handle_report(calendars, request, allow_sync_collection=True):
 
     time_range_error = core_report.validate_time_range_payloads(
         root,
-        _parse_ical_datetime,
+        core_time.parse_ical_datetime,
     )
     if time_range_error is not None:
         _ACTIVE_REPORT_TZINFO = None
@@ -2437,7 +1859,7 @@ def _handle_report(calendars, request, allow_sync_collection=True):
 
     range_bounds_error = core_report.validate_comp_filter_range_bounds(
         root,
-        _parse_ical_datetime,
+        core_time.parse_ical_datetime,
         timezone.now().year,
     )
     if range_bounds_error is not None:
@@ -2701,7 +2123,7 @@ def calendar_collection_view(request, username, slug):
                         ok_tags.append(entry.tag)
                         continue
                     timezone_text = (entry.text or "").strip()
-                    tzid = _extract_tzid_from_timezone_text(timezone_text)
+                    tzid = core_payloads.extract_tzid_from_timezone_text(timezone_text)
                     if not tzid:
                         bad_tags.append(entry.tag)
                         continue
@@ -2795,7 +2217,7 @@ def calendar_collection_view(request, username, slug):
     depth = request.headers.get("Depth", "infinity")
     requested = parsed["requested"] if parsed["mode"] == "prop" else None
     cal_map = _build_prop_map_for_calendar_collection(calendar, user)
-    cal_ok, cal_missing = _select_props(cal_map, requested)
+    cal_ok, cal_missing = core_props.select_props(cal_map, requested)
     responses = [
         response_with_props(
             f"/dav/calendars/{username}/{calendar.slug}/",
@@ -2807,7 +2229,7 @@ def calendar_collection_view(request, username, slug):
     if depth == "1":
         for obj in calendar.calendar_objects.all():
             obj_map = _build_prop_map_for_object(obj)
-            obj_ok, obj_missing = _select_props(obj_map, requested)
+            obj_ok, obj_missing = core_props.select_props(obj_map, requested)
             href = f"/dav/calendars/{username}/{calendar.slug}/{obj.filename}"
             responses.append(response_with_props(href, obj_ok, obj_missing))
 
@@ -2849,26 +2271,32 @@ def _build_prop_map_for_object(obj, calendar_data_request=None):
         qname(NS_DAV, "resourcetype"): lambda: ET.Element(
             qname(NS_DAV, "resourcetype")
         ),
-        qname(NS_DAV, "getetag"): lambda: _text_prop(
-            NS_DAV, "getetag", _etag_for_object(obj)
+        qname(NS_DAV, "getetag"): lambda: core_props.text_prop(
+            qname, NS_DAV, "getetag", _etag_for_object(obj)
         ),
-        qname(NS_DAV, "getcontenttype"): lambda: _text_prop(
+        qname(NS_DAV, "getcontenttype"): lambda: core_props.text_prop(
+            qname,
             NS_DAV,
             "getcontenttype",
             obj.content_type,
         ),
-        qname(NS_DAV, "getcontentlength"): lambda: _text_prop(
+        qname(NS_DAV, "getcontentlength"): lambda: core_props.text_prop(
+            qname,
             NS_DAV,
             "getcontentlength",
             str(size),
         ),
-        qname(NS_DAV, "getlastmodified"): lambda: _text_prop(
+        qname(NS_DAV, "getlastmodified"): lambda: core_props.text_prop(
+            qname,
             NS_DAV,
             "getlastmodified",
             http_date(last_modified.timestamp()),
         ),
         qname(NS_CALDAV, "calendar-data"): lambda: _calendar_data_prop(
-            _filter_calendar_data_for_response(obj.ical_blob, calendar_data_request)
+            _filter_calendar_data_with_active_tz(
+                obj.ical_blob,
+                calendar_data_request,
+            )
         ),
     }
 
@@ -2955,8 +2383,8 @@ def calendar_object_view(request, username, slug, filename):
         with transaction.atomic():
             writable = Calendar.objects.select_for_update().get(pk=writable.pk)
             next_revision = _latest_sync_revision(writable) + 1
-            marker_filename = _collection_marker(filename)
-            parent_path, _leaf = _split_filename_path(filename)
+            marker_filename = core_paths.collection_marker(filename)
+            parent_path, _leaf = core_paths.split_filename_path(filename)
 
             if request.method in ("COPY", "MOVE"):
                 return _copy_or_move_calendar_object(
@@ -3114,18 +2542,18 @@ def calendar_object_view(request, username, slug, filename):
                 response = HttpResponse(status=204)
                 return _dav_common_headers(response)
 
-            if _precondition_failed_for_write(request, existing):
+            if core_payloads.precondition_failed_for_write(request, existing):
                 return HttpResponse(status=412)
 
             if not _collection_exists(writable, parent_path):
                 return HttpResponse(status=409)
 
             raw_content_type = request.META.get("CONTENT_TYPE") or request.content_type
-            content_type = _normalize_content_type(raw_content_type)
-            if _is_ical_resource(filename, content_type):
-                parsed, error = _validate_ical_payload(request.body)
+            content_type = core_paths.normalize_content_type(raw_content_type)
+            if core_paths.is_ical_resource(filename, content_type):
+                parsed, error = core_payloads.validate_ical_payload(request.body)
             else:
-                parsed, error = _validate_generic_payload(request.body)
+                parsed, error = core_payloads.validate_generic_payload(request.body)
 
             if error is not None:
                 return HttpResponse(
@@ -3136,8 +2564,8 @@ def calendar_object_view(request, username, slug, filename):
 
             now = timezone.now()
             payload_text = parsed["text"]
-            if _is_ical_resource(filename, content_type):
-                component_kind = _component_kind_from_payload(payload_text)
+            if core_paths.is_ical_resource(filename, content_type):
+                component_kind = core_payloads.component_kind_from_payload(payload_text)
                 if component_kind is None or component_kind != writable.component_kind:
                     return _caldav_error_response(
                         "supported-calendar-component", status=403
@@ -3201,7 +2629,7 @@ def calendar_object_view(request, username, slug, filename):
 
     normalized_filename = filename
     if filename.endswith("/"):
-        normalized_filename = _collection_marker(filename)
+        normalized_filename = core_paths.collection_marker(filename)
 
     obj = get_calendar_object_for_user(user, username, slug, normalized_filename)
     if obj is None:
@@ -3234,7 +2662,7 @@ def calendar_object_view(request, username, slug, filename):
 
     requested = parsed["requested"] if parsed["mode"] == "prop" else None
     obj_map = _build_prop_map_for_object(obj)
-    ok, missing = _select_props(obj_map, requested)
+    ok, missing = core_props.select_props(obj_map, requested)
     href = f"/dav/calendars/{username}/{slug}/{filename}"
     return _xml_response(
         207, multistatus_document([response_with_props(href, ok, missing)])
