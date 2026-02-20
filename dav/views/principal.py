@@ -54,7 +54,6 @@ from dav.common import (
     _home_etag_and_timestamp,
     _latest_sync_revision,
     _log_dav_create,
-    _not_allowed,
     _parse_propfind_payload,
     _proppatch_multistatus_response,
     _require_dav_user,
@@ -95,7 +94,6 @@ _CALENDAR_OBJECT_ALLOWED_METHODS = [
 ]
 
 
-
 @method_decorator(csrf_exempt, name="dispatch")
 class PrincipalView(View):
     def dispatch(self, request, *args, **kwargs):
@@ -109,13 +107,6 @@ class PrincipalView(View):
             return self.propfind(request, *args, **kwargs)
 
         return self.http_method_not_allowed(request, *args, **kwargs)
-
-    def http_method_not_allowed(self, request, *args, **kwargs):
-        return _not_allowed(
-            request,
-            _PRINCIPAL_ALLOWED_METHODS,
-            username=kwargs.get("username"),
-        )
 
     def options(self, request, *args, **kwargs):
         response = HttpResponse(status=204)

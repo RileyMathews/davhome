@@ -4,7 +4,7 @@ import hashlib
 import logging
 from xml.etree import ElementTree as ET
 
-from django.http import HttpResponse, HttpResponseNotAllowed
+from django.http import HttpResponse
 from django.db.models import Max
 from django.utils.http import http_date
 
@@ -146,34 +146,6 @@ def _remote_ip(forwarded_header, remote_addr):
     if forwarded:
         return forwarded.split(",", 1)[0].strip()
     return (remote_addr or "").strip()
-
-
-def _not_allowed(request, allowed, **extra):
-    remote_ip = _remote_ip(
-        request.headers.get("X-Forwarded-For"),
-        request.META.get("REMOTE_ADDR"),
-    )
-    logger.warning(
-        "dav_method_not_allowed reason_code=%s method=%s path=%s status=%s allowed=%r user_agent=%r content_type=%r content_length=%r depth=%r destination=%r overwrite=%r if_none_match=%r if_match=%r remote_ip=%r body=%r extra=%r",
-        "unsupported_method",
-        request.method,
-        request.path,
-        405,
-        allowed,
-        request.headers.get("User-Agent"),
-        request.META.get("CONTENT_TYPE") or request.content_type,
-        request.META.get("CONTENT_LENGTH"),
-        request.headers.get("Depth"),
-        request.headers.get("Destination"),
-        request.headers.get("Overwrite"),
-        request.headers.get("If-None-Match"),
-        request.headers.get("If-Match"),
-        remote_ip,
-        request.body,
-        extra,
-    )
-    response = HttpResponseNotAllowed(allowed)
-    return _dav_common_headers(response)
 
 
 def _require_dav_user(request):

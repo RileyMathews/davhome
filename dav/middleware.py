@@ -26,6 +26,12 @@ def _reason_code_for_status(status_code):
     return reason_codes.get(status_code, "http_error")
 
 
+def _allow_values(raw_allow):
+    if not raw_allow:
+        return None
+    return [value.strip() for value in raw_allow.split(",") if value.strip()]
+
+
 class DavAuditRejectLoggingMiddleware:
     def __init__(self, get_response):
         self.get_response = get_response
@@ -37,6 +43,26 @@ class DavAuditRejectLoggingMiddleware:
         if response.status_code < 400:
             return response
         if response.status_code == 405:
+            allowed = _allow_values(response.headers.get("Allow"))
+            logger.warning(
+                "dav_method_not_allowed reason_code=%s method=%s path=%s status=%s allowed=%r user_agent=%r content_type=%r content_length=%r depth=%r destination=%r overwrite=%r if_none_match=%r if_match=%r remote_ip=%r body=%r extra=%r",
+                "unsupported_method",
+                request.method,
+                request.path,
+                response.status_code,
+                allowed,
+                request.headers.get("User-Agent"),
+                request.META.get("CONTENT_TYPE") or request.content_type,
+                request.META.get("CONTENT_LENGTH"),
+                request.headers.get("Depth"),
+                request.headers.get("Destination"),
+                request.headers.get("Overwrite"),
+                request.headers.get("If-None-Match"),
+                request.headers.get("If-Match"),
+                _client_ip(request),
+                request.body,
+                {},
+            )
             return response
 
         logger.warning(

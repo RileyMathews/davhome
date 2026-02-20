@@ -4,8 +4,6 @@ from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 
-from dav.common import _not_allowed
-
 from .mixins import DavAuthMixin, DavHeaderMixin, DavOptionsMixin
 
 
@@ -36,10 +34,3 @@ class DavView(DavHeaderMixin, DavAuthMixin, DavOptionsMixin, View):
 
         response = super().dispatch(request, *args, **kwargs)
         return self.apply_dav_headers(response)
-
-    def http_method_not_allowed(self, request, *args, **kwargs):
-        return _not_allowed(
-            request,
-            self.get_allowed_methods(),
-            view=self.__class__.__name__,
-        )

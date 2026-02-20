@@ -54,7 +54,6 @@ from dav.common import (
     _home_etag_and_timestamp,
     _latest_sync_revision,
     _log_dav_create,
-    _not_allowed,
     _parse_propfind_payload,
     _proppatch_multistatus_response,
     _require_dav_user,
@@ -95,8 +94,8 @@ _CALENDAR_OBJECT_ALLOWED_METHODS = [
 ]
 
 
-
 from .calendar_collection import CalendarCollectionView
+
 
 @method_decorator(csrf_exempt, name="dispatch")
 class CalendarCollectionUidView(CalendarCollectionView):

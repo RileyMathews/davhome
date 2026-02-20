@@ -147,6 +147,22 @@ class DavDiscoveryTests(TestCase):
             'Basic realm="davhome"', response.headers.get("WWW-Authenticate", "")
         )
 
+    def test_method_not_allowed_is_logged_by_middleware(self):
+        with self.assertLogs("dav.audit", level="WARNING") as captured:
+            response = self.client.generic(
+                "POST",
+                f"/dav/principals/{self.owner.username}/",
+                data="payload",
+                content_type="text/plain",
+            )
+
+        self.assertEqual(response.status_code, 405)
+        log_output = "\n".join(captured.output)
+        self.assertIn("dav_method_not_allowed", log_output)
+        self.assertIn("status=405", log_output)
+        self.assertIn("allowed=['GET', 'HEAD', 'OPTIONS']", log_output)
+        self.assertIn("extra={}", log_output)
+
     def test_dav_root_options_advertises_dav(self):
         response = self.client.options("/dav/")
         self.assertEqual(response.status_code, 204)
