@@ -15,7 +15,6 @@ from django.utils.http import http_date
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 
-from dav.auth import get_dav_user, unauthorized_response
 from .base import DavView
 from dav.core import paths as core_paths
 from dav.core import payloads as core_payloads
@@ -105,7 +104,7 @@ class PrincipalsCollectionView(DavView):
         return _dav_common_headers(response)
 
     def get(self, request, *args, **kwargs):
-        user = cast(User, self.dav_user)
+        user = cast(User, request.user)
 
         response = HttpResponse(
             b"Collection",
@@ -114,13 +113,13 @@ class PrincipalsCollectionView(DavView):
         return _dav_common_headers(response)
 
     def head(self, request, *args, **kwargs):
-        user = cast(User, self.dav_user)
+        user = cast(User, request.user)
 
         response = HttpResponse(status=200)
         return _dav_common_headers(response)
 
     def propfind(self, request, *args, **kwargs):
-        user = cast(User, self.dav_user)
+        user = cast(User, request.user)
 
         parsed, parse_error = _parse_propfind_payload(request)
         if parse_error is not None:

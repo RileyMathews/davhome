@@ -15,7 +15,6 @@ from django.utils.http import http_date
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 
-from dav.auth import get_dav_user, unauthorized_response
 from .base import DavView
 from dav.core import paths as core_paths
 from dav.core import payloads as core_payloads
@@ -154,7 +153,7 @@ class CalendarObjectView(DavView):
         if invalid_path is not None:
             return invalid_path
 
-        user = cast(User, self.dav_user)
+        user = cast(User, request.user)
         obj = self._get_object(user, username, slug, filename)
         if obj is None:
             return HttpResponse(status=404)
@@ -173,7 +172,7 @@ class CalendarObjectView(DavView):
         if invalid_path is not None:
             return invalid_path
 
-        user = cast(User, self.dav_user)
+        user = cast(User, request.user)
         obj = self._get_object(user, username, slug, filename)
         if obj is None:
             return HttpResponse(status=404)
@@ -189,7 +188,7 @@ class CalendarObjectView(DavView):
         if invalid_path is not None:
             return invalid_path
 
-        user = cast(User, self.dav_user)
+        user = cast(User, request.user)
         obj = self._get_object(user, username, slug, filename)
         if obj is None:
             return HttpResponse(status=404)
@@ -214,7 +213,7 @@ class CalendarObjectView(DavView):
         if invalid_path is not None:
             return invalid_path
 
-        user = cast(User, self.dav_user)
+        user = cast(User, request.user)
         writable, writable_error = self._resolve_writable_calendar(user, username, slug)
         if writable_error is not None:
             return writable_error
@@ -272,7 +271,7 @@ class CalendarObjectView(DavView):
         if invalid_path is not None:
             return invalid_path
 
-        user = cast(User, self.dav_user)
+        user = cast(User, request.user)
         writable, writable_error = self._resolve_writable_calendar(user, username, slug)
         if writable_error is not None:
             return writable_error
@@ -342,7 +341,7 @@ class CalendarObjectView(DavView):
         if invalid_path is not None:
             return invalid_path
 
-        user = cast(User, self.dav_user)
+        user = cast(User, request.user)
         writable, writable_error = self._resolve_writable_calendar(user, username, slug)
         if writable_error is not None:
             return writable_error
@@ -418,7 +417,7 @@ class CalendarObjectView(DavView):
         if invalid_path is not None:
             return invalid_path
 
-        user = cast(User, self.dav_user)
+        user = cast(User, request.user)
         writable, writable_error = self._resolve_writable_calendar(user, username, slug)
         if writable_error is not None:
             return writable_error
@@ -458,7 +457,7 @@ class CalendarObjectView(DavView):
         if invalid_path is not None:
             return invalid_path
 
-        user = cast(User, self.dav_user)
+        user = cast(User, request.user)
         writable, writable_error = self._resolve_writable_calendar(user, username, slug)
         if writable_error is not None:
             return writable_error

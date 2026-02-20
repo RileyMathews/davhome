@@ -15,7 +15,6 @@ from django.utils.http import http_date
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 
-from dav.auth import get_dav_user, unauthorized_response
 from .base import DavView
 from dav.core import paths as core_paths
 from dav.core import payloads as core_payloads
@@ -103,7 +102,7 @@ class PrincipalView(DavView):
         return _dav_common_headers(response)
 
     def _resolve_principal(self, request, username):
-        user = cast(User, self.dav_user)
+        user = cast(User, request.user)
 
         principal = get_principal(username)
         if principal is None:

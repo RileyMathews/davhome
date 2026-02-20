@@ -9,19 +9,17 @@ from dav.common import _require_dav_user
 
 class DavAuthMixin:
     require_dav_auth = True
-    dav_user = None
 
     def authenticate_dav_request(self, request):
         if request.method == "OPTIONS":
-            self.dav_user = getattr(request, "user", None)
             return None
 
         if not self.require_dav_auth:
-            self.dav_user = getattr(request, "user", None)
             return None
 
         user, auth_response = _require_dav_user(request)
-        self.dav_user = user
+        if user is not None:
+            request.user = user
         return auth_response
 
 

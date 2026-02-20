@@ -15,7 +15,6 @@ from django.utils.http import http_date
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 
-from dav.auth import get_dav_user, unauthorized_response
 from .base import DavView
 from dav.core import paths as core_paths
 from dav.core import payloads as core_payloads
@@ -101,7 +100,7 @@ class CalendarHomeView(DavView):
         if not isinstance(username, str):
             return None, None, HttpResponse(status=404)
 
-        user = cast(User, self.dav_user)
+        user = cast(User, self.request.user)
         owner = get_principal(username)
         if owner is None:
             return None, None, HttpResponse(status=404)

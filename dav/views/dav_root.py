@@ -103,7 +103,7 @@ class DavRootView(DavView):
         return _dav_common_headers(response)
 
     def get(self, request, *args, **kwargs):
-        user = cast(User, self.dav_user)
+        user = cast(User, request.user)
 
         response = HttpResponse(
             b"DAV root",
@@ -112,13 +112,13 @@ class DavRootView(DavView):
         return _dav_common_headers(response)
 
     def head(self, request, *args, **kwargs):
-        user = cast(User, self.dav_user)
+        user = cast(User, request.user)
 
         response = HttpResponse(status=200)
         return _dav_common_headers(response)
 
     def propfind(self, request, *args, **kwargs):
-        user = cast(User, self.dav_user)
+        user = cast(User, request.user)
 
         parsed, parse_error = _parse_propfind_payload(request)
         if parse_error is not None:
