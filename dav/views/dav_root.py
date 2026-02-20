@@ -16,7 +16,6 @@ from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 
-from dav.auth import get_dav_user, unauthorized_response
 from .base import DavView
 from dav.core import paths as core_paths
 from dav.core import payloads as core_payloads
@@ -98,27 +97,13 @@ _CALENDAR_OBJECT_ALLOWED_METHODS = [
 class DavRootView(DavView):
     allowed_methods = _ROOT_ALLOWED_METHODS
 
-    def dispatch(self, request, *args, **kwargs):
-        if request.method == "OPTIONS":
-            return self.options(request, *args, **kwargs)
-        if request.method == "GET":
-            return self.get(request, *args, **kwargs)
-        if request.method == "HEAD":
-            return self.head(request, *args, **kwargs)
-        if request.method == "PROPFIND":
-            return self.propfind(request, *args, **kwargs)
-
-        return self.http_method_not_allowed(request, *args, **kwargs)
-
     def options(self, request, *args, **kwargs):
         response = HttpResponse(status=204)
         response["Allow"] = ", ".join(_ROOT_ALLOWED_METHODS)
         return _dav_common_headers(response)
 
     def get(self, request, *args, **kwargs):
-        user = get_dav_user(request)
-        if user is None:
-            return unauthorized_response()
+        user = cast(User, self.dav_user)
 
         response = HttpResponse(
             b"DAV root",
@@ -127,17 +112,13 @@ class DavRootView(DavView):
         return _dav_common_headers(response)
 
     def head(self, request, *args, **kwargs):
-        user = get_dav_user(request)
-        if user is None:
-            return unauthorized_response()
+        user = cast(User, self.dav_user)
 
         response = HttpResponse(status=200)
         return _dav_common_headers(response)
 
     def propfind(self, request, *args, **kwargs):
-        user = get_dav_user(request)
-        if user is None:
-            return unauthorized_response()
+        user = cast(User, self.dav_user)
 
         parsed, parse_error = _parse_propfind_payload(request)
         if parse_error is not None:

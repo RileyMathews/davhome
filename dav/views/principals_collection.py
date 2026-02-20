@@ -13,7 +13,6 @@ from django.http import HttpResponse
 from django.utils import timezone
 from django.utils.http import http_date
 from django.utils.decorators import method_decorator
-from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 
 from dav.auth import get_dav_user, unauthorized_response
@@ -95,21 +94,10 @@ _CALENDAR_OBJECT_ALLOWED_METHODS = [
 
 
 @method_decorator(csrf_exempt, name="dispatch")
-class PrincipalsCollectionView(View):
+class PrincipalsCollectionView(DavView):
     href = "/dav/principals/"
     display_name = "principals"
-
-    def dispatch(self, request, *args, **kwargs):
-        if request.method == "OPTIONS":
-            return self.options(request, *args, **kwargs)
-        if request.method == "GET":
-            return self.get(request, *args, **kwargs)
-        if request.method == "HEAD":
-            return self.head(request, *args, **kwargs)
-        if request.method == "PROPFIND":
-            return self.propfind(request, *args, **kwargs)
-
-        return self.http_method_not_allowed(request, *args, **kwargs)
+    allowed_methods = _PRINCIPAL_ALLOWED_METHODS
 
     def options(self, request, *args, **kwargs):
         response = HttpResponse(status=204)
@@ -117,9 +105,7 @@ class PrincipalsCollectionView(View):
         return _dav_common_headers(response)
 
     def get(self, request, *args, **kwargs):
-        user, auth_response = _require_dav_user(request)
-        if auth_response is not None:
-            return auth_response
+        user = cast(User, self.dav_user)
 
         response = HttpResponse(
             b"Collection",
@@ -128,19 +114,13 @@ class PrincipalsCollectionView(View):
         return _dav_common_headers(response)
 
     def head(self, request, *args, **kwargs):
-        user, auth_response = _require_dav_user(request)
-        if auth_response is not None:
-            return auth_response
+        user = cast(User, self.dav_user)
 
         response = HttpResponse(status=200)
         return _dav_common_headers(response)
 
     def propfind(self, request, *args, **kwargs):
-        user, auth_response = _require_dav_user(request)
-        if auth_response is not None:
-            return auth_response
-
-        user = cast(User, user)
+        user = cast(User, self.dav_user)
 
         parsed, parse_error = _parse_propfind_payload(request)
         if parse_error is not None:

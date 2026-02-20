@@ -13,7 +13,6 @@ from django.http import HttpResponse
 from django.utils import timezone
 from django.utils.http import http_date
 from django.utils.decorators import method_decorator
-from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 
 from dav.auth import get_dav_user, unauthorized_response
@@ -95,78 +94,34 @@ _CALENDAR_OBJECT_ALLOWED_METHODS = [
 
 
 @method_decorator(csrf_exempt, name="dispatch")
-class CalendarHomeView(View):
-    def dispatch(self, request, *args, **kwargs):
-        if request.method == "OPTIONS":
-            return self.options(request, *args, **kwargs)
+class CalendarHomeView(DavView):
+    allowed_methods = _CALENDAR_HOME_ALLOWED_METHODS
 
-        username = kwargs.get("username")
+    def _resolve_home(self, username):
         if not isinstance(username, str):
-            return HttpResponse(status=404)
+            return None, None, HttpResponse(status=404)
 
-        user, auth_response = _require_dav_user(request)
-        if auth_response is not None:
-            return auth_response
-
+        user = cast(User, self.dav_user)
         owner = get_principal(username)
         if owner is None:
-            return HttpResponse(status=404)
+            return None, None, HttpResponse(status=404)
 
-        user = cast(User, user)
-        owner = cast(User, owner)
-
-        home_etag, home_timestamp = _home_etag_and_timestamp(owner, user)
-
-        if request.method == "GET":
-            return self.get(
-                request,
-                *args,
-                **kwargs,
-                user=user,
-                owner=owner,
-                home_etag=home_etag,
-                home_timestamp=home_timestamp,
-            )
-        if request.method == "HEAD":
-            return self.head(
-                request,
-                *args,
-                **kwargs,
-                user=user,
-                owner=owner,
-                home_etag=home_etag,
-                home_timestamp=home_timestamp,
-            )
-
-        calendars = _visible_calendars_for_home(owner, user)
-
-        if request.method == "REPORT":
-            return self.report(
-                request,
-                *args,
-                **kwargs,
-                calendars=calendars,
-            )
-        if request.method == "PROPFIND":
-            return self.propfind(
-                request,
-                *args,
-                **kwargs,
-                user=user,
-                owner=owner,
-                calendars=calendars,
-            )
-
-        return self.http_method_not_allowed(request, *args, **kwargs)
+        return user, cast(User, owner), None
 
     def options(self, request, *args, **kwargs):
         response = HttpResponse(status=204)
         response["Allow"] = ", ".join(_CALENDAR_HOME_ALLOWED_METHODS)
         return _dav_common_headers(response)
 
-    def get(self, request, *args, **kwargs):
-        home_etag = cast(str, kwargs.get("home_etag"))
-        home_timestamp = cast(float, kwargs.get("home_timestamp"))
+    def get(self, request, username, *args, **kwargs):
+        user, owner, error_response = self._resolve_home(username)
+        if error_response is not None:
+            return error_response
+
+        home_etag, home_timestamp = _home_etag_and_timestamp(
+            cast(User, owner),
+            cast(User, user),
+        )
         if _conditional_not_modified(request, home_etag, home_timestamp):
             response = HttpResponse(status=304)
             response["ETag"] = home_etag
@@ -181,9 +136,15 @@ class CalendarHomeView(View):
         response["Last-Modified"] = http_date(home_timestamp)
         return _dav_common_headers(response)
 
-    def head(self, request, *args, **kwargs):
-        home_etag = cast(str, kwargs.get("home_etag"))
-        home_timestamp = cast(float, kwargs.get("home_timestamp"))
+    def head(self, request, username, *args, **kwargs):
+        user, owner, error_response = self._resolve_home(username)
+        if error_response is not None:
+            return error_response
+
+        home_etag, home_timestamp = _home_etag_and_timestamp(
+            cast(User, owner),
+            cast(User, user),
+        )
         if _conditional_not_modified(request, home_etag, home_timestamp):
             response = HttpResponse(status=304)
             response["ETag"] = home_etag
@@ -195,14 +156,22 @@ class CalendarHomeView(View):
         response["Last-Modified"] = http_date(home_timestamp)
         return _dav_common_headers(response)
 
-    def report(self, request, *args, **kwargs):
-        calendars = cast(list, kwargs.get("calendars"))
+    def report(self, request, username, *args, **kwargs):
+        user, owner, error_response = self._resolve_home(username)
+        if error_response is not None:
+            return error_response
+
+        calendars = _visible_calendars_for_home(cast(User, owner), cast(User, user))
         return _handle_report(calendars, request, allow_sync_collection=False)
 
-    def propfind(self, request, *args, **kwargs):
-        user = cast(User, kwargs.get("user"))
-        owner = cast(User, kwargs.get("owner"))
-        calendars = cast(list, kwargs.get("calendars"))
+    def propfind(self, request, username, *args, **kwargs):
+        user, owner, error_response = self._resolve_home(username)
+        if error_response is not None:
+            return error_response
+
+        user = cast(User, user)
+        owner = cast(User, owner)
+        calendars = _visible_calendars_for_home(owner, user)
 
         parsed, parse_error = _parse_propfind_payload(request)
         if parse_error is not None:

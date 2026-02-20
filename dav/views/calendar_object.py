@@ -13,7 +13,6 @@ from django.http import HttpResponse
 from django.utils import timezone
 from django.utils.http import http_date
 from django.utils.decorators import method_decorator
-from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 
 from dav.auth import get_dav_user, unauthorized_response
@@ -95,7 +94,8 @@ _CALENDAR_OBJECT_ALLOWED_METHODS = [
 
 
 @method_decorator(csrf_exempt, name="dispatch")
-class CalendarObjectView(View):
+class CalendarObjectView(DavView):
+    allowed_methods = _CALENDAR_OBJECT_ALLOWED_METHODS
     _WRITE_METHODS = (
         "PUT",
         "DELETE",
@@ -106,119 +106,22 @@ class CalendarObjectView(View):
         "MOVE",
     )
 
-    def dispatch(self, request, *args, **kwargs):
-        if request.method == "OPTIONS":
-            return self.options(request, *args, **kwargs)
-
-        username = kwargs.get("username")
-        slug = kwargs.get("slug")
-        filename = kwargs.get("filename")
+    def _validate_path_args(self, username, slug, filename):
         if (
             not isinstance(username, str)
             or not isinstance(slug, str)
             or not isinstance(filename, str)
         ):
             return HttpResponse(status=404)
+        return None
 
-        user, auth_response = _require_dav_user(request)
-        if auth_response is not None:
-            return auth_response
-
-        user = cast(User, user)
-
-        if request.method in self._WRITE_METHODS:
-            writable = get_calendar_for_write_user(user, username, slug)
-            if writable is None:
-                return HttpResponse(status=404)
-            if writable is False:
-                return HttpResponse(status=403)
-
-            writable = cast(Calendar, writable)
-
-            if request.method in ("COPY", "MOVE") and writable.slug != "litmus":
-                return self.http_method_not_allowed(request, *args, **kwargs)
-            if request.method == "PROPPATCH" and writable.slug != "litmus":
-                return self.http_method_not_allowed(request, *args, **kwargs)
-
-            if request.method == "PUT":
-                return self.put(
-                    request,
-                    *args,
-                    **kwargs,
-                    user=user,
-                    writable=writable,
-                )
-            if request.method == "DELETE":
-                return self.delete(
-                    request,
-                    *args,
-                    **kwargs,
-                    writable=writable,
-                )
-            if request.method == "PROPPATCH":
-                return self.proppatch(
-                    request,
-                    *args,
-                    **kwargs,
-                    writable=writable,
-                )
-            if request.method == "MKCOL":
-                return self.mkcol(
-                    request,
-                    *args,
-                    **kwargs,
-                    user=user,
-                    writable=writable,
-                )
-            if request.method == "MKCALENDAR":
-                return self.mkcalendar(
-                    request,
-                    *args,
-                    **kwargs,
-                    user=user,
-                    writable=writable,
-                )
-            if request.method == "COPY":
-                return self.copy(
-                    request,
-                    *args,
-                    **kwargs,
-                    writable=writable,
-                )
-            if request.method == "MOVE":
-                return self.move(
-                    request,
-                    *args,
-                    **kwargs,
-                    writable=writable,
-                )
-
-        if request.method == "GET":
-            return self.get(
-                request,
-                *args,
-                **kwargs,
-                user=user,
-            )
-        if request.method == "HEAD":
-            return self.head(
-                request,
-                *args,
-                **kwargs,
-                user=user,
-            )
-        if request.method == "PROPFIND":
-            return self.propfind(
-                request,
-                *args,
-                **kwargs,
-                user=user,
-            )
-
-        obj = self._get_object(user, username, slug, filename)
-        if obj is None:
-            return HttpResponse(status=404)
-        return self.http_method_not_allowed(request, *args, **kwargs)
+    def _resolve_writable_calendar(self, user, username, slug):
+        writable = get_calendar_for_write_user(user, username, slug)
+        if writable is None:
+            return None, HttpResponse(status=404)
+        if writable is False:
+            return None, HttpResponse(status=403)
+        return cast(Calendar, writable), None
 
     def options(self, request, *args, **kwargs):
         response = HttpResponse(status=204)
@@ -247,7 +150,11 @@ class CalendarObjectView(View):
         return writable, next_revision, marker_filename, parent_path
 
     def get(self, request, username, slug, filename, *args, **kwargs):
-        user = cast(User, kwargs.get("user"))
+        invalid_path = self._validate_path_args(username, slug, filename)
+        if invalid_path is not None:
+            return invalid_path
+
+        user = cast(User, self.dav_user)
         obj = self._get_object(user, username, slug, filename)
         if obj is None:
             return HttpResponse(status=404)
@@ -262,7 +169,11 @@ class CalendarObjectView(View):
         return _dav_common_headers(response)
 
     def head(self, request, username, slug, filename, *args, **kwargs):
-        user = cast(User, kwargs.get("user"))
+        invalid_path = self._validate_path_args(username, slug, filename)
+        if invalid_path is not None:
+            return invalid_path
+
+        user = cast(User, self.dav_user)
         obj = self._get_object(user, username, slug, filename)
         if obj is None:
             return HttpResponse(status=404)
@@ -274,7 +185,11 @@ class CalendarObjectView(View):
         return _dav_common_headers(response)
 
     def propfind(self, request, username, slug, filename, *args, **kwargs):
-        user = cast(User, kwargs.get("user"))
+        invalid_path = self._validate_path_args(username, slug, filename)
+        if invalid_path is not None:
+            return invalid_path
+
+        user = cast(User, self.dav_user)
         obj = self._get_object(user, username, slug, filename)
         if obj is None:
             return HttpResponse(status=404)
@@ -295,7 +210,16 @@ class CalendarObjectView(View):
         )
 
     def delete(self, request, username, slug, filename, *args, **kwargs):
-        writable = cast(Calendar, kwargs.get("writable"))
+        invalid_path = self._validate_path_args(username, slug, filename)
+        if invalid_path is not None:
+            return invalid_path
+
+        user = cast(User, self.dav_user)
+        writable, writable_error = self._resolve_writable_calendar(user, username, slug)
+        if writable_error is not None:
+            return writable_error
+
+        writable = cast(Calendar, writable)
 
         with cast(Any, transaction.atomic)():
             writable, next_revision, marker_filename, _parent_path = (
@@ -344,7 +268,18 @@ class CalendarObjectView(View):
             return _dav_common_headers(response)
 
     def proppatch(self, request, username, slug, filename, *args, **kwargs):
-        writable = cast(Calendar, kwargs.get("writable"))
+        invalid_path = self._validate_path_args(username, slug, filename)
+        if invalid_path is not None:
+            return invalid_path
+
+        user = cast(User, self.dav_user)
+        writable, writable_error = self._resolve_writable_calendar(user, username, slug)
+        if writable_error is not None:
+            return writable_error
+        writable = cast(Calendar, writable)
+
+        if writable.slug != "litmus":
+            return self.http_method_not_allowed(request, username, slug, filename)
 
         with cast(Any, transaction.atomic)():
             writable, _next_revision, marker_filename, _parent_path = (
@@ -403,8 +338,16 @@ class CalendarObjectView(View):
             )
 
     def _mkcollection(self, request, username, slug, filename, *args, **kwargs):
-        user = cast(User, kwargs.get("user"))
-        writable = cast(Calendar, kwargs.get("writable"))
+        invalid_path = self._validate_path_args(username, slug, filename)
+        if invalid_path is not None:
+            return invalid_path
+
+        user = cast(User, self.dav_user)
+        writable, writable_error = self._resolve_writable_calendar(user, username, slug)
+        if writable_error is not None:
+            return writable_error
+        writable = cast(Calendar, writable)
+
         is_mkcol = request.method == "MKCOL"
 
         with cast(Any, transaction.atomic)():
@@ -471,7 +414,18 @@ class CalendarObjectView(View):
         return self._mkcollection(request, username, slug, filename, *args, **kwargs)
 
     def _copy_or_move(self, request, username, slug, filename, *args, **kwargs):
-        writable = cast(Calendar, kwargs.get("writable"))
+        invalid_path = self._validate_path_args(username, slug, filename)
+        if invalid_path is not None:
+            return invalid_path
+
+        user = cast(User, self.dav_user)
+        writable, writable_error = self._resolve_writable_calendar(user, username, slug)
+        if writable_error is not None:
+            return writable_error
+        writable = cast(Calendar, writable)
+
+        if writable.slug != "litmus":
+            return self.http_method_not_allowed(request, username, slug, filename)
 
         try:
             with cast(Any, transaction.atomic)():
@@ -500,8 +454,15 @@ class CalendarObjectView(View):
         return self._copy_or_move(request, username, slug, filename, *args, **kwargs)
 
     def put(self, request, username, slug, filename, *args, **kwargs):
-        user = cast(User, kwargs.get("user"))
-        writable = cast(Calendar, kwargs.get("writable"))
+        invalid_path = self._validate_path_args(username, slug, filename)
+        if invalid_path is not None:
+            return invalid_path
+
+        user = cast(User, self.dav_user)
+        writable, writable_error = self._resolve_writable_calendar(user, username, slug)
+        if writable_error is not None:
+            return writable_error
+        writable = cast(Calendar, writable)
 
         with cast(Any, transaction.atomic)():
             writable, next_revision, marker_filename, parent_path = (

@@ -12,6 +12,10 @@ class DavAuthMixin:
     dav_user = None
 
     def authenticate_dav_request(self, request):
+        if request.method == "OPTIONS":
+            self.dav_user = getattr(request, "user", None)
+            return None
+
         if not self.require_dav_auth:
             self.dav_user = getattr(request, "user", None)
             return None

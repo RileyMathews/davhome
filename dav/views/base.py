@@ -28,6 +28,10 @@ class DavView(DavHeaderMixin, DavAuthMixin, DavOptionsMixin, View):
     ]
 
     def dispatch(self, request, *args, **kwargs):
+        if request.method.upper() not in self.get_allowed_methods():
+            response = super().dispatch(request, *args, **kwargs)
+            return self.apply_dav_headers(response)
+
         auth_response = self.authenticate_dav_request(request)
         if auth_response is not None:
             return self.apply_dav_headers(auth_response)

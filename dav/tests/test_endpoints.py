@@ -160,7 +160,7 @@ class DavDiscoveryTests(TestCase):
         log_output = "\n".join(captured.output)
         self.assertIn("dav_method_not_allowed", log_output)
         self.assertIn("status=405", log_output)
-        self.assertIn("allowed=['GET', 'HEAD', 'OPTIONS']", log_output)
+        self.assertIn("allowed=['GET', 'HEAD', 'OPTIONS', 'PROPFIND']", log_output)
         self.assertIn("extra={}", log_output)
 
     def test_dav_root_options_advertises_dav(self):
