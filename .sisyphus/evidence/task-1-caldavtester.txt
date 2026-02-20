@@ -1,0 +1,132 @@
+# Default implementation-loop suite: supported CalDAV subset only.
+nix develop path:.#caldavtester -c bash -lc 'cd caldavtester-lab && ./bootstrap.sh >/dev/null && source ./.env-py2.sh && cd ccs-caldavtester && MODULES="`rg -v "^\\s*(#|$$)" ../caldav-suite-modules.txt | tr "\n" " "`" && python2 testcaldav.py $MODULES'
+Entered caldavtester shell (Python Python 2.7.18.12).
+Run: ./caldavtester-lab/bootstrap.sh
+Starting tests
+
+File 1 of 13
+
+scripts.tests.CalDAV.current-user-principal                 
+  Suite: Check for the property on /                        
+
+scripts.tests.CalDAV.current-user-principal                    [ERROR]
+
+File 2 of 13
+
+scripts.tests.CalDAV.propfind                               
+  Suite: regular home prop finds                            
+
+scripts.tests.CalDAV.propfind                                  [ERROR]
+
+File 3 of 13
+
+scripts.tests.CalDAV.mkcalendar                             
+  Suite: MKCALENDAR without body                            
+
+scripts.tests.CalDAV.mkcalendar                                [ERROR]
+
+File 4 of 13
+
+scripts.tests.CalDAV.put                                    
+  Suite: PUT VEVENT                                         
+
+scripts.tests.CalDAV.put                                       [ERROR]
+
+File 5 of 13
+
+scripts.tests.CalDAV.get                                       [ERROR]
+
+File 6 of 13
+
+scripts.tests.CalDAV.delete                                    [ERROR]
+
+File 7 of 13
+
+scripts.tests.CalDAV.conditional                            
+  Suite: Last_modified handling                             
+
+scripts.tests.CalDAV.conditional                               [ERROR]
+
+File 8 of 13
+
+scripts.tests.CalDAV.reports                                   [ERROR]
+
+File 9 of 13
+
+scripts.tests.CalDAV.sync-report                               [ERROR]
+
+File 10 of 13
+
+scripts.tests.CalDAV.recurrenceput                          
+  Suite: VEVENTs                                            
+
+scripts.tests.CalDAV.recurrenceput                             [ERROR]
+
+File 11 of 13
+
+scripts.tests.CalDAV.timezoneservice                         [IGNORED]
+
+File 12 of 13
+
+scripts.tests.CalDAV.timezonestdservice                      [IGNORED]
+
+File 13 of 13
+
+scripts.tests.CalDAV.implicittodo                            [IGNORED]
+
+======================================================================
+[ERROR]
+SOCKET ERROR: [Errno 111] Connection refused
+
+scripts.tests.CalDAV.current-user-principal
+======================================================================
+[ERROR]
+SOCKET ERROR: [Errno 111] Connection refused
+
+scripts.tests.CalDAV.propfind
+======================================================================
+[ERROR]
+SOCKET ERROR: [Errno 111] Connection refused
+
+scripts.tests.CalDAV.mkcalendar
+======================================================================
+[ERROR]
+SOCKET ERROR: [Errno 111] Connection refused
+
+scripts.tests.CalDAV.put
+======================================================================
+[ERROR]
+SOCKET ERROR: [Errno 111] Connection refused
+
+scripts.tests.CalDAV.get
+======================================================================
+[ERROR]
+SOCKET ERROR: [Errno 111] Connection refused
+
+scripts.tests.CalDAV.delete
+======================================================================
+[ERROR]
+SOCKET ERROR: [Errno 111] Connection refused
+
+scripts.tests.CalDAV.conditional
+======================================================================
+[ERROR]
+SOCKET ERROR: [Errno 111] Connection refused
+
+scripts.tests.CalDAV.reports
+======================================================================
+[ERROR]
+SOCKET ERROR: [Errno 111] Connection refused
+
+scripts.tests.CalDAV.sync-report
+======================================================================
+[ERROR]
+SOCKET ERROR: [Errno 111] Connection refused
+
+scripts.tests.CalDAV.recurrenceput
+----------------------------------------------------------------------
+Ran 13 tests in 0.004s
+
+FAILED (ok=0, ignored=3, failed=0, errors=10)
+error: Recipe `caldavtester-test-suite` failed on line 13 with exit code 10
+EXIT_STATUS=10

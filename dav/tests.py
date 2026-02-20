@@ -16,8 +16,7 @@ from calendars.models import (
     CalendarObjectChange,
     CalendarShare,
 )
-from dav import views_collections
-from dav import views_objects
+from dav import entrypoints
 from dav.core import calendar_data as core_calendar_data
 from dav.core import filters as core_filters
 from dav.core import freebusy as core_freebusy
@@ -47,12 +46,12 @@ from dav.view_helpers.recurrence_serialization import (
 from dav.view_helpers.report_paths import _all_object_hrefs, _report_href_style
 from dav.view_helpers import sync_tokens as sync_token_helpers
 from dav.view_helpers.sync_tokens import _build_sync_token
-from dav.views_common import (
+from dav.common import (
     _parse_sync_token_for_calendar,
     _remote_ip,
     _sync_token_revision_from_parts,
 )
-from dav.views_reports import (
+from dav.report_handlers import (
     _sync_collection_limit,
     _sync_collection_multistatus_document,
     _tzinfo_from_report,
@@ -152,6 +151,16 @@ class DavDiscoveryTests(TestCase):
         response = self.client.options("/dav/")
         self.assertEqual(response.status_code, 204)
         self.assertIn("calendar-access", response.headers.get("DAV", ""))
+
+    def test_dav_root_options_includes_allow_and_dav_guardrails(self):
+        response = self.client.options("/dav/")
+        self.assertEqual(response.status_code, 204)
+        self.assertNotIn(response.status_code, (301, 302, 307, 308))
+        allow = {part.strip() for part in response.headers.get("Allow", "").split(",")}
+        self.assertTrue({"OPTIONS", "PROPFIND", "GET", "HEAD"}.issubset(allow))
+        dav_header = response.headers.get("DAV", "")
+        self.assertTrue(dav_header)
+        self.assertIn("calendar-access", dav_header)
 
     def test_dav_root_no_trailing_slash_options_advertises_dav(self):
         response = self.client.options("/dav")
@@ -1130,6 +1139,34 @@ class DavReportTests(TestCase):
             response.content.decode("utf-8"),
         )
 
+    def test_authenticated_propfind_and_report_dispatch_on_calendar_collection(self):
+        path = f"/dav/calendars/{self.owner.username}/{self.calendar.slug}/"
+        propfind = self.client.generic(
+            "PROPFIND",
+            path,
+            data="",
+            content_type="application/xml",
+            **self._basic_auth("owner", "pw-test-12345"),
+        )
+        self.assertNotIn(propfind.status_code, (301, 302, 307, 308))
+        self.assertNotEqual(propfind.status_code, 405)
+
+        report_body = """<?xml version=\"1.0\" encoding=\"utf-8\"?>
+<C:calendar-query xmlns:D=\"DAV:\" xmlns:C=\"urn:ietf:params:xml:ns:caldav\">
+  <D:prop>
+    <D:getetag/>
+  </D:prop>
+</C:calendar-query>"""
+        report = self.client.generic(
+            "REPORT",
+            path,
+            data=report_body,
+            content_type="application/xml",
+            **self._basic_auth("owner", "pw-test-12345"),
+        )
+        self.assertNotIn(report.status_code, (301, 302, 307, 308))
+        self.assertNotEqual(report.status_code, 405)
+
     def test_sync_collection_logs_request_revisions_and_selected_items(self):
         create = self.client.generic(
             "PUT",
@@ -1272,6 +1309,28 @@ class DavWebdavCompatibilityTests(TestCase):
         )
         self.assertEqual(moved.status_code, 200)
         self.assertEqual(moved.content.decode("utf-8"), "copy me")
+
+    def test_copy_with_duplicate_uid_returns_409_instead_of_500(self):
+        put = self.client.generic(
+            "PUT",
+            "/dav/calendars/user01/litmus/a.ics",
+            data="BEGIN:VCALENDAR\nBEGIN:VEVENT\nUID:a\nEND:VEVENT\nEND:VCALENDAR\n",
+            content_type="text/calendar; charset=utf-8",
+            **self._basic_auth(),
+        )
+        self.assertEqual(put.status_code, 201)
+
+        copy = self.client.generic(
+            "COPY",
+            "/dav/calendars/user01/litmus/a.ics",
+            HTTP_DESTINATION="/dav/calendars/user01/litmus/b.ics",
+            HTTP_OVERWRITE="F",
+            **self._basic_auth(),
+        )
+        self.assertEqual(copy.status_code, 409)
+        self.assertFalse(
+            self.calendar.calendar_objects.filter(filename="b.ics").exists()
+        )
 
     def test_proppatch_sets_and_reads_dead_property_on_litmus_resource(self):
         put = self.client.generic(
@@ -2253,18 +2312,20 @@ class DavPureFunctionTests(SimpleTestCase):
 
     def test_users_alias_bindings_and_sync_token_helper_re_export(self):
         self.assertIs(
-            views_collections.principal_users_view, views_collections.principal_view
+            entrypoints.principal_users_view,
+            entrypoints.principal_view,
         )
         self.assertIs(
-            views_collections.calendar_home_users_view,
-            views_collections.calendar_home_view,
+            entrypoints.calendar_home_users_view,
+            entrypoints.calendar_home_view,
         )
         self.assertIs(
-            views_objects.calendar_collection_users_view,
-            views_objects.calendar_collection_view,
+            entrypoints.calendar_collection_users_view,
+            entrypoints.calendar_collection_view,
         )
         self.assertIs(
-            views_objects.calendar_object_users_view, views_objects.calendar_object_view
+            entrypoints.calendar_object_users_view,
+            entrypoints.calendar_object_view,
         )
         self.assertIs(
             _sync_token_revision_from_parts,

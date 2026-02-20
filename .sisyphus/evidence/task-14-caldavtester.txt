@@ -1,0 +1,417 @@
+# Default implementation-loop suite: supported CalDAV subset only.
+nix develop path:.#caldavtester -c bash -lc 'cd caldavtester-lab && ./bootstrap.sh >/dev/null && source ./.env-py2.sh && cd ccs-caldavtester && MODULES="`rg -v "^\\s*(#|$$)" ../caldav-suite-modules.txt | tr "\n" " "`" && python2 testcaldav.py $MODULES'
+Entered caldavtester shell (Python Python 2.7.18.12).
+Run: ./caldavtester-lab/bootstrap.sh
+Starting tests
+
+File 1 of 13
+
+scripts.tests.CalDAV.current-user-principal                 
+  Suite: Check for the property on /                        
+    Test: 1                                                       [OK]
+    Test: 2                                                       [OK]
+    Test: 3                                                       [OK]
+  Suite: Check for the property on /principals/             
+    Test: 1                                                       [OK]
+    Test: 2                                                       [OK]
+    Test: 3                                                       [OK]
+
+File 2 of 13
+
+scripts.tests.CalDAV.propfind                               
+  Suite: regular home prop finds                            
+    Test: 1                                                       [OK]
+    Test: 2                                                       [OK]
+    Test: 3                                                       [OK]
+    Test: 4                                                       [OK]
+  Suite: regular calendar prop finds                        
+    Test: 1                                                       [OK]
+    Test: 2                                                       [OK]
+    Test: 3                                                       [OK]
+    Test: 4                                                       [OK]
+    Test: 5                                                       [OK]
+    Test: 6                                                       [OK]
+    Test: 7                                                       [OK]
+  Suite: prop names                                         
+    Test: 1                                                       [OK]
+    Test: 2                                                       [OK]
+    Test: 3                                                       [OK]
+  Suite: prop all                                           
+    Test: 1                                                       [OK]
+    Test: 2                                                       [OK]
+    Test: 3                                                       [OK]
+  Suite: prop errors                                        
+    Test: 1                                                       [OK]
+    Test: 2                                                       [OK]
+    Test: 3                                                       [OK]
+  Suite: Depth:infinity disabled                            
+    Test: 1                                                       [OK]
+    Test: 2                                                       [OK]
+    Test: 3                                                       [OK]
+    Test: 4                                                       [OK]
+    Test: 5                                                       [OK]
+    Test: 6                                                       [OK]
+    Test: 7                                                       [OK]
+
+File 3 of 13
+
+scripts.tests.CalDAV.mkcalendar                             
+  Suite: MKCALENDAR without body                            
+    Test: 1                                                       [OK]
+    Test: 2                                                       [OK]
+    Test: 3                                                       [OK]
+    Test: 4                                                       [OK]
+  Suite: MKCALENDAR with body                               
+    Test: 1                                                       [OK]
+    Test: 2                                                       [OK]
+    Test: 3                                                       [OK]
+    Test: 4                                                       [OK]
+  Suite: MKCALENDAR read-free-busy privilege                
+    Test: 1                                                       [OK]
+    Test: 2                                                       [OK]
+  Suite: MKCALENDAR supported-component-set                 
+    Test: 1                                                       [OK]
+    Test: 2                                                       [OK]
+    Test: 3                                                       [OK]
+    Test: 4                                                       [OK]
+    Test: 5                                                       [OK]
+    Test: 6                                                       [OK]
+    Test: 7                                                       [OK]
+    Test: 8                                                  [IGNORED]
+    Test: 9                                                  [IGNORED]
+  Suite: supported-component-sets                           
+    Test: 1                                                       [OK]
+  Suite: Single component calendars                         
+    Test: 1                                                       [OK]
+    Test: 2                                                       [OK]
+    Test: 3                                                       [OK]
+    Test: 4                                                       [OK]
+
+File 4 of 13
+
+scripts.tests.CalDAV.put                                    
+  Suite: PUT VEVENT                                         
+    Test: 1                                                       [OK]
+    Test: 2                                                  [IGNORED]
+    Test: 3                                                       [OK]
+  Suite: Put VTODO                                          
+    Test: 1                                                       [OK]
+    Test: 2                                                       [OK]
+    Test: 3                                                       [OK]
+    Test: 4                                                       [OK]
+    Test: 5                                                       [OK]
+  Suite: Problem VEVENTs - EXDATE & various combinations of date-time/date values
+    Test: 1                                                       [OK]
+    Test: 2                                                       [OK]
+    Test: 3                                                       [OK]
+    Test: 4                                                       [OK]
+    Test: 5                                                       [OK]
+    Test: 6                                                       [OK]
+    Test: 7                                                       [OK]
+    Test: 8                                                       [OK]
+    Test: 9                                                       [OK]
+    Test: 10                                                      [OK]
+    Test: 11                                                      [OK]
+  Suite: Problem VTODOs - various combinations of date-time/date values
+    Test: 1                                                       [OK]
+    Test: 2                                                       [OK]
+    Test: 3                                                       [OK]
+    Test: 4                                                       [OK]
+    Test: 5                                                       [OK]
+    Test: 6                                                       [OK]
+    Test: 7                                                       [OK]
+    Test: 8                                                       [OK]
+    Test: 9                                                       [OK]
+    Test: 10                                                      [OK]
+    Test: 11                                                      [OK]
+    Test: 12                                                      [OK]
+  Suite: PUT with Content-Type parameters                   
+    Test: 1                                                       [OK]
+    Test: 2                                                       [OK]
+    Test: 3                                                       [OK]
+    Test: 4                                                  [IGNORED]
+    Test: 5                                                  [IGNORED]
+    Test: 6                                                  [IGNORED]
+    Test: 7                                                  [IGNORED]
+  Suite: PUT with RRULE truncation                           [IGNORED]
+  Suite: PUT with relaxed parsing                           
+    Test: 1                                                       [OK]
+    Test: 2                                                       [OK]
+  Suite: PUT with X- using VALUE != TEXT                    
+    Test: 1                                                       [OK]
+  Suite: PUTs with ^ parameter encoding                     
+    Test: 1                                                       [OK]
+  Suite: PUTs with duplicate alarms                         
+    Test: 1                                                       [OK]
+    Test: 2                                                       [OK]
+
+File 5 of 13
+
+scripts.tests.CalDAV.get                                    
+  Suite: GET on resource                                    
+    Test: 1                                                       [OK]
+    Test: 2                                                  [IGNORED]
+  Suite: GET on collections                                  [IGNORED]
+  Suite: GET on home                                         [IGNORED]
+
+File 6 of 13
+
+scripts.tests.CalDAV.delete                                 
+  Suite: DELETE                                             
+    Test: 1                                                       [OK]
+    Test: 2                                                       [OK]
+    Test: 3                                                       [OK]
+
+File 7 of 13
+
+scripts.tests.CalDAV.conditional                            
+  Suite: Last_modified handling                             
+    Test: 1                                                       [OK]
+    Test: 2                                                       [OK]
+    Test: 3                                                       [OK]
+
+File 8 of 13
+
+scripts.tests.CalDAV.reports                                
+  Suite: OPTIONS header                                     
+    Test: 1                                                       [OK]
+  Suite: multiget reports                                   
+    Test: 1a                                                      [OK]
+    Test: 1b                                                      [OK]
+    Test: 2                                                       [OK]
+    Test: 3                                                       [OK]
+    Test: 4a                                                      [OK]
+    Test: 4b                                                      [OK]
+    Test: 5a                                                      [OK]
+    Test: 5b                                                      [OK]
+    Test: 6                                                       [OK]
+    Test: 7                                                       [OK]
+    Test: 8                                                       [OK]
+  Suite: basic query reports                                
+    Test: 1a                                                      [OK]
+    Test: 1b                                                      [OK]
+    Test: 2a                                                      [OK]
+    Test: 2b                                                      [OK]
+    Test: 3                                                       [OK]
+    Test: 4                                                       [OK]
+    Test: 5                                                       [OK]
+    Test: 6                                                       [OK]
+    Test: 7                                                       [OK]
+    Test: 8                                                       [OK]
+    Test: 9                                                       [OK]
+    Test: 10                                                      [OK]
+    Test: 11                                                      [OK]
+    Test: 12                                                      [OK]
+    Test: 13                                                      [OK]
+    Test: 14a                                                     [OK]
+    Test: 14b                                                     [OK]
+    Test: 15                                                      [OK]
+    Test: 16                                                      [OK]
+    Test: 17a                                                     [OK]
+    Test: 17b                                                     [OK]
+    Test: 18a                                                     [OK]
+    Test: 18b                                                     [OK]
+    Test: 19a                                                     [OK]
+    Test: 19b                                                     [OK]
+    Test: 20a                                                     [OK]
+    Test: 20b                                                     [OK]
+    Test: 21                                                      [OK]
+    Test: 22a                                                     [OK]
+    Test: 22b                                                     [OK]
+    Test: 23                                                      [OK]
+    Test: 24                                                      [OK]
+    Test: 25                                                      [OK]
+    Test: 26                                                      [OK]
+    Test: 27                                                      [OK]
+    Test: 28                                                      [OK]
+    Test: 29                                                      [OK]
+    Test: 30                                                      [OK]
+    Test: 31                                                      [OK]
+    Test: 32                                                      [OK]
+    Test: 33                                                      [OK]
+    Test: 34                                                      [OK]
+  Suite: query reports with filtered data                   
+    Test: 1                                                       [OK]
+    Test: 2                                                       [OK]
+  Suite: time-range query reports                           
+    Test: 1                                                       [OK]
+    Test: 2                                                       [OK]
+    Test: 3                                                       [OK]
+    Test: 4                                                       [OK]
+    Test: 5                                                       [OK]
+    Test: 6                                                       [OK]
+    Test: 7                                                       [OK]
+    Test: 8                                                       [OK]
+    Test: 9                                                       [OK]
+    Test: 10                                                      [OK]
+    Test: 11                                                      [OK]
+    Test: 12a                                                     [OK]
+    Test: 12b                                                     [OK]
+    Test: 13                                                      [OK]
+    Test: 14                                                      [OK]
+    Test: 15                                                      [OK]
+    Test: 16                                                      [OK]
+    Test: 17                                                 [IGNORED]
+    Test: 18                                                      [OK]
+    Test: 19a                                                     [OK]
+    Test: 19b                                                     [OK]
+    Test: 20a                                                     [OK]
+    Test: 20b                                                     [OK]
+    Test: 21a                                                     [OK]
+    Test: 21b                                                     [OK]
+    Test: 22a                                                     [OK]
+    Test: 22b                                                     [OK]
+    Test: 23a                                                     [OK]
+    Test: 23b                                                     [OK]
+    Test: 24a                                                     [OK]
+    Test: 24b                                                     [OK]
+    Test: 25                                                      [OK]
+    Test: 26                                                      [OK]
+    Test: 27                                                      [OK]
+    Test: 28                                                      [OK]
+    Test: 29                                                      [OK]
+    Test: 30                                                      [OK]
+    Test: 31                                                      [OK]
+  Suite: alarm time-range query reports                     
+    Test: 1                                                       [OK]
+    Test: 2                                                       [OK]
+    Test: 3                                                       [OK]
+    Test: 4                                                       [OK]
+    Test: 5                                                       [OK]
+  Suite: free-busy reports                                  
+    Test: 1                                                       [OK]
+    Test: 2                                                       [OK]
+  Suite: limit/expand recurrence in reports                 
+    Test: 1                                                  [IGNORED]
+    Test: 2                                                  [IGNORED]
+    Test: 3                                                       [OK]
+    Test: 4                                                       [OK]
+    Test: 5                                                       [OK]
+    Test: 6                                                       [OK]
+    Test: 7                                                       [OK]
+    Test: 8                                                       [OK]
+    Test: 9a                                                      [OK]
+    Test: 9b                                                      [OK]
+    Test: 10                                                      [OK]
+    Test: 11                                                      [OK]
+    Test: 12                                                      [OK]
+    Test: 13                                                      [OK]
+
+File 9 of 13
+
+scripts.tests.CalDAV.sync-report                            
+  Suite: support-report-set/sync-token property             
+    Test: 1                                                       [OK]
+    Test: 2                                                       [OK]
+    Test: 3                                                       [OK]
+    Test: 4                                                       [OK]
+    Test: 5                                                  [IGNORED]
+  Suite: simple reports - sync-level                        
+    Test: 1                                                  [IGNORED]
+    Test: 2                                                  [IGNORED]
+    Test: 3                                                  [IGNORED]
+    Test: 4                                                  [IGNORED]
+    Test: 5                                                  [IGNORED]
+    Test: 6                                                  [IGNORED]
+    Test: 7                                                       [OK]
+    Test: 8                                                  [IGNORED]
+    Test: 9                                                  [IGNORED]
+    Test: 10                                                 [IGNORED]
+    Test: 11                                                 [IGNORED]
+    Test: 12                                                 [IGNORED]
+    Test: 13                                                      [OK]
+  Suite: simple reports - empty token - no props            
+    Test: 1                                                       [OK]
+    Test: 2                                                  [IGNORED]
+    Test: 3                                                  [IGNORED]
+    Test: 4                                                       [OK]
+    Test: 5                                                       [OK]
+    Test: 6                                                  [IGNORED]
+    Test: 7                                                  [IGNORED]
+    Test: 8                                                       [OK]
+    Test: 9                                                       [OK]
+    Test: 10                                                 [IGNORED]
+    Test: 11                                                 [IGNORED]
+    Test: 12                                                      [OK]
+    Test: 13                                                      [OK]
+    Test: 14                                                 [IGNORED]
+    Test: 15                                                 [IGNORED]
+  Suite: simple reports - diff token - no props - calendar depth:1
+    Test: 1                                                       [OK]
+    Test: 2                                                       [OK]
+    Test: 3                                                       [OK]
+    Test: 4                                                       [OK]
+    Test: 5                                                       [OK]
+    Test: 6                                                       [OK]
+  Suite: simple reports - empty token - props               
+    Test: 1                                                       [OK]
+    Test: 2                                                       [OK]
+    Test: 3                                                       [OK]
+    Test: 4                                                       [OK]
+  Suite: simple reports - diff token - props                
+    Test: 1                                                       [OK]
+    Test: 2                                                       [OK]
+    Test: 3                                                       [OK]
+    Test: 4                                                       [OK]
+    Test: 5                                                       [OK]
+    Test: 6                                                       [OK]
+  Suite: simple reports - diff token - no props - home depth:infinity [IGNORED]
+  Suite: simple reports - diff token - props - home depth:infinity [IGNORED]
+  Suite: simple reports - diff token - delete/create calendar - home depth:infinity [IGNORED]
+  Suite: simple reports - diff token - no props - home depth:1 [IGNORED]
+  Suite: simple reports - diff token - props - home depth:1  [IGNORED]
+  Suite: simple reports - diff token - delete/create calendar - home depth:1 [IGNORED]
+  Suite: simple reports - empty inbox                       
+    Test: 1                                                       [OK]
+  Suite: simple reports - valid token                       
+    Test: 1                                                       [OK]
+  Suite: calendar webdav property change - home depth:infinity [IGNORED]
+  Suite: calendar webdav property change - home depth:1      [IGNORED]
+  Suite: default calendar property change - home depth:1     [IGNORED]
+  Suite: schedule-calendar-transp in response - home depth:1 [IGNORED]
+  Suite: Prefer:return=minimal - home depth:1                [IGNORED]
+  Suite: limited reports                                    
+    Test: 1                                                  [IGNORED]
+
+File 10 of 13
+
+scripts.tests.CalDAV.recurrenceput                          
+  Suite: VEVENTs                                            
+    Test: 1                                                       [OK]
+    Test: 2                                                       [OK]
+    Test: 3                                                       [OK]
+    Test: 4                                                       [OK]
+    Test: 5                                                       [OK]
+    Test: 6                                                       [OK]
+    Test: 7                                                       [OK]
+    Test: 8                                                       [OK]
+    Test: 9                                                       [OK]
+    Test: 10                                                      [OK]
+    Test: 11                                                      [OK]
+    Test: 12                                                      [OK]
+  Suite: VTODOs                                             
+    Test: 1                                                       [OK]
+    Test: 2                                                       [OK]
+    Test: 3                                                       [OK]
+    Test: 4                                                       [OK]
+    Test: 5                                                       [OK]
+    Test: 6                                                       [OK]
+    Test: 7                                                       [OK]
+
+File 11 of 13
+
+scripts.tests.CalDAV.timezoneservice                         [IGNORED]
+
+File 12 of 13
+
+scripts.tests.CalDAV.timezonestdservice                      [IGNORED]
+
+File 13 of 13
+
+scripts.tests.CalDAV.implicittodo                            [IGNORED]
+
+----------------------------------------------------------------------
+Ran 312 tests in 4.362s
+
+PASSED (ok=263, ignored=49)
+EXIT_STATUS=0

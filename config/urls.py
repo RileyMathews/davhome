@@ -19,15 +19,19 @@ from django.contrib import admin
 from django.urls import include, path
 
 from accounts.views import home
-from dav.views_collections import dav_root, well_known_caldav
+from dav import entrypoints
 
 urlpatterns = [
     path("", home, name="home"),
     path("accounts/", include("accounts.urls")),
     path("calendars/", include("calendars.urls")),
-    path(".well-known/caldav", well_known_caldav, name="well-known-caldav"),
-    path(".well-known/caldav/", well_known_caldav),
-    path("dav", dav_root, name="dav-root-no-slash"),
+    path(
+        ".well-known/caldav",
+        entrypoints.well_known_caldav,
+        name="well-known-caldav",
+    ),
+    path(".well-known/caldav/", entrypoints.well_known_caldav),
+    path("dav", entrypoints.dav_root, name="dav-root-no-slash"),
     path("dav/", include("dav.urls")),
     path("admin/", admin.site.urls),
 ]

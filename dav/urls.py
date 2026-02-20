@@ -1,162 +1,157 @@
 from django.urls import path
 
-from . import views_collections
-from . import views_objects
+from . import entrypoints
 
 app_name = "dav"
 
 urlpatterns = [
-    path("", views_collections.dav_root, name="root"),
+    path("", entrypoints.dav_root, name="root"),
     path(
         "principals",
-        views_collections.principals_collection_view,
+        entrypoints.principals_collection_view,
         name="principals-no-slash",
     ),
-    path(
-        "principals/", views_collections.principals_collection_view, name="principals"
-    ),
+    path("principals/", entrypoints.principals_collection_view, name="principals"),
     path(
         "principals/users",
-        views_collections.principals_users_collection_view,
+        entrypoints.principals_users_collection_view,
         name="principals-users-no-slash",
     ),
     path(
         "principals/users/",
-        views_collections.principals_users_collection_view,
+        entrypoints.principals_users_collection_view,
         name="principals-users",
     ),
     path(
         "principals/users/<str:username>",
-        views_collections.principal_users_view,
+        entrypoints.principal_users_view,
         name="principal-user-no-slash",
     ),
     path(
         "principals/users/<str:username>/",
-        views_collections.principal_users_view,
+        entrypoints.principal_users_view,
         name="principal-user",
     ),
     path(
         "principals/__uids__/<str:guid>",
-        views_collections.principal_uid_view,
+        entrypoints.principal_uid_view,
         name="principal-uid-no-slash",
     ),
     path(
         "principals/__uids__/<str:guid>/",
-        views_collections.principal_uid_view,
+        entrypoints.principal_uid_view,
         name="principal-uid",
     ),
     path(
         "principals/<str:username>",
-        views_collections.principal_view,
+        entrypoints.principal_view,
         name="principal-no-slash",
     ),
-    path(
-        "principals/<str:username>/", views_collections.principal_view, name="principal"
-    ),
+    path("principals/<str:username>/", entrypoints.principal_view, name="principal"),
     path(
         "calendars",
-        views_collections.calendars_collection_view,
+        entrypoints.calendars_collection_view,
         name="calendars-no-slash",
     ),
-    path("calendars/", views_collections.calendars_collection_view, name="calendars"),
+    path("calendars/", entrypoints.calendars_collection_view, name="calendars"),
     path(
         "calendars//",
-        views_collections.calendars_collection_view,
+        entrypoints.calendars_collection_view,
         name="calendars-double-slash",
     ),
     path(
         "calendars/__uids__",
-        views_collections.calendars_uids_collection_view,
+        entrypoints.calendars_uids_collection_view,
         name="calendars-uids-no-slash",
     ),
     path(
         "calendars/__uids__/",
-        views_collections.calendars_uids_collection_view,
+        entrypoints.calendars_uids_collection_view,
         name="calendars-uids",
     ),
     path(
         "calendars/users",
-        views_collections.calendars_users_collection_view,
+        entrypoints.calendars_users_collection_view,
         name="calendars-users-no-slash",
     ),
     path(
         "calendars/users/",
-        views_collections.calendars_users_collection_view,
+        entrypoints.calendars_users_collection_view,
         name="calendars-users",
     ),
     path(
         "calendars/users/<str:username>",
-        views_collections.calendar_home_users_view,
+        entrypoints.calendar_home_users_view,
         name="calendar-home-users-no-slash",
     ),
     path(
         "calendars/users/<str:username>/",
-        views_collections.calendar_home_users_view,
+        entrypoints.calendar_home_users_view,
         name="calendar-home-users",
     ),
     path(
         "calendars/__uids__/<str:guid>",
-        views_collections.calendar_home_uid_view,
+        entrypoints.calendar_home_uid_view,
         name="calendar-home-uid-no-slash",
     ),
     path(
         "calendars/__uids__/<str:guid>/",
-        views_collections.calendar_home_uid_view,
+        entrypoints.calendar_home_uid_view,
         name="calendar-home-uid",
     ),
     path(
         "calendars/<str:username>",
-        views_collections.calendar_home_view,
+        entrypoints.calendar_home_view,
         name="calendar-home-no-slash",
     ),
     path(
         "calendars/<str:username>/",
-        views_collections.calendar_home_view,
+        entrypoints.calendar_home_view,
         name="calendar-home",
     ),
     path(
         "calendars/users/<str:username>/<slug:slug>",
-        views_objects.calendar_collection_users_view,
+        entrypoints.calendar_collection_users_view,
         name="calendar-collection-users-no-slash",
     ),
     path(
         "calendars/users/<str:username>/<slug:slug>/",
-        views_objects.calendar_collection_users_view,
+        entrypoints.calendar_collection_users_view,
         name="calendar-collection-users",
     ),
     path(
         "calendars/__uids__/<str:guid>/<slug:slug>",
-        views_objects.calendar_collection_uid_view,
+        entrypoints.calendar_collection_uid_view,
         name="calendar-collection-uid-no-slash",
     ),
     path(
         "calendars/__uids__/<str:guid>/<slug:slug>/",
-        views_objects.calendar_collection_uid_view,
+        entrypoints.calendar_collection_uid_view,
         name="calendar-collection-uid",
     ),
     path(
         "calendars/<str:username>/<slug:slug>",
-        views_objects.calendar_collection_view,
+        entrypoints.calendar_collection_view,
         name="calendar-collection-no-slash",
     ),
     path(
         "calendars/<str:username>/<slug:slug>/",
-        views_objects.calendar_collection_view,
+        entrypoints.calendar_collection_view,
         name="calendar-collection",
     ),
     path(
         "calendars/users/<str:username>/<slug:slug>/<path:filename>",
-        views_objects.calendar_object_users_view,
+        entrypoints.calendar_object_users_view,
         name="calendar-object-users",
     ),
     path(
         "calendars/__uids__/<str:guid>/<slug:slug>/<path:filename>",
-        views_objects.calendar_object_uid_view,
+        entrypoints.calendar_object_uid_view,
         name="calendar-object-uid",
     ),
     path(
         "calendars/<str:username>/<slug:slug>/<path:filename>",
-        views_objects.calendar_object_view,
+        entrypoints.calendar_object_view,
         name="calendar-object",
     ),
 ]

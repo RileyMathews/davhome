@@ -38,13 +38,13 @@ from .view_helpers.report_paths import _object_href_for_style_data
 from .view_helpers.report_paths import _report_href_style
 from .view_helpers.identity import _principal_href_for_user
 from .view_helpers.sync_tokens import _build_sync_token, _parse_sync_token_for_calendar
-from .views_common import _caldav_error_response
-from .views_common import _dav_common_headers
-from .views_common import _etag_for_object
-from .views_common import _latest_sync_revision
-from .views_common import _sync_token_for_calendar
-from .views_common import _valid_sync_token_error_response
-from .views_common import _xml_response
+from .common import _caldav_error_response
+from .common import _dav_common_headers
+from .common import _etag_for_object
+from .common import _latest_sync_revision
+from .common import _sync_token_for_calendar
+from .common import _valid_sync_token_error_response
+from .common import _xml_response
 
 
 logger = logging.getLogger("dav.audit")
