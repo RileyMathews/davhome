@@ -18,7 +18,6 @@ from pycalendar.datetime import DateTime
 
 
 class ComponentExpanded(object):
-
     @staticmethod
     def sort_by_dtstart_allday(e1, e2):
 
@@ -42,8 +41,10 @@ class ComponentExpanded(object):
     def sort_by_dtstart(e1, e2):
         if e1.mInstanceStart == e2.mInstanceStart:
             if (
-                e1.mInstanceStart.isDateOnly() and not e2.mInstanceStart.isDateOnly() or
-                not e1.mInstanceStart.isDateOnly() and e2.mInstanceStart.isDateOnly()
+                e1.mInstanceStart.isDateOnly()
+                and not e2.mInstanceStart.isDateOnly()
+                or not e1.mInstanceStart.isDateOnly()
+                and e2.mInstanceStart.isDateOnly()
             ):
                 return e1.mInstanceStart.isDateOnly()
             else:
@@ -121,7 +122,9 @@ class ComponentExpanded(object):
 
             # End is based on original events settings
             if self.mOwner.hasEnd():
-                self.mInstanceEnd = self.mInstanceStart + (self.mOwner.getEnd() - self.mOwner.getStart())
+                self.mInstanceEnd = self.mInstanceStart + (
+                    self.mOwner.getEnd() - self.mOwner.getStart()
+                )
             else:
                 self.mInstanceEnd = self.mInstanceStart.duplicate()
 
@@ -141,9 +144,13 @@ class ComponentExpanded(object):
             # We need to use the rid as the starting point, but adjust it by
             # the offset between the slave's
             # rid and its start
-            self.mInstanceStart = rid + (self.mOwner.getStart() - self.mOwner.getRecurrenceID())
+            self.mInstanceStart = rid + (
+                self.mOwner.getStart() - self.mOwner.getRecurrenceID()
+            )
 
             # End is based on duration of owner
-            self.mInstanceEnd = self.mInstanceStart + (self.mOwner.getEnd() - self.mOwner.getStart())
+            self.mInstanceEnd = self.mInstanceStart + (
+                self.mOwner.getEnd() - self.mOwner.getStart()
+            )
 
             self.mRecurring = True

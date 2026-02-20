@@ -24,7 +24,6 @@ import json
 
 
 class TestJSON(unittest.TestCase):
-
     data = (
         (
             """BEGIN:VCALENDAR
@@ -39,7 +38,6 @@ UID:4088E990AD89CB3DBB484909
 END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
-
             """[
   "vcalendar",
   [
@@ -142,7 +140,6 @@ UID:00959BC664CA650E933C892C@example.com
 END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
-
             """[
   "vcalendar",
   [
@@ -405,7 +402,6 @@ UID:4088E990AD89CB3DBB484909
 END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
-
             """[
   "vcalendar",
   [
@@ -508,7 +504,6 @@ UID:00959BC664CA650E933C892C@example.com
 END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
-
             """[
   "vcalendar",
   [
@@ -760,7 +755,9 @@ END:VCALENDAR
     def testGenerateJSON(self):
 
         def _doRoundtrip(caldata, resultdata):
-            test1 = json.dumps(json.loads(resultdata), indent=2, separators=(',', ':'), sort_keys=True)
+            test1 = json.dumps(
+                json.loads(resultdata), indent=2, separators=(",", ":"), sort_keys=True
+            )
 
             cal = Calendar.parseText(caldata)
 
@@ -768,7 +765,9 @@ END:VCALENDAR
             self.assertEqual(
                 test1,
                 test2,
-                "\n".join(difflib.unified_diff(str(test1).splitlines(), test2.splitlines()))
+                "\n".join(
+                    difflib.unified_diff(str(test1).splitlines(), test2.splitlines())
+                ),
             )
 
         for item1, item2 in self.data:
@@ -786,7 +785,9 @@ END:VCALENDAR
             self.assertEqual(
                 test1,
                 test2,
-                "\n".join(difflib.unified_diff(str(test1).splitlines(), test2.splitlines()))
+                "\n".join(
+                    difflib.unified_diff(str(test1).splitlines(), test2.splitlines())
+                ),
             )
 
         for item1, item2 in self.data:
@@ -804,7 +805,9 @@ END:VCALENDAR
             self.assertEqual(
                 test1,
                 test2,
-                "\n".join(difflib.unified_diff(str(test1).splitlines(), test2.splitlines()))
+                "\n".join(
+                    difflib.unified_diff(str(test1).splitlines(), test2.splitlines())
+                ),
             )
 
         for item1, item2 in self.i18ndata:
@@ -854,7 +857,9 @@ END:VCALENDAR
         self.assertEqual(
             test1,
             test2,
-            "\n".join(difflib.unified_diff(str(test1).splitlines(), test2.splitlines()))
+            "\n".join(
+                difflib.unified_diff(str(test1).splitlines(), test2.splitlines())
+            ),
         )
 
     def testjCalExample2(self):
@@ -1011,12 +1016,13 @@ END:VCALENDAR
         self.assertEqual(
             test1,
             test2,
-            "\n".join(difflib.unified_diff(str(test1).splitlines(), test2.splitlines()))
+            "\n".join(
+                difflib.unified_diff(str(test1).splitlines(), test2.splitlines())
+            ),
         )
 
 
 class TestJSONProperty(unittest.TestCase):
-
     test_data = (
         # Different value types
         ["attach", {}, "binary", "VGVzdA=="],
@@ -1029,7 +1035,17 @@ class TestJSONProperty(unittest.TestCase):
         ["sequence", {}, "integer", 1],
         ["rdate", {}, "date-time", "2006-02-26T12:00:00Z", "2006-02-27T12:00:00Z"],
         ["freebusy", {}, "period", ["2006-02-26T12:00:00Z", "2006-02-27T12:00:00Z"]],
-        ["rrule", {}, "recur", {"freq": "MONTHLY", "count": 3, "byday": ["TU", "WE", "TH"], "bysetpos": [-1]}],
+        [
+            "rrule",
+            {},
+            "recur",
+            {
+                "freq": "MONTHLY",
+                "count": 3,
+                "byday": ["TU", "WE", "TH"],
+                "bysetpos": [-1],
+            },
+        ],
         ["request-status", {}, "text", ["2.0", "Success"]],
         ["geo", {}, "float", [-2.1, 3.2]],
         ["uri", {}, "uri", "http://www.example.com"],
@@ -1040,14 +1056,22 @@ class TestJSONProperty(unittest.TestCase):
         ["x-apple-structured-location", {}, "uri", "geo:123.123,123.123"],
         ["rrule", {}, "recur", {"freq": "MONTHLY", "until": "2013-01-01T00:00:00Z"}],
         ["categories", {}, "text", "A", "B"],
-
         # Various parameters
         ["dtstart", {"tzid": "Somewhere, else"}, "date-time", "2006-02-26T12:00:00"],
-        ["attendee", {"partstat": "ACCEPTED", "role": "CHAIR"}, "cal-address", "mailto:jdoe@example.com"],
+        [
+            "attendee",
+            {"partstat": "ACCEPTED", "role": "CHAIR"},
+            "cal-address",
+            "mailto:jdoe@example.com",
+        ],
         ["x-foo", {"x-bar": "Some\\ntext"}, "text", "foobar"],
-
         # Parameter escaping
-        ["attendee", {"cn": "My 'Test' Name", "role": "CHAIR"}, "cal-address", "mailto:jdoe@example.com"],
+        [
+            "attendee",
+            {"cn": "My 'Test' Name", "role": "CHAIR"},
+            "cal-address",
+            "mailto:jdoe@example.com",
+        ],
     )
 
     def testParseGenerate(self):
@@ -1056,4 +1080,12 @@ class TestJSONProperty(unittest.TestCase):
             prop = Property.parseJSON(data)
             jobject = []
             prop.writeJSON(jobject)
-            self.assertEqual(jobject[0], data, "Failed parse/generate: %s to %s" % (data, jobject[0],))
+            self.assertEqual(
+                jobject[0],
+                data,
+                "Failed parse/generate: %s to %s"
+                % (
+                    data,
+                    jobject[0],
+                ),
+            )

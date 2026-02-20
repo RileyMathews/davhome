@@ -1,8 +1,7 @@
 from .base import DavView
-from .mixins import DavAuthMixin, DavHeaderMixin, DavOptionsMixin
+from .mixins import DavHeaderMixin, DavOptionsMixin
 
 __all__ = [
-    "DavAuthMixin",
     "DavHeaderMixin",
     "DavOptionsMixin",
     "DavView",

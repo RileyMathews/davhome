@@ -20,7 +20,6 @@ Verifier that checks the response body for an exact match to data in a file.
 
 
 class Verifier(object):
-
     def verify(self, manager, uri, response, respdata, args):  # @UnusedVariable
         # Get arguments
         equals = args.get("equals", [])
@@ -49,14 +48,22 @@ class Verifier(object):
         for item in equals:
             item = manager.server_info.subs(item)
             if newrespdata != item:
-                return False, "        Response data does not equal \"%s\"" % (item,)
+                return False, '        Response data does not equal "%s"' % (item,)
         for item in contains:
             item = manager.server_info.subs(item)
-            if newrespdata.find(item.replace("\n", "\r\n")) == -1 and newrespdata.find(item) == -1:
-                return False, "        Response data does not contain \"%s\"" % (item,)
+            if (
+                newrespdata.find(item.replace("\n", "\r\n")) == -1
+                and newrespdata.find(item) == -1
+            ):
+                return False, '        Response data does not contain "%s"' % (item,)
         for item in notcontains:
             item = manager.server_info.subs(item)
-            if newrespdata.find(item.replace("\n", "\r\n")) != -1 or newrespdata.find(item) != -1:
-                return False, "        Response data incorrectly contains \"%s\"" % (item,)
+            if (
+                newrespdata.find(item.replace("\n", "\r\n")) != -1
+                or newrespdata.find(item) != -1
+            ):
+                return False, '        Response data incorrectly contains "%s"' % (
+                    item,
+                )
 
         return True, ""

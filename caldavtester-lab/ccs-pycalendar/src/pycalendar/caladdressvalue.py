@@ -22,8 +22,10 @@ from pycalendar.value import Value
 
 
 class CalAddressValue(PlainTextValue):
-
     def getType(self):
         return Value.VALUETYPE_CALADDRESS
 
-Value.registerType(Value.VALUETYPE_CALADDRESS, CalAddressValue, xmldefinitions.value_cal_address)
+
+Value.registerType(
+    Value.VALUETYPE_CALADDRESS, CalAddressValue, xmldefinitions.value_cal_address
+)

@@ -22,8 +22,8 @@ from pycalendar.vcard.n import N
 
 
 class NValue(WrapperValue, Value):
-
     _wrappedClass = N
     _wrappedType = Value.VALUETYPE_N
+
 
 Value.registerType(Value.VALUETYPE_N, NValue, None)

@@ -35,7 +35,6 @@ import xml.etree.cElementTree as XML
 
 
 class Calendar(ContainerBase):
-
     REMOVE_ALL = 0
     REMOVE_ONLY_THIS = 1
     REMOVE_THIS_AND_FUTURE = 2
@@ -44,9 +43,9 @@ class Calendar(ContainerBase):
     FIND_MASTER = 1
 
     # Enums for includeTimezone parameter
-    ALL_TIMEZONES = 0       # Always include referenced timezones
-    NONSTD_TIMEZONES = 1    # Only include non-standard referenced timezones
-    NO_TIMEZONES = 2        # Never include timezones other than those already present
+    ALL_TIMEZONES = 0  # Always include referenced timezones
+    NONSTD_TIMEZONES = 1  # Only include non-standard referenced timezones
+    NO_TIMEZONES = 2  # Never include timezones other than those already present
 
     sContainerDescriptor = "iCalendar"
     sComponentType = Component
@@ -72,7 +71,9 @@ class Calendar(ContainerBase):
 
         self.mName = ""
         self.mDescription = ""
-        self.mMasterComponentsByTypeAndUID = collections.defaultdict(lambda: collections.defaultdict(list))
+        self.mMasterComponentsByTypeAndUID = collections.defaultdict(
+            lambda: collections.defaultdict(list)
+        )
         self.mOverriddenComponentsByUID = collections.defaultdict(list)
 
     def __str__(self):
@@ -125,7 +126,9 @@ class Calendar(ContainerBase):
 
             # Now create properties
             if len(description):
-                self.addProperty(Property(definitions.cICalProperty_XWRCALDESC, description))
+                self.addProperty(
+                    Property(definitions.cICalProperty_XWRCALDESC, description)
+                )
 
     def getMethod(self):
         result = ""
@@ -152,11 +155,15 @@ class Calendar(ContainerBase):
 
         # Maps
         if oldUID in self.mOverriddenComponentsByUID:
-            self.mOverriddenComponentsByUID[newUID] = self.mOverriddenComponentsByUID[oldUID]
+            self.mOverriddenComponentsByUID[newUID] = self.mOverriddenComponentsByUID[
+                oldUID
+            ]
             del self.mOverriddenComponentsByUID[oldUID]
         for ctype in self.mMasterComponentsByTypeAndUID:
             if oldUID in self.mMasterComponentsByTypeAndUID[ctype]:
-                self.mMasterComponentsByTypeAndUID[ctype][newUID] = self.mMasterComponentsByTypeAndUID[ctype][oldUID]
+                self.mMasterComponentsByTypeAndUID[ctype][newUID] = (
+                    self.mMasterComponentsByTypeAndUID[ctype][oldUID]
+                )
                 del self.mMasterComponentsByTypeAndUID[ctype][oldUID]
 
     def finalise(self):
@@ -196,7 +203,10 @@ class Calendar(ContainerBase):
 
         # We need to store all timezones in the static object so they can be accessed by any date object
         from pycalendar.timezonedb import TimezoneDatabase
-        TimezoneDatabase.mergeTimezones(self, self.getComponents(definitions.cICalComponent_VTIMEZONE))
+
+        TimezoneDatabase.mergeTimezones(
+            self, self.getComponents(definitions.cICalComponent_VTIMEZONE)
+        )
 
         return result
 
@@ -218,11 +228,9 @@ class Calendar(ContainerBase):
         got_timezone = False
 
         while readFoldedLine(ins, lines):
-
             line = lines[0]
 
             if state == LOOK_FOR_VCALENDAR:
-
                 # Look for start
                 if line == self.getBeginDelimiter():
                     # Next state
@@ -239,12 +247,15 @@ class Calendar(ContainerBase):
                     raise InvalidData("iCalendar data not recognized", line)
 
             elif state == GET_PROPERTY_OR_COMPONENT:
-
                 # Parse property or look for start of component
                 if line.startswith("BEGIN:"):
-
                     # Push previous details to stack
-                    componentstack.append((comp, compend,))
+                    componentstack.append(
+                        (
+                            comp,
+                            compend,
+                        )
+                    )
 
                     # Start a new component
                     comp = self.sComponentType.makeComponent(line[6:], comp)
@@ -259,13 +270,11 @@ class Calendar(ContainerBase):
                         got_timezone = True
 
                 elif line == self.getEndDelimiter():
-
                     # Change state
                     state = GOT_VCALENDAR
 
                 # Look for end of current component
                 elif line == compend:
-
                     # Finalise the component (this caches data from the properties)
                     comp.finalise()
 
@@ -285,7 +294,6 @@ class Calendar(ContainerBase):
 
                 # Must be a property
                 else:
-
                     # Parse parameter/value for top-level calendar item
                     prop = self.sPropertyType.parseText(line)
 
@@ -301,7 +309,10 @@ class Calendar(ContainerBase):
         # Only do this if we read in a timezone
         if got_timezone:
             from pycalendar.timezonedb import TimezoneDatabase
-            TimezoneDatabase.mergeTimezones(self, self.getComponents(definitions.cICalComponent_VTIMEZONE))
+
+            TimezoneDatabase.mergeTimezones(
+                self, self.getComponents(definitions.cICalComponent_VTIMEZONE)
+            )
 
         return result
 
@@ -379,7 +390,9 @@ class Calendar(ContainerBase):
         prop = Property(definitions.cICalProperty_DTSTART, newdtstartValue)
         newcomp.addProperty(prop)
         if not newcomp.useDuration():
-            prop = Property(definitions.cICalProperty_DTEND, newdtstartValue + oldduration)
+            prop = Property(
+                definitions.cICalProperty_DTEND, newdtstartValue + oldduration
+            )
             newcomp.addProperty(prop)
 
         newcomp.addProperty(Property("RECURRENCE-ID", newdtstartValue))
@@ -428,14 +441,20 @@ class Calendar(ContainerBase):
         self.includeMissingTimezones(includeTimezones=includeTimezones)
 
         # Root node structure
-        root = XML.Element(xmlutils.makeTag(xmldefinitions.iCalendar20_namespace, xmldefinitions.icalendar))
+        root = XML.Element(
+            xmlutils.makeTag(
+                xmldefinitions.iCalendar20_namespace, xmldefinitions.icalendar
+            )
+        )
         super(Calendar, self).writeXML(root, xmldefinitions.iCalendar20_namespace)
         return root
 
     def getTextJSON(self, includeTimezones=None, sort_keys=False):
         jobject = []
         self.writeJSON(jobject, includeTimezones)
-        return json.dumps(jobject[0], indent=2, separators=(',', ':'), sort_keys=sort_keys)
+        return json.dumps(
+            jobject[0], indent=2, separators=(",", ":"), sort_keys=sort_keys
+        )
 
     def writeJSON(self, jobject, includeTimezones=None):
         # Make sure all required timezones are in this object
@@ -450,7 +469,7 @@ class Calendar(ContainerBase):
         for vevent in self.getComponents(definitions.cICalComponent_VEVENT):
             vevent.expandPeriod(period, list)
 
-        if (all_day_at_top):
+        if all_day_at_top:
             list.sort(ComponentExpanded.sort_by_dtstart_allday)
         else:
             list.sort(ComponentExpanded.sort_by_dtstart)
@@ -466,14 +485,12 @@ class Calendar(ContainerBase):
 
         # Look at each VToDo
         for vtodo in self.getComponents(definitions.cICalComponent_VTODO):
-
             # Filter out done (that were complted more than a day ago) or cancelled to dos if required
             if only_due:
                 if vtodo.getStatus() == definitions.eStatus_VToDo_Cancelled:
                     continue
-                elif (
-                    (vtodo.getStatus() == definitions.eStatus_VToDo_Completed) and
-                    (not vtodo.hasCompleted() or (vtodo.getCompleted() < minusoneday))
+                elif (vtodo.getStatus() == definitions.eStatus_VToDo_Completed) and (
+                    not vtodo.hasCompleted() or (vtodo.getCompleted() < minusoneday)
                 ):
                     continue
 
@@ -493,7 +510,12 @@ class Calendar(ContainerBase):
 
     def getRecurrenceInstancesIds(self, type, uid, ids):
         # Get instances from list
-        ids.extend([comp.getRecurrenceID() for comp in self.mOverriddenComponentsByUID.get(uid, ())])
+        ids.extend(
+            [
+                comp.getRecurrenceID()
+                for comp in self.mOverriddenComponentsByUID.get(uid, ())
+            ]
+        )
 
     # Freebusy generation
     def getVFreeBusyList(self, period, list):
@@ -513,14 +535,15 @@ class Calendar(ContainerBase):
         dtstart = []
         dtend = []
         for dt in list:
-
             # Ignore if all-day
             if dt.getInstanceStart().isDateOnly():
                 continue
 
             # Ignore if transparent to free-busy
             transp = ""
-            if dt.getOwner().getProperty(definitions.cICalProperty_TRANSP, transp) and (transp == definitions.cICalProperty_TRANSPARENT):
+            if dt.getOwner().getProperty(definitions.cICalProperty_TRANSP, transp) and (
+                transp == definitions.cICalProperty_TRANSPARENT
+            ):
                 continue
 
             # Add start/end to list
@@ -537,10 +560,8 @@ class Calendar(ContainerBase):
         dtend_iter = dtend.iter()
         dtend_iter.next()
         for _ignore in (None,):
-
             # Check for non-overlap
             if dtstart_iter > temp.getEnd():
-
                 # Current period is complete
                 fb.addProperty(Property(definitions.cICalProperty_FREEBUSY, temp))
 
@@ -549,7 +570,6 @@ class Calendar(ContainerBase):
 
             # They overlap - check for extended end
             if dtend_iter > temp.getEnd():
-
                 # Extend the end
                 temp = Period(temp.getStart(), dtend_iter)
 
@@ -564,22 +584,36 @@ class Calendar(ContainerBase):
 
         # Get start/end list for each non-all-day expanded components
         for comp in list:
-
             # Ignore if all-day
             if comp.getInstanceStart().isDateOnly():
                 continue
 
             # Ignore if transparent to free-busy
             transp = ""
-            if comp.getOwner().getProperty(definitions.cICalProperty_TRANSP, transp) and (transp == definitions.cICalProperty_TRANSPARENT):
+            if comp.getOwner().getProperty(
+                definitions.cICalProperty_TRANSP, transp
+            ) and (transp == definitions.cICalProperty_TRANSPARENT):
                 continue
 
             # Add free busy item to list
             status = comp.getMaster().getStatus()
-            if status in (definitions.eStatus_VEvent_None, definitions.eStatus_VEvent_Confirmed):
-                fb.append(FreeBusy(FreeBusy.BUSY, Period(comp.getInstanceStart(), comp.getInstanceEnd())))
+            if status in (
+                definitions.eStatus_VEvent_None,
+                definitions.eStatus_VEvent_Confirmed,
+            ):
+                fb.append(
+                    FreeBusy(
+                        FreeBusy.BUSY,
+                        Period(comp.getInstanceStart(), comp.getInstanceEnd()),
+                    )
+                )
             elif status == definitions.eStatus_VEvent_Tentative:
-                fb.append(FreeBusy(FreeBusy.BUSYTENTATIVE, Period(comp.getInstanceStart(), comp.getInstanceEnd())))
+                fb.append(
+                    FreeBusy(
+                        FreeBusy.BUSYTENTATIVE,
+                        Period(comp.getInstanceStart(), comp.getInstanceEnd()),
+                    )
+                )
                 break
             elif status == definitions.eStatus_VEvent_Cancelled:
                 # Cancelled => does not contribute to busy time
@@ -591,7 +625,6 @@ class Calendar(ContainerBase):
 
         # Get start/end list for each free-busy
         for comp in list2:
-
             # Expand component and add free busy info to list
             comp.expandPeriod(period, fb)
 
@@ -623,15 +656,13 @@ class Calendar(ContainerBase):
 
     def validProperty(self, prop):
         if prop.getName() == definitions.cICalProperty_VERSION:
-
             tvalue = prop.getTextValue()
-            if ((tvalue is None) or (tvalue.getValue() != "2.0")):
+            if (tvalue is None) or (tvalue.getValue() != "2.0"):
                 return False
 
         elif prop.getName() == definitions.cICalProperty_CALSCALE:
-
             tvalue = prop.getTextValue()
-            if ((tvalue is None) or (tvalue.getValue() != "GREGORIAN")):
+            if (tvalue is None) or (tvalue.getValue() != "GREGORIAN"):
                 return False
 
         return True
@@ -662,9 +693,13 @@ class Calendar(ContainerBase):
 
         # Make sure each timezone is in current calendar
         from pycalendar.timezonedb import TimezoneDatabase
+
         for tzid in tzids:
             # Skip standard timezones if requested
-            if includeTimezones == Calendar.NONSTD_TIMEZONES and TimezoneDatabase.isStandardTimezone(tzid):
+            if (
+                includeTimezones == Calendar.NONSTD_TIMEZONES
+                and TimezoneDatabase.isStandardTimezone(tzid)
+            ):
                 continue
             tz = self.getTimezone(tzid)
             if tz is None:
@@ -683,10 +718,13 @@ class Calendar(ContainerBase):
         @rtype: L{bool}
         """
         from pycalendar.timezonedb import TimezoneDatabase
+
         changed = False
         for component in self.getComponents(definitions.cICalComponent_VTIMEZONE):
             tz = TimezoneDatabase.getTimezone(component.getID())
-            if tz is not None and TimezoneDatabase.isStandardTimezone(component.getID()):
+            if tz is not None and TimezoneDatabase.isStandardTimezone(
+                component.getID()
+            ):
                 self.removeComponent(component)
                 changed = True
 

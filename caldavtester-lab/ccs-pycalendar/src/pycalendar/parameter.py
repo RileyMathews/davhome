@@ -26,7 +26,6 @@ import xml.etree.cElementTree as XML
 
 
 class Parameter(object):
-
     def __init__(self, name, value=None):
         self.mName = name
         if value is None:
@@ -50,7 +49,9 @@ class Parameter(object):
     def __eq__(self, other):
         if not isinstance(other, Parameter):
             return False
-        return self.mName.upper() == other.mName.upper() and self.mValues == other.mValues
+        return (
+            self.mName.upper() == other.mName.upper() and self.mValues == other.mValues
+        )
 
     def getName(self):
         return self.mName
@@ -103,7 +104,7 @@ class Parameter(object):
 
         # Look for quoting
         if str.find(":") != -1 or str.find(";") != -1 or str.find(",") != -1:
-            os.write("\"%s\"" % (str,))
+            os.write('"%s"' % (str,))
         else:
             os.write(str)
 
@@ -111,8 +112,12 @@ class Parameter(object):
         param = XML.SubElement(node, xmlutils.makeTag(namespace, self.getName()))
         for value in self.getValues():
             # TODO: need to figure out proper value types
-            text = XML.SubElement(param, xmlutils.makeTag(namespace, xmldefinitions.value_text))
+            text = XML.SubElement(
+                param, xmlutils.makeTag(namespace, xmldefinitions.value_text)
+            )
             text.text = value
 
     def writeJSON(self, jobject):
-        jobject[self.getName().lower()] = self.mValues if len(self.mValues) != 1 else self.mValues[0]
+        jobject[self.getName().lower()] = (
+            self.mValues if len(self.mValues) != 1 else self.mValues[0]
+        )

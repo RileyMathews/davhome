@@ -78,7 +78,7 @@ cICalParameter_PARTSTAT_INPROCESS = "IN-PROCESS"
 
 #     5545 Section 3.2.13
 cICalParameter_RANGE_THISANDFUTURE = "THISANDFUTURE"
-cICalParameter_RANGE_THISANDPRIOR = "THISANDPRIOR"      # 2445 only
+cICalParameter_RANGE_THISANDPRIOR = "THISANDPRIOR"  # 2445 only
 
 #     5545 Section 3.2.14
 cICalParameter_RELATED_START = "START"
@@ -185,7 +185,7 @@ cICalProperty_UID = "UID"
 
 #     5545 Section 3.8.5
 cICalProperty_EXDATE = "EXDATE"
-cICalProperty_EXRULE = "EXRULE"     # 2445 only
+cICalProperty_EXRULE = "EXRULE"  # 2445 only
 cICalProperty_RDATE = "RDATE"
 cICalProperty_RRULE = "RRULE"
 

@@ -51,17 +51,17 @@ def readOneStringElement(node, ename):
 
 
 def nodeForPath(root, path):
-    if '[' in path:
-        actual_path, tests = path.split('[', 1)
+    if "[" in path:
+        actual_path, tests = path.split("[", 1)
     else:
         actual_path = path
         tests = None
 
     # Handle absolute root element
-    if actual_path[0] == '/':
+    if actual_path[0] == "/":
         actual_path = actual_path[1:]
-    if '/' in actual_path:
-        root_path, child_path = actual_path.split('/', 1)
+    if "/" in actual_path:
+        root_path, child_path = actual_path.split("/", 1)
         if root.tag != root_path:
             return None
         nodes = root.findall(child_path)
@@ -76,38 +76,42 @@ def nodeForPath(root, path):
     results = []
 
     if tests:
-        tests = [item[:-1] for item in tests.split('[')]
+        tests = [item[:-1] for item in tests.split("[")]
         for test in tests:
             for node in nodes:
-                if test[0] == '@':
-                    if '=' in test:
-                        attr, value = test[1:].split('=')
+                if test[0] == "@":
+                    if "=" in test:
+                        attr, value = test[1:].split("=")
                         value = value[1:-1]
                     else:
                         attr = test[1:]
                         value = None
-                    if attr in node.keys() and (value is None or node.get(attr) == value):
+                    if attr in node.keys() and (
+                        value is None or node.get(attr) == value
+                    ):
                         results.append(node)
-                elif test[0] == '=':
+                elif test[0] == "=":
                     if node.text == test[1:]:
                         results.append(node)
-                elif test[0] == '!':
+                elif test[0] == "!":
                     if node.text != test[1:]:
                         results.append(node)
-                elif test[0] == '*':
+                elif test[0] == "*":
                     if node.text is not None and node.text.find(test[1:]) != -1:
                         results.append(node)
-                elif test[0] == '+':
+                elif test[0] == "+":
                     if node.text is not None and node.text.startswith(test[1:]):
                         results.append(node)
-                elif test[0] == '^':
+                elif test[0] == "^":
                     if "=" in test:
                         element, value = test[1:].split("=", 1)
                     else:
                         element = test[1:]
                         value = None
                     for child in node.getchildren():
-                        if child.tag == element and (value is None or child.text == value):
+                        if child.tag == element and (
+                            value is None or child.text == value
+                        ):
                             results.append(node)
     else:
         results = nodes
@@ -124,4 +128,4 @@ def xmlPathSplit(xpath):
     if pos == -1:
         return xpath, ""
     else:
-        return xpath[:pos], xpath[pos + 1:]
+        return xpath[:pos], xpath[pos + 1 :]

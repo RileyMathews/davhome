@@ -20,21 +20,25 @@ import unittest
 
 
 class TestNValue(unittest.TestCase):
-
     def testParseValue(self):
 
         items = (
             ("", ""),
             ("Example", "Example"),
             ("Example\, Inc.", "Example\, Inc."),
-            ("Example\; Inc;Dept. of Silly Walks", "Example\; Inc;Dept. of Silly Walks"),
+            (
+                "Example\; Inc;Dept. of Silly Walks",
+                "Example\; Inc;Dept. of Silly Walks",
+            ),
         )
 
         for item, result in items:
             req = OrgValue()
             req.parse(item, "vcard")
             test = req.getText()
-            self.assertEqual(test, result, "Failed to parse and re-generate '%s'" % (item,))
+            self.assertEqual(
+                test, result, "Failed to parse and re-generate '%s'" % (item,)
+            )
 
     def testParseProperty(self):
 
@@ -42,11 +46,16 @@ class TestNValue(unittest.TestCase):
             ("ORG:", "ORG:"),
             ("ORG:Example", "ORG:Example"),
             ("ORG:Example\, Inc.", "ORG:Example\, Inc."),
-            ("ORG:Example\; Inc;Dept. of Silly Walks", "ORG:Example\; Inc;Dept. of Silly Walks"),
+            (
+                "ORG:Example\; Inc;Dept. of Silly Walks",
+                "ORG:Example\; Inc;Dept. of Silly Walks",
+            ),
             ("ORG;VALUE=TEXT:Example", "ORG:Example"),
         )
 
         for item, result in items:
             prop = Property.parseText(item)
             test = prop.getText()
-            self.assertEqual(test, result + "\r\n", "Failed to parse and re-generate '%s'" % (item,))
+            self.assertEqual(
+                test, result + "\r\n", "Failed to parse and re-generate '%s'" % (item,)
+            )

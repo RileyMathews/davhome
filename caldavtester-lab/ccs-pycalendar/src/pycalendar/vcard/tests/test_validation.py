@@ -20,7 +20,6 @@ import unittest
 
 
 class TestValidation(unittest.TestCase):
-
     def test_basic(self):
 
         data = (
@@ -55,9 +54,7 @@ UID:ED7A5AEC-AB19-4CE0-AD6A-2923A3E5C4E1:ABPerson
 END:VCARD
 """.replace("\n", "\r\n"),
                 set(),
-                set((
-                    "[VCARD] Missing or too many required property: N",
-                )),
+                set(("[VCARD] Missing or too many required property: N",)),
             ),
         )
 
@@ -65,7 +62,9 @@ END:VCARD
             card = Card.parseText(item)
             fixed, unfixed = card.validate(doFix=False)
             self.assertEqual(set(fixed), test_fixed, msg="Failed test: %s" % (title,))
-            self.assertEqual(set(unfixed), test_unfixed, msg="Failed test: %s" % (title,))
+            self.assertEqual(
+                set(unfixed), test_unfixed, msg="Failed test: %s" % (title,)
+            )
 
     def test_mode_no_raise(self):
 
@@ -126,9 +125,7 @@ item1.X-ABADR:us
 END:VCARD
 """.replace("\n", "\r\n"),
                 set(),
-                set((
-                    "[VCARD] Missing or too many required property: N",
-                )),
+                set(("[VCARD] Missing or too many required property: N",)),
             ),
         )
 
@@ -137,7 +134,9 @@ END:VCARD
             fixed, unfixed = card.validate(doFix=False, doRaise=False)
             self.assertEqual(str(card), test_new, msg="Failed test: %s" % (title,))
             self.assertEqual(set(fixed), test_fixed, msg="Failed test: %s" % (title,))
-            self.assertEqual(set(unfixed), test_unfixed, msg="Failed test: %s" % (title,))
+            self.assertEqual(
+                set(unfixed), test_unfixed, msg="Failed test: %s" % (title,)
+            )
 
     def test_mode_raise(self):
 
@@ -199,9 +198,7 @@ item1.X-ABADR:us
 END:VCARD
 """.replace("\n", "\r\n"),
                 set(),
-                set((
-                    "[VCARD] Missing or too many required property: N",
-                )),
+                set(("[VCARD] Missing or too many required property: N",)),
                 True,
             ),
         )
@@ -209,12 +206,18 @@ END:VCARD
         for title, test_old, test_new, test_fixed, test_unfixed, test_raises in data:
             card = Card.parseText(test_old)
             if test_raises:
-                self.assertRaises(ValidationError, card.validate, doFix=False, doRaise=True)
+                self.assertRaises(
+                    ValidationError, card.validate, doFix=False, doRaise=True
+                )
             else:
                 try:
                     fixed, unfixed = card.validate(doFix=False, doRaise=False)
                 except:
                     self.fail(msg="Failed test: %s" % (title,))
                 self.assertEqual(str(card), test_new, msg="Failed test: %s" % (title,))
-                self.assertEqual(set(fixed), test_fixed, msg="Failed test: %s" % (title,))
-                self.assertEqual(set(unfixed), test_unfixed, msg="Failed test: %s" % (title,))
+                self.assertEqual(
+                    set(fixed), test_fixed, msg="Failed test: %s" % (title,)
+                )
+                self.assertEqual(
+                    set(unfixed), test_unfixed, msg="Failed test: %s" % (title,)
+                )

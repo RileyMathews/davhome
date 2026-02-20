@@ -7,7 +7,6 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     initial = True
 
     dependencies = [
@@ -16,62 +15,138 @@ class Migration(migrations.Migration):
 
     operations = [
         migrations.CreateModel(
-            name='Calendar',
+            name="Calendar",
             fields=[
-                ('id', models.UUIDField(default=uuid.uuid4, editable=False, primary_key=True, serialize=False)),
-                ('slug', models.SlugField(max_length=64)),
-                ('name', models.CharField(max_length=120)),
-                ('description', models.TextField(blank=True)),
-                ('color', models.CharField(blank=True, max_length=16)),
-                ('timezone', models.CharField(default='UTC', max_length=64)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('owner', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='owned_calendars', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.UUIDField(
+                        default=uuid.uuid4,
+                        editable=False,
+                        primary_key=True,
+                        serialize=False,
+                    ),
+                ),
+                ("slug", models.SlugField(max_length=64)),
+                ("name", models.CharField(max_length=120)),
+                ("description", models.TextField(blank=True)),
+                ("color", models.CharField(blank=True, max_length=16)),
+                ("timezone", models.CharField(default="UTC", max_length=64)),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "owner",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="owned_calendars",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
             options={
-                'ordering': ['name', 'slug'],
+                "ordering": ["name", "slug"],
             },
         ),
         migrations.CreateModel(
-            name='CalendarObject',
+            name="CalendarObject",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('uid', models.CharField(max_length=255)),
-                ('filename', models.CharField(max_length=255)),
-                ('etag', models.CharField(max_length=128)),
-                ('ical_blob', models.TextField()),
-                ('content_type', models.CharField(default='text/calendar; charset=utf-8', max_length=128)),
-                ('size', models.PositiveIntegerField()),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('calendar', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='calendar_objects', to='calendars.calendar')),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                ("uid", models.CharField(max_length=255)),
+                ("filename", models.CharField(max_length=255)),
+                ("etag", models.CharField(max_length=128)),
+                ("ical_blob", models.TextField()),
+                (
+                    "content_type",
+                    models.CharField(
+                        default="text/calendar; charset=utf-8", max_length=128
+                    ),
+                ),
+                ("size", models.PositiveIntegerField()),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "calendar",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="calendar_objects",
+                        to="calendars.calendar",
+                    ),
+                ),
             ],
         ),
         migrations.CreateModel(
-            name='CalendarShare',
+            name="CalendarShare",
             fields=[
-                ('id', models.BigAutoField(auto_created=True, primary_key=True, serialize=False, verbose_name='ID')),
-                ('role', models.CharField(choices=[('read', 'Read'), ('write', 'Write'), ('admin', 'Admin')], default='read', max_length=16)),
-                ('created_at', models.DateTimeField(auto_now_add=True)),
-                ('updated_at', models.DateTimeField(auto_now=True)),
-                ('calendar', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='shares', to='calendars.calendar')),
-                ('user', models.ForeignKey(on_delete=django.db.models.deletion.CASCADE, related_name='calendar_shares', to=settings.AUTH_USER_MODEL)),
+                (
+                    "id",
+                    models.BigAutoField(
+                        auto_created=True,
+                        primary_key=True,
+                        serialize=False,
+                        verbose_name="ID",
+                    ),
+                ),
+                (
+                    "role",
+                    models.CharField(
+                        choices=[
+                            ("read", "Read"),
+                            ("write", "Write"),
+                            ("admin", "Admin"),
+                        ],
+                        default="read",
+                        max_length=16,
+                    ),
+                ),
+                ("created_at", models.DateTimeField(auto_now_add=True)),
+                ("updated_at", models.DateTimeField(auto_now=True)),
+                (
+                    "calendar",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="shares",
+                        to="calendars.calendar",
+                    ),
+                ),
+                (
+                    "user",
+                    models.ForeignKey(
+                        on_delete=django.db.models.deletion.CASCADE,
+                        related_name="calendar_shares",
+                        to=settings.AUTH_USER_MODEL,
+                    ),
+                ),
             ],
         ),
         migrations.AddConstraint(
-            model_name='calendar',
-            constraint=models.UniqueConstraint(fields=('owner', 'slug'), name='uniq_calendar_owner_slug'),
+            model_name="calendar",
+            constraint=models.UniqueConstraint(
+                fields=("owner", "slug"), name="uniq_calendar_owner_slug"
+            ),
         ),
         migrations.AddConstraint(
-            model_name='calendarobject',
-            constraint=models.UniqueConstraint(fields=('calendar', 'uid'), name='uniq_calendar_object_uid'),
+            model_name="calendarobject",
+            constraint=models.UniqueConstraint(
+                fields=("calendar", "uid"), name="uniq_calendar_object_uid"
+            ),
         ),
         migrations.AddConstraint(
-            model_name='calendarobject',
-            constraint=models.UniqueConstraint(fields=('calendar', 'filename'), name='uniq_calendar_object_filename'),
+            model_name="calendarobject",
+            constraint=models.UniqueConstraint(
+                fields=("calendar", "filename"), name="uniq_calendar_object_filename"
+            ),
         ),
         migrations.AddConstraint(
-            model_name='calendarshare',
-            constraint=models.UniqueConstraint(fields=('calendar', 'user'), name='uniq_calendar_share'),
+            model_name="calendarshare",
+            constraint=models.UniqueConstraint(
+                fields=("calendar", "user"), name="uniq_calendar_share"
+            ),
         ),
     ]

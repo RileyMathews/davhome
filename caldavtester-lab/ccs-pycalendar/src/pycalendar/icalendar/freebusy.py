@@ -16,7 +16,6 @@
 
 
 class FreeBusy(object):
-
     FREE = 0
     BUSYTENTATIVE = 1
     BUSYUNAVAILABLE = 2

@@ -21,7 +21,6 @@ import unittest
 
 
 class TestRequestStatus(unittest.TestCase):
-
     def testParseValue(self):
 
         items = (
@@ -36,7 +35,9 @@ class TestRequestStatus(unittest.TestCase):
         for item in items:
             req = RequestStatusValue()
             req.parse(item, "icalendar")
-            self.assertEqual(req.getText(), item, "Failed to parse and re-generate '%s'" % (item,))
+            self.assertEqual(
+                req.getText(), item, "Failed to parse and re-generate '%s'" % (item,)
+            )
 
     def testBadValue(self):
 
@@ -48,7 +49,11 @@ class TestRequestStatus(unittest.TestCase):
         ParserContext.INVALID_REQUEST_STATUS_VALUE = ParserContext.PARSER_FIX
         req = RequestStatusValue()
         req.parse(bad_value, "icalendar")
-        self.assertEqual(req.getText(), ok_value, "Failed to parse and re-generate '%s'" % (bad_value,))
+        self.assertEqual(
+            req.getText(),
+            ok_value,
+            "Failed to parse and re-generate '%s'" % (bad_value,),
+        )
 
         # Raise the value
         ParserContext.INVALID_REQUEST_STATUS_VALUE = ParserContext.PARSER_RAISE
@@ -67,7 +72,11 @@ class TestRequestStatus(unittest.TestCase):
         ParserContext.INVALID_REQUEST_STATUS_VALUE = ParserContext.PARSER_FIX
         req = RequestStatusValue()
         req.parse(bad_value, "icalendar")
-        self.assertEqual(req.getText(), ok_value, "Failed to parse and re-generate '%s'" % (bad_value,))
+        self.assertEqual(
+            req.getText(),
+            ok_value,
+            "Failed to parse and re-generate '%s'" % (bad_value,),
+        )
 
         # Raise the value
         ParserContext.INVALID_REQUEST_STATUS_VALUE = ParserContext.PARSER_RAISE
@@ -89,4 +98,8 @@ class TestRequestStatus(unittest.TestCase):
 
         for item in items:
             req = Property.parseText(item)
-            self.assertEqual(req.getText(), item + "\r\n", "Failed to parse and re-generate '%s'" % (item,))
+            self.assertEqual(
+                req.getText(),
+                item + "\r\n",
+                "Failed to parse and re-generate '%s'" % (item,),
+            )

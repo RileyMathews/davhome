@@ -25,7 +25,6 @@ import urllib
 
 
 class Verifier(object):
-
     def verify(self, manager, uri, response, respdata, args):  # @UnusedVariable
 
         granted = args.get("granted", [])
@@ -36,17 +35,20 @@ class Verifier(object):
 
         # Must have MULTISTATUS response code
         if response.status != 207:
-            return False, "           HTTP Status for Request: %d\n" % (response.status,)
+            return False, "           HTTP Status for Request: %d\n" % (
+                response.status,
+            )
 
         try:
             tree = ElementTree(file=StringIO(respdata))
         except Exception:
-            return False, "           HTTP response is not valid XML: %d\n" % (respdata,)
+            return False, "           HTTP response is not valid XML: %d\n" % (
+                respdata,
+            )
 
         result = True
         resulttxt = ""
         for response in tree.findall("{DAV:}response"):
-
             # Get href for this response
             href = response.findall("{DAV:}href")
             if len(href) != 1:
@@ -80,7 +82,10 @@ class Verifier(object):
                     resulttxt += "\n"
                 if len(denied_present) != 0:
                     l = list(denied_present)
-                    resulttxt += "        Available privileges that should be denied for %s:" % href
+                    resulttxt += (
+                        "        Available privileges that should be denied for %s:"
+                        % href
+                    )
                     for i in l:
                         resulttxt += " " + str(i)
                     resulttxt += "\n"

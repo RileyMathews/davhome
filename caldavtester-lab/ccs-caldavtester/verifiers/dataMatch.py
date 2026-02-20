@@ -25,7 +25,6 @@ import os
 
 
 class Verifier(object):
-
     def verify(self, manager, uri, response, respdata, args):  # @UnusedVariable
         # Get arguments
         files = args.get("filepath", [])
@@ -71,9 +70,13 @@ class Verifier(object):
                         result = False
                 elif files[0].endswith(".xml"):
                     try:
-                        respdata = tostring(ElementTree(file=StringIO(respdata)).getroot())
+                        respdata = tostring(
+                            ElementTree(file=StringIO(respdata)).getroot()
+                        )
                     except Exception:
-                        return False, "        Could not parse XML response: %s" % (respdata,)
+                        return False, "        Could not parse XML response: %s" % (
+                            respdata,
+                        )
                     try:
                         data = tostring(ElementTree(file=StringIO(data)).getroot())
                     except Exception:
@@ -86,5 +89,11 @@ class Verifier(object):
         if result:
             return True, ""
         else:
-            error_diff = "\n".join([line for line in unified_diff(data.split("\n"), respdata.split("\n"))])
-            return False, "        Response data does not exactly match file data %s" % (error_diff,)
+            error_diff = "\n".join(
+                [line for line in unified_diff(data.split("\n"), respdata.split("\n"))]
+            )
+            return (
+                False,
+                "        Response data does not exactly match file data %s"
+                % (error_diff,),
+            )

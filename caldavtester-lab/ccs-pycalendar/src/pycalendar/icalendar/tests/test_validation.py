@@ -20,7 +20,6 @@ from pycalendar.tests.utils import TestPyCalendar
 
 
 class TestValidation(TestPyCalendar):
-
     def test_basic(self):
 
         data = (
@@ -59,9 +58,7 @@ END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
                 set(),
-                set((
-                    "[VCALENDAR] Missing or too many required property: PRODID",
-                )),
+                set(("[VCALENDAR] Missing or too many required property: PRODID",)),
             ),
         )
 
@@ -69,7 +66,9 @@ END:VCALENDAR
             cal = Calendar.parseText(item)
             fixed, unfixed = cal.validate(doFix=False)
             self.assertEqual(set(fixed), test_fixed, msg="Failed test: %s" % (title,))
-            self.assertEqual(set(unfixed), test_unfixed, msg="Failed test: %s" % (title,))
+            self.assertEqual(
+                set(unfixed), test_unfixed, msg="Failed test: %s" % (title,)
+            )
 
     def test_mode_no_fix_no_raise(self):
 
@@ -136,9 +135,7 @@ END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
                 set(),
-                set((
-                    "[VCALENDAR] Missing or too many required property: PRODID",
-                )),
+                set(("[VCALENDAR] Missing or too many required property: PRODID",)),
             ),
             (
                 "Fixable only",
@@ -173,9 +170,7 @@ END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
                 set(),
-                set((
-                    "[VEVENT] Properties must not both be present: DTEND, DURATION",
-                )),
+                set(("[VEVENT] Properties must not both be present: DTEND, DURATION",)),
             ),
             (
                 "Fixable and unfixable",
@@ -208,10 +203,12 @@ END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
                 set(),
-                set((
-                    "[VCALENDAR] Missing or too many required property: PRODID",
-                    "[VEVENT] Properties must not both be present: DTEND, DURATION",
-                )),
+                set(
+                    (
+                        "[VCALENDAR] Missing or too many required property: PRODID",
+                        "[VEVENT] Properties must not both be present: DTEND, DURATION",
+                    )
+                ),
             ),
         )
 
@@ -220,7 +217,9 @@ END:VCALENDAR
             fixed, unfixed = cal.validate(doFix=False, doRaise=False)
             self.assertEqual(str(cal), test_new, msg="Failed test: %s" % (title,))
             self.assertEqual(set(fixed), test_fixed, msg="Failed test: %s" % (title,))
-            self.assertEqual(set(unfixed), test_unfixed, msg="Failed test: %s" % (title,))
+            self.assertEqual(
+                set(unfixed), test_unfixed, msg="Failed test: %s" % (title,)
+            )
 
     def test_mode_fix_no_raise(self):
 
@@ -287,9 +286,7 @@ END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
                 set(),
-                set((
-                    "[VCALENDAR] Missing or too many required property: PRODID",
-                )),
+                set(("[VCALENDAR] Missing or too many required property: PRODID",)),
             ),
             (
                 "Fixable only",
@@ -322,9 +319,7 @@ SUMMARY:New Year's Day
 END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
-                set((
-                    "[VEVENT] Properties must not both be present: DTEND, DURATION",
-                )),
+                set(("[VEVENT] Properties must not both be present: DTEND, DURATION",)),
                 set(),
             ),
             (
@@ -356,12 +351,8 @@ SUMMARY:New Year's Day
 END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
-                set((
-                    "[VEVENT] Properties must not both be present: DTEND, DURATION",
-                )),
-                set((
-                    "[VCALENDAR] Missing or too many required property: PRODID",
-                )),
+                set(("[VEVENT] Properties must not both be present: DTEND, DURATION",)),
+                set(("[VCALENDAR] Missing or too many required property: PRODID",)),
             ),
         )
 
@@ -370,7 +361,9 @@ END:VCALENDAR
             fixed, unfixed = cal.validate(doFix=True, doRaise=False)
             self.assertEqual(str(cal), test_new, msg="Failed test: %s" % (title,))
             self.assertEqual(set(fixed), test_fixed, msg="Failed test: %s" % (title,))
-            self.assertEqual(set(unfixed), test_unfixed, msg="Failed test: %s" % (title,))
+            self.assertEqual(
+                set(unfixed), test_unfixed, msg="Failed test: %s" % (title,)
+            )
 
     def test_mode_no_fix_raise(self):
 
@@ -438,9 +431,7 @@ END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
                 set(),
-                set((
-                    "[VCALENDAR] Missing or too many required property: PRODID",
-                )),
+                set(("[VCALENDAR] Missing or too many required property: PRODID",)),
                 True,
             ),
             (
@@ -476,9 +467,7 @@ END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
                 set(),
-                set((
-                    "[VEVENT] Properties must not both be present: DTEND, DURATION",
-                )),
+                set(("[VEVENT] Properties must not both be present: DTEND, DURATION",)),
                 True,
             ),
             (
@@ -512,10 +501,12 @@ END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
                 set(),
-                set((
-                    "[VCALENDAR] Missing or too many required property: PRODID",
-                    "[VEVENT] Properties must not both be present: DTEND, DURATION",
-                )),
+                set(
+                    (
+                        "[VCALENDAR] Missing or too many required property: PRODID",
+                        "[VEVENT] Properties must not both be present: DTEND, DURATION",
+                    )
+                ),
                 True,
             ),
         )
@@ -523,15 +514,21 @@ END:VCALENDAR
         for title, test_old, test_new, test_fixed, test_unfixed, test_raises in data:
             cal = Calendar.parseText(test_old)
             if test_raises:
-                self.assertRaises(ValidationError, cal.validate, doFix=False, doRaise=True)
+                self.assertRaises(
+                    ValidationError, cal.validate, doFix=False, doRaise=True
+                )
             else:
                 try:
                     fixed, unfixed = cal.validate(doFix=False, doRaise=False)
                 except:
                     self.fail(msg="Failed test: %s" % (title,))
                 self.assertEqual(str(cal), test_new, msg="Failed test: %s" % (title,))
-                self.assertEqual(set(fixed), test_fixed, msg="Failed test: %s" % (title,))
-                self.assertEqual(set(unfixed), test_unfixed, msg="Failed test: %s" % (title,))
+                self.assertEqual(
+                    set(fixed), test_fixed, msg="Failed test: %s" % (title,)
+                )
+                self.assertEqual(
+                    set(unfixed), test_unfixed, msg="Failed test: %s" % (title,)
+                )
 
     def test_mode_fix_raise(self):
 
@@ -599,9 +596,7 @@ END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
                 set(),
-                set((
-                    "[VCALENDAR] Missing or too many required property: PRODID",
-                )),
+                set(("[VCALENDAR] Missing or too many required property: PRODID",)),
                 True,
             ),
             (
@@ -635,9 +630,7 @@ SUMMARY:New Year's Day
 END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
-                set((
-                    "[VEVENT] Properties must not both be present: DTEND, DURATION",
-                )),
+                set(("[VEVENT] Properties must not both be present: DTEND, DURATION",)),
                 set(),
                 False,
             ),
@@ -671,12 +664,8 @@ SUMMARY:New Year's Day
 END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
-                set((
-                    "[VEVENT] Properties must not both be present: DTEND, DURATION",
-                )),
-                set((
-                    "[VCALENDAR] Missing or too many required property: PRODID",
-                )),
+                set(("[VEVENT] Properties must not both be present: DTEND, DURATION",)),
+                set(("[VCALENDAR] Missing or too many required property: PRODID",)),
                 True,
             ),
         )
@@ -684,15 +673,21 @@ END:VCALENDAR
         for title, test_old, test_new, test_fixed, test_unfixed, test_raises in data:
             cal = Calendar.parseText(test_old)
             if test_raises:
-                self.assertRaises(ValidationError, cal.validate, doFix=False, doRaise=True)
+                self.assertRaises(
+                    ValidationError, cal.validate, doFix=False, doRaise=True
+                )
             else:
                 try:
                     fixed, unfixed = cal.validate(doFix=True, doRaise=False)
                 except:
                     self.fail(msg="Failed test: %s" % (title,))
                 self.assertEqual(str(cal), test_new, msg="Failed test: %s" % (title,))
-                self.assertEqual(set(fixed), test_fixed, msg="Failed test: %s" % (title,))
-                self.assertEqual(set(unfixed), test_unfixed, msg="Failed test: %s" % (title,))
+                self.assertEqual(
+                    set(fixed), test_fixed, msg="Failed test: %s" % (title,)
+                )
+                self.assertEqual(
+                    set(unfixed), test_unfixed, msg="Failed test: %s" % (title,)
+                )
 
     def test_vevent(self):
         data = (
@@ -758,9 +753,7 @@ END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
                 set(),
-                set((
-                    "[VEVENT] Missing or too many required property: DTSTAMP",
-                )),
+                set(("[VEVENT] Missing or too many required property: DTSTAMP",)),
             ),
             (
                 "Too many",
@@ -797,10 +790,12 @@ END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
                 set(),
-                set((
-                    "[VEVENT] Missing or too many required property: UID",
-                    "[VEVENT] Too many properties present: SUMMARY",
-                )),
+                set(
+                    (
+                        "[VEVENT] Missing or too many required property: UID",
+                        "[VEVENT] Too many properties present: SUMMARY",
+                    )
+                ),
             ),
             (
                 "PROP value",
@@ -833,9 +828,7 @@ END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
                 set(),
-                set((
-                    "[VEVENT] Property value incorrect: DTSTAMP",
-                )),
+                set(("[VEVENT] Property value incorrect: DTSTAMP",)),
             ),
             (
                 "No DTSTART without METHOD",
@@ -895,9 +888,7 @@ SUMMARY:New Year's Day
 END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
-                set((
-                    "[VEVENT] Properties must not both be present: DTEND, DURATION",
-                )),
+                set(("[VEVENT] Properties must not both be present: DTEND, DURATION",)),
                 set(),
             ),
             (
@@ -930,9 +921,7 @@ SUMMARY:New Year's Day
 END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
-                set((
-                    "[VEVENT] Value types must match: DTSTART, UNTIL",
-                )),
+                set(("[VEVENT] Value types must match: DTSTART, UNTIL",)),
                 set(),
             ),
             (
@@ -965,9 +954,7 @@ SUMMARY:New Year's Day
 END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
-                set((
-                    "[VEVENT] Value types must match: DTSTART, UNTIL",
-                )),
+                set(("[VEVENT] Value types must match: DTSTART, UNTIL",)),
                 set(),
             ),
         )
@@ -977,7 +964,9 @@ END:VCALENDAR
             fixed, unfixed = cal.validate(doFix=True)
             self.assertEqual(str(cal), test_new, msg="Failed test: %s" % (title,))
             self.assertEqual(set(fixed), test_fixed, msg="Failed test: %s" % (title,))
-            self.assertEqual(set(unfixed), test_unfixed, msg="Failed test: %s" % (title,))
+            self.assertEqual(
+                set(unfixed), test_unfixed, msg="Failed test: %s" % (title,)
+            )
 
     def test_vfreebusy(self):
         data = (
@@ -1035,9 +1024,7 @@ END:VFREEBUSY
 END:VCALENDAR
 """.replace("\n", "\r\n"),
                 set(),
-                set((
-                    "[VFREEBUSY] Missing or too many required property: DTSTAMP",
-                )),
+                set(("[VFREEBUSY] Missing or too many required property: DTSTAMP",)),
             ),
         )
 
@@ -1046,7 +1033,9 @@ END:VCALENDAR
             fixed, unfixed = cal.validate(doFix=True)
             self.assertEqual(str(cal), test_new, msg="Failed test: %s" % (title,))
             self.assertEqual(set(fixed), test_fixed, msg="Failed test: %s" % (title,))
-            self.assertEqual(set(unfixed), test_unfixed, msg="Failed test: %s" % (title,))
+            self.assertEqual(
+                set(unfixed), test_unfixed, msg="Failed test: %s" % (title,)
+            )
 
     def test_vjournal(self):
         data = (
@@ -1102,9 +1091,7 @@ END:VJOURNAL
 END:VCALENDAR
 """.replace("\n", "\r\n"),
                 set(),
-                set((
-                    "[VJOURNAL] Missing or too many required property: DTSTAMP",
-                )),
+                set(("[VJOURNAL] Missing or too many required property: DTSTAMP",)),
             ),
         )
 
@@ -1113,7 +1100,9 @@ END:VCALENDAR
             fixed, unfixed = cal.validate(doFix=True)
             self.assertEqual(str(cal), test_new, msg="Failed test: %s" % (title,))
             self.assertEqual(set(fixed), test_fixed, msg="Failed test: %s" % (title,))
-            self.assertEqual(set(unfixed), test_unfixed, msg="Failed test: %s" % (title,))
+            self.assertEqual(
+                set(unfixed), test_unfixed, msg="Failed test: %s" % (title,)
+            )
 
     def test_vtimezone(self):
         data = (
@@ -1219,9 +1208,7 @@ END:VTIMEZONE
 END:VCALENDAR
 """.replace("\n", "\r\n"),
                 set(),
-                set((
-                    "[VTIMEZONE] Missing or too many required property: TZID",
-                )),
+                set(("[VTIMEZONE] Missing or too many required property: TZID",)),
             ),
             (
                 "Missing components",
@@ -1246,9 +1233,11 @@ END:VTIMEZONE
 END:VCALENDAR
 """.replace("\n", "\r\n"),
                 set(),
-                set((
-                    "[VTIMEZONE] At least one component must be present: STANDARD or DAYLIGHT",
-                )),
+                set(
+                    (
+                        "[VTIMEZONE] At least one component must be present: STANDARD or DAYLIGHT",
+                    )
+                ),
             ),
         )
 
@@ -1257,7 +1246,9 @@ END:VCALENDAR
             fixed, unfixed = cal.validate(doFix=True)
             self.assertEqual(str(cal), test_new, msg="Failed test: %s" % (title,))
             self.assertEqual(set(fixed), test_fixed, msg="Failed test: %s" % (title,))
-            self.assertEqual(set(unfixed), test_unfixed, msg="Failed test: %s" % (title,))
+            self.assertEqual(
+                set(unfixed), test_unfixed, msg="Failed test: %s" % (title,)
+            )
 
     def test_vtodo(self):
         data = (
@@ -1323,9 +1314,7 @@ END:VTODO
 END:VCALENDAR
 """.replace("\n", "\r\n"),
                 set(),
-                set((
-                    "[VTODO] Missing or too many required property: DTSTAMP",
-                )),
+                set(("[VTODO] Missing or too many required property: DTSTAMP",)),
             ),
             (
                 "Too many",
@@ -1362,10 +1351,12 @@ END:VTODO
 END:VCALENDAR
 """.replace("\n", "\r\n"),
                 set(),
-                set((
-                    "[VTODO] Missing or too many required property: UID",
-                    "[VTODO] Too many properties present: SUMMARY",
-                )),
+                set(
+                    (
+                        "[VTODO] Missing or too many required property: UID",
+                        "[VTODO] Too many properties present: SUMMARY",
+                    )
+                ),
             ),
             (
                 "PROP value",
@@ -1398,9 +1389,7 @@ END:VTODO
 END:VCALENDAR
 """.replace("\n", "\r\n"),
                 set(),
-                set((
-                    "[VTODO] Property value incorrect: DTSTAMP",
-                )),
+                set(("[VTODO] Property value incorrect: DTSTAMP",)),
             ),
             (
                 "DURATION without DTSTART",
@@ -1431,9 +1420,7 @@ END:VTODO
 END:VCALENDAR
 """.replace("\n", "\r\n"),
                 set(),
-                set((
-                    "[VTODO] Property must be present: DTSTART with DURATION",
-                )),
+                set(("[VTODO] Property must be present: DTSTART with DURATION",)),
             ),
             (
                 "Combo fix",
@@ -1466,9 +1453,7 @@ SUMMARY:New Year's Day
 END:VTODO
 END:VCALENDAR
 """.replace("\n", "\r\n"),
-                set((
-                    "[VTODO] Properties must not both be present: DUE, DURATION",
-                )),
+                set(("[VTODO] Properties must not both be present: DUE, DURATION",)),
                 set(),
             ),
         )
@@ -1478,7 +1463,9 @@ END:VCALENDAR
             fixed, unfixed = cal.validate(doFix=True)
             self.assertEqual(str(cal), test_new, msg="Failed test: %s" % (title,))
             self.assertEqual(set(fixed), test_fixed, msg="Failed test: %s" % (title,))
-            self.assertEqual(set(unfixed), test_unfixed, msg="Failed test: %s" % (title,))
+            self.assertEqual(
+                set(unfixed), test_unfixed, msg="Failed test: %s" % (title,)
+            )
 
     def test_vavailability(self):
         data = (
@@ -1564,9 +1551,9 @@ END:VAVAILABILITY
 END:VCALENDAR
 """.replace("\n", "\r\n"),
                 set(),
-                set((
-                    "[VAVAILABILITY] Missing or too many required property: DTSTAMP",
-                )),
+                set(
+                    ("[VAVAILABILITY] Missing or too many required property: DTSTAMP",)
+                ),
             ),
             (
                 "Too many",
@@ -1613,10 +1600,12 @@ END:VAVAILABILITY
 END:VCALENDAR
 """.replace("\n", "\r\n"),
                 set(),
-                set((
-                    "[VAVAILABILITY] Missing or too many required property: UID",
-                    "[VAVAILABILITY] Too many properties present: ORGANIZER",
-                )),
+                set(
+                    (
+                        "[VAVAILABILITY] Missing or too many required property: UID",
+                        "[VAVAILABILITY] Too many properties present: ORGANIZER",
+                    )
+                ),
             ),
             (
                 "Combo fix",
@@ -1663,9 +1652,11 @@ END:AVAILABLE
 END:VAVAILABILITY
 END:VCALENDAR
 """.replace("\n", "\r\n"),
-                set((
-                    "[VAVAILABILITY] Properties must not both be present: DTEND, DURATION",
-                )),
+                set(
+                    (
+                        "[VAVAILABILITY] Properties must not both be present: DTEND, DURATION",
+                    )
+                ),
                 set(),
             ),
         )
@@ -1675,7 +1666,9 @@ END:VCALENDAR
             fixed, unfixed = cal.validate(doFix=True)
             self.assertEqual(str(cal), test_new, msg="Failed test: %s" % (str(cal),))
             self.assertEqual(set(fixed), test_fixed, msg="Failed test: %s" % (title,))
-            self.assertEqual(set(unfixed), test_unfixed, msg="Failed test: %s" % (title,))
+            self.assertEqual(
+                set(unfixed), test_unfixed, msg="Failed test: %s" % (title,)
+            )
 
     def test_available(self):
         data = (
@@ -1761,9 +1754,7 @@ END:VAVAILABILITY
 END:VCALENDAR
 """.replace("\n", "\r\n"),
                 set(),
-                set((
-                    "[AVAILABLE] Missing or too many required property: DTSTAMP",
-                )),
+                set(("[AVAILABLE] Missing or too many required property: DTSTAMP",)),
             ),
             (
                 "Too many",
@@ -1810,10 +1801,12 @@ END:VAVAILABILITY
 END:VCALENDAR
 """.replace("\n", "\r\n"),
                 set(),
-                set((
-                    "[AVAILABLE] Missing or too many required property: UID",
-                    "[AVAILABLE] Too many properties present: SUMMARY",
-                )),
+                set(
+                    (
+                        "[AVAILABLE] Missing or too many required property: UID",
+                        "[AVAILABLE] Too many properties present: SUMMARY",
+                    )
+                ),
             ),
             (
                 "Combo fix",
@@ -1856,9 +1849,11 @@ END:AVAILABLE
 END:VAVAILABILITY
 END:VCALENDAR
 """.replace("\n", "\r\n"),
-                set((
-                    "[AVAILABLE] Properties must not both be present: DTEND, DURATION",
-                )),
+                set(
+                    (
+                        "[AVAILABLE] Properties must not both be present: DTEND, DURATION",
+                    )
+                ),
                 set(),
             ),
         )
@@ -1868,7 +1863,9 @@ END:VCALENDAR
             fixed, unfixed = cal.validate(doFix=True)
             self.assertEqual(str(cal), test_new, msg="Failed test: %s" % (title,))
             self.assertEqual(set(fixed), test_fixed, msg="Failed test: %s" % (title,))
-            self.assertEqual(set(unfixed), test_unfixed, msg="Failed test: %s" % (title,))
+            self.assertEqual(
+                set(unfixed), test_unfixed, msg="Failed test: %s" % (title,)
+            )
 
     def test_valarm(self):
         data = (
@@ -1954,9 +1951,7 @@ END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
                 set(),
-                set((
-                    "[VALARM] Missing or too many required property: TRIGGER",
-                )),
+                set(("[VALARM] Missing or too many required property: TRIGGER",)),
             ),
             (
                 "Missing required with fix",
@@ -1995,12 +1990,8 @@ END:VALARM
 END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
-                set((
-                    "[VALARM] Missing required property: DESCRIPTION",
-                )),
-                set((
-                    "[VALARM] Missing or too many required property: TRIGGER",
-                )),
+                set(("[VALARM] Missing required property: DESCRIPTION",)),
+                set(("[VALARM] Missing or too many required property: TRIGGER",)),
             ),
             (
                 "Too many",
@@ -2047,10 +2038,12 @@ END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
                 set(),
-                set((
-                    "[VALARM] Missing or too many required property: TRIGGER",
-                    "[VALARM] Too many properties present: ATTACH",
-                )),
+                set(
+                    (
+                        "[VALARM] Missing or too many required property: TRIGGER",
+                        "[VALARM] Too many properties present: ATTACH",
+                    )
+                ),
             ),
             (
                 "Too few",
@@ -2095,9 +2088,7 @@ END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
                 set(),
-                set((
-                    "[VALARM] Missing required property: ATTENDEE",
-                )),
+                set(("[VALARM] Missing required property: ATTENDEE",)),
             ),
             (
                 "PROP value",
@@ -2144,9 +2135,7 @@ END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
                 set(),
-                set((
-                    "[VALARM] Property value incorrect: REPEAT",
-                )),
+                set(("[VALARM] Property value incorrect: REPEAT",)),
             ),
             (
                 "DUARTION and REPEAT together",
@@ -2193,9 +2182,9 @@ END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
                 set(),
-                set((
-                    "[VALARM] Properties must be present together: DURATION, REPEAT",
-                )),
+                set(
+                    ("[VALARM] Properties must be present together: DURATION, REPEAT",)
+                ),
             ),
             (
                 "Combo fix",
@@ -2236,12 +2225,8 @@ END:VALARM
 END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
-                set((
-                    "[VEVENT] Properties must not both be present: DTEND, DURATION",
-                )),
-                set((
-                    "[VALARM] Missing or too many required property: TRIGGER",
-                )),
+                set(("[VEVENT] Properties must not both be present: DTEND, DURATION",)),
+                set(("[VALARM] Missing or too many required property: TRIGGER",)),
             ),
             (
                 "ACKNOWLEDGED OK",
@@ -2331,9 +2316,7 @@ END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
                 set(),
-                set((
-                    "[VALARM] Property value incorrect: ACKNOWLEDGED",
-                )),
+                set(("[VALARM] Property value incorrect: ACKNOWLEDGED",)),
             ),
             (
                 "ACKNOWLEDGED too many",
@@ -2380,9 +2363,7 @@ END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
                 set(),
-                set((
-                    "[VALARM] Too many properties present: ACKNOWLEDGED",
-                )),
+                set(("[VALARM] Too many properties present: ACKNOWLEDGED",)),
             ),
             (
                 "No problem ACTION=URI",
@@ -2466,9 +2447,7 @@ END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
                 set(),
-                set((
-                    "[VALARM] Missing or too many required property: URL",
-                )),
+                set(("[VALARM] Missing or too many required property: URL",)),
             ),
             (
                 "No problem ACTION=NONE",
@@ -2557,7 +2536,9 @@ END:VCALENDAR
             fixed, unfixed = cal.validate(doFix=True)
             self.assertEqual(str(cal), test_new, msg="Failed test: %s" % (title,))
             self.assertEqual(set(fixed), test_fixed, msg="Failed test: %s" % (title,))
-            self.assertEqual(set(unfixed), test_unfixed, msg="Failed test: %s" % (title,))
+            self.assertEqual(
+                set(unfixed), test_unfixed, msg="Failed test: %s" % (title,)
+            )
 
     def test_xcomponents(self):
         data = (
@@ -2694,9 +2675,7 @@ END:X-COMPONENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
                 set(),
-                set((
-                    "[X-COMPONENT] Property value incorrect: DTSTAMP",
-                )),
+                set(("[X-COMPONENT] Property value incorrect: DTSTAMP",)),
             ),
         )
 
@@ -2705,7 +2684,9 @@ END:VCALENDAR
             fixed, unfixed = cal.validate(doFix=True)
             self.assertEqual(str(cal), test_new, msg="Failed test: %s" % (title,))
             self.assertEqual(set(fixed), test_fixed, msg="Failed test: %s" % (title,))
-            self.assertEqual(set(unfixed), test_unfixed, msg="Failed test: %s" % (title,))
+            self.assertEqual(
+                set(unfixed), test_unfixed, msg="Failed test: %s" % (title,)
+            )
 
     def test_STATUS_fix(self):
         """
@@ -2747,9 +2728,7 @@ END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
                 True,
-                set((
-                    "[VEVENT] Too many properties: STATUS",
-                )),
+                set(("[VEVENT] Too many properties: STATUS",)),
                 set(),
             ),
             (
@@ -2788,9 +2767,7 @@ END:VCALENDAR
 """.replace("\n", "\r\n"),
                 False,
                 set(),
-                set((
-                    "[VEVENT] Too many properties: STATUS",
-                )),
+                set(("[VEVENT] Too many properties: STATUS",)),
             ),
             (
                 "1.3 Two STATUS in VEVENT, none CANCELLED - fix",
@@ -2828,9 +2805,7 @@ END:VCALENDAR
 """.replace("\n", "\r\n"),
                 True,
                 set(),
-                set((
-                    "[VEVENT] Too many properties: STATUS",
-                )),
+                set(("[VEVENT] Too many properties: STATUS",)),
             ),
             (
                 "1.4 Two STATUS in VEVENT, none CANCELLED - no fix",
@@ -2868,9 +2843,7 @@ END:VCALENDAR
 """.replace("\n", "\r\n"),
                 False,
                 set(),
-                set((
-                    "[VEVENT] Too many properties: STATUS",
-                )),
+                set(("[VEVENT] Too many properties: STATUS",)),
             ),
             (
                 "2.1 Two STATUS in VTODO - fix",
@@ -2906,9 +2879,7 @@ END:VTODO
 END:VCALENDAR
 """.replace("\n", "\r\n"),
                 True,
-                set((
-                    "[VTODO] Too many properties: STATUS",
-                )),
+                set(("[VTODO] Too many properties: STATUS",)),
                 set(),
             ),
             (
@@ -2947,9 +2918,7 @@ END:VCALENDAR
 """.replace("\n", "\r\n"),
                 False,
                 set(),
-                set((
-                    "[VTODO] Too many properties: STATUS",
-                )),
+                set(("[VTODO] Too many properties: STATUS",)),
             ),
             (
                 "2.3 Two STATUS in VTODO, none CANCELLED - fix",
@@ -2987,9 +2956,7 @@ END:VCALENDAR
 """.replace("\n", "\r\n"),
                 True,
                 set(),
-                set((
-                    "[VTODO] Too many properties: STATUS",
-                )),
+                set(("[VTODO] Too many properties: STATUS",)),
             ),
             (
                 "2.4 Two STATUS in VTODO, none CANCELLED - no fix",
@@ -3027,9 +2994,7 @@ END:VCALENDAR
 """.replace("\n", "\r\n"),
                 False,
                 set(),
-                set((
-                    "[VTODO] Too many properties: STATUS",
-                )),
+                set(("[VTODO] Too many properties: STATUS",)),
             ),
             (
                 "3.1 Two STATUS in VJOURNAL - fix",
@@ -3059,9 +3024,7 @@ END:VJOURNAL
 END:VCALENDAR
 """.replace("\n", "\r\n"),
                 True,
-                set((
-                    "[VJOURNAL] Too many properties: STATUS",
-                )),
+                set(("[VJOURNAL] Too many properties: STATUS",)),
                 set(),
             ),
             (
@@ -3094,9 +3057,7 @@ END:VCALENDAR
 """.replace("\n", "\r\n"),
                 False,
                 set(),
-                set((
-                    "[VJOURNAL] Too many properties: STATUS",
-                )),
+                set(("[VJOURNAL] Too many properties: STATUS",)),
             ),
             (
                 "3.3 Two STATUS in VJOURNAL, none CANCELLED - fix",
@@ -3128,9 +3089,7 @@ END:VCALENDAR
 """.replace("\n", "\r\n"),
                 True,
                 set(),
-                set((
-                    "[VJOURNAL] Too many properties: STATUS",
-                )),
+                set(("[VJOURNAL] Too many properties: STATUS",)),
             ),
             (
                 "3.4 Two STATUS in VJOURNAL, none CANCELLED - no fix",
@@ -3162,9 +3121,7 @@ END:VCALENDAR
 """.replace("\n", "\r\n"),
                 False,
                 set(),
-                set((
-                    "[VJOURNAL] Too many properties: STATUS",
-                )),
+                set(("[VJOURNAL] Too many properties: STATUS",)),
             ),
         )
 
@@ -3173,4 +3130,6 @@ END:VCALENDAR
             fixed, unfixed = cal.validate(doFix=test_doFix)
             self.assertEqual(str(cal), test_new, msg="Failed test: %s" % (title,))
             self.assertEqual(set(fixed), test_fixed, msg="Failed test: %s" % (title,))
-            self.assertEqual(set(unfixed), test_unfixed, msg="Failed test: %s" % (title,))
+            self.assertEqual(
+                set(unfixed), test_unfixed, msg="Failed test: %s" % (title,)
+            )

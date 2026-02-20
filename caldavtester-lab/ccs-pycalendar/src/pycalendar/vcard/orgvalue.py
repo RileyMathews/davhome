@@ -35,10 +35,10 @@ class OrgValue(Value):
         return Value.VALUETYPE_ORG
 
     def parse(self, data, variant="vcard"):
-        self.mValue = utils.parseTextList(data, ';')
+        self.mValue = utils.parseTextList(data, ";")
 
     def generate(self, os):
-        utils.generateTextList(os, self.mValue, ';')
+        utils.generateTextList(os, self.mValue, ";")
 
     def parseJSONValue(self, jobject):
         self.mValue = tuple(map(lambda x: x.encode("utf-8"), jobject))
@@ -51,5 +51,6 @@ class OrgValue(Value):
 
     def setValue(self, value):
         self.mValue = value
+
 
 Value.registerType(Value.VALUETYPE_ORG, OrgValue, None)

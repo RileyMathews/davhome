@@ -19,7 +19,6 @@ from pycalendar.utils import set_difference
 
 
 class RecurrenceSet(object):
-
     def __init__(self):
         self.mRrules = []
         self.mExrules = []
@@ -40,9 +39,12 @@ class RecurrenceSet(object):
 
     def hasRecurrence(self):
         return (
-            (len(self.mRrules) != 0) or (len(self.mRdates) != 0) or (len(self.mRperiods) != 0) or
-            (len(self.mExrules) != 0) or (len(self.mExdates) != 0) or
-            (len(self.mExperiods) != 0)
+            (len(self.mRrules) != 0)
+            or (len(self.mRdates) != 0)
+            or (len(self.mRperiods) != 0)
+            or (len(self.mExrules) != 0)
+            or (len(self.mExdates) != 0)
+            or (len(self.mExperiods) != 0)
         )
 
     def equals(self, comp):
@@ -180,7 +182,13 @@ class RecurrenceSet(object):
 
         # RRULES
         for iter in self.mRrules:
-            if iter.expand(start, range, include, float_offset=float_offset, maxInstances=maxInstances):
+            if iter.expand(
+                start,
+                range,
+                include,
+                float_offset=float_offset,
+                maxInstances=maxInstances,
+            ):
                 limited = True
 
         # RDATES
@@ -252,8 +260,12 @@ class RecurrenceSet(object):
         # Right now the Event dialog only handles a single RRULE (but we allow
         # any number of EXDATES as deleted
         # instances will appear as EXDATES)
-        if ((len(self.mRrules) > 1) or (len(self.mExrules) > 0) or
-                (len(self.mRdates) > 0) or (len(self.mRperiods) > 0)):
+        if (
+            (len(self.mRrules) > 1)
+            or (len(self.mExrules) > 0)
+            or (len(self.mRdates) > 0)
+            or (len(self.mRperiods) > 0)
+        ):
             return False
 
         # Also, check the rule iteself
@@ -264,8 +276,12 @@ class RecurrenceSet(object):
 
     def isAdvancedUI(self):
         # Right now the Event dialog only handles a single RRULE
-        if ((len(self.mRrules) > 1) or (len(self.mExrules) > 0) or
-                (len(self.mRdates) > 0) or (len(self.mRperiods) > 0)):
+        if (
+            (len(self.mRrules) > 1)
+            or (len(self.mExrules) > 0)
+            or (len(self.mRdates) > 0)
+            or (len(self.mRperiods) > 0)
+        ):
             return False
 
         # Also, check the rule iteself
@@ -286,9 +302,14 @@ class RecurrenceSet(object):
             return "No Recurrence"
 
         # Look for a single RRULE and return its descriptor
-        if ((len(self.mRrules) == 1) and (len(self.mExrules) == 0) and (len(self.mRdates) == 0) and
-                (len(self.mExdates) == 0) and (len(self.mRperiods) == 0) and
-                (len(self.mExperiods) == 0)):
+        if (
+            (len(self.mRrules) == 1)
+            and (len(self.mExrules) == 0)
+            and (len(self.mRdates) == 0)
+            and (len(self.mExdates) == 0)
+            and (len(self.mRperiods) == 0)
+            and (len(self.mExperiods) == 0)
+        ):
             return self.mRrules.firstElement().getUIDescription()
 
         # Indicate some form of complex recurrence

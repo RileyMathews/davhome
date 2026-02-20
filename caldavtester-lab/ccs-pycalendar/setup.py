@@ -23,11 +23,11 @@ setup(
     url="https://github.com/apple/ccs-pycalendar",
     license="Apache 2.0",
     platforms=["any"],
-    package_dir={'': 'src'},
+    package_dir={"": "src"},
     packages=[
-        'pycalendar',
-        'pycalendar.icalendar',
-        'pycalendar.vcard',
-        'zonal',
-    ]
+        "pycalendar",
+        "pycalendar.icalendar",
+        "pycalendar.vcard",
+        "zonal",
+    ],
 )

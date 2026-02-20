@@ -22,7 +22,6 @@ import unittest
 
 
 class TestProperty(unittest.TestCase):
-
     test_data = (
         # Different value types
         "PHOTO;VALUE=URI:http://example.com/photo.jpg",
@@ -44,7 +43,15 @@ class TestProperty(unittest.TestCase):
         for data in TestProperty.test_data:
             prop = Property.parseText(data)
             propstr = str(prop)
-            self.assertEqual(propstr[:-2], data, "Failed parse/generate: %s to %s" % (data, propstr,))
+            self.assertEqual(
+                propstr[:-2],
+                data,
+                "Failed parse/generate: %s to %s"
+                % (
+                    data,
+                    propstr,
+                ),
+            )
 
     def testEquality(self):
 
@@ -78,8 +85,16 @@ class TestProperty(unittest.TestCase):
     def testDefaultValueCreate(self):
 
         test_data = (
-            ("SOURCE", "http://example.com/source", "SOURCE:http://example.com/source\r\n"),
-            ("souRCE", "http://example.com/source", "souRCE:http://example.com/source\r\n"),
+            (
+                "SOURCE",
+                "http://example.com/source",
+                "SOURCE:http://example.com/source\r\n",
+            ),
+            (
+                "souRCE",
+                "http://example.com/source",
+                "souRCE:http://example.com/source\r\n",
+            ),
             ("PHOTO", "YWJj", "PHOTO:\r\n YWJj\r\n"),
             ("photo", "YWJj", "photo:\r\n YWJj\r\n"),
             ("URL", "http://example.com/tz1", "URL:http://example.com/tz1\r\n"),
@@ -91,17 +106,19 @@ class TestProperty(unittest.TestCase):
     def testParameterEncodingDecoding(self):
 
         prop = Property(name="X-FOO", value="Test")
-        prop.addParameter(Parameter("X-BAR", "\"Check\""))
+        prop.addParameter(Parameter("X-BAR", '"Check"'))
         self.assertEqual(str(prop), "X-FOO;X-BAR=^'Check^':Test\r\n")
 
         prop.addParameter(Parameter("X-BAR2", "Check\nThis\tOut\n"))
-        self.assertEqual(str(prop), "X-FOO;X-BAR=^'Check^';X-BAR2=Check^nThis\tOut^n:Test\r\n")
+        self.assertEqual(
+            str(prop), "X-FOO;X-BAR=^'Check^';X-BAR2=Check^nThis\tOut^n:Test\r\n"
+        )
 
         data = "X-FOO;X-BAR=^'Check^':Test"
         prop = Property.parseText(data)
-        self.assertEqual(prop.getParameterValue("X-BAR"), "\"Check\"")
+        self.assertEqual(prop.getParameterValue("X-BAR"), '"Check"')
 
         data = "X-FOO;X-BAR=^'Check^';X-BAR2=Check^nThis\tOut^n:Test"
         prop = Property.parseText(data)
-        self.assertEqual(prop.getParameterValue("X-BAR"), "\"Check\"")
+        self.assertEqual(prop.getParameterValue("X-BAR"), '"Check"')
         self.assertEqual(prop.getParameterValue("X-BAR2"), "Check\nThis\tOut\n")

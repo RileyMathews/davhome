@@ -20,9 +20,7 @@ from pycalendar.icalendar.validation import ICALENDAR_VALUE_CHECKS
 
 
 class Vote(Component):
-
-    propertyCardinality_1 = (
-    )
+    propertyCardinality_1 = ()
 
     propertyCardinality_0_1 = (
         definitions.cICalProperty_POLL_ITEM_ID,
@@ -45,5 +43,6 @@ class Vote(Component):
             definitions.cICalProperty_POLL_ITEM_ID,
             definitions.cICalProperty_RESPONSE,
         )
+
 
 Component.registerComponent(definitions.cICalComponent_VOTE, Vote)

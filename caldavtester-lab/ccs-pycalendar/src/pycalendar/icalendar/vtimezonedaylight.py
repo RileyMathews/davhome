@@ -20,7 +20,6 @@ from pycalendar.icalendar.vtimezoneelement import VTimezoneElement
 
 
 class Daylight(VTimezoneElement):
-
     def __init__(self, parent=None):
         super(Daylight, self).__init__(parent=parent)
 
@@ -29,5 +28,6 @@ class Daylight(VTimezoneElement):
 
     def getType(self):
         return definitions.cICalComponent_DAYLIGHT
+
 
 Component.registerComponent(definitions.cICalComponent_DAYLIGHT, Daylight)

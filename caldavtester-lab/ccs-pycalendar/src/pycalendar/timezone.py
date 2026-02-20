@@ -36,8 +36,8 @@ class Timezone(object):
             self.mUTC = utc
             self.mTimezone = tzid
         elif tzid is not None:
-            self.mUTC = tzid.lower() == 'utc'
-            self.mTimezone = None if tzid.lower() == 'utc' else tzid
+            self.mUTC = tzid.lower() == "utc"
+            self.mTimezone = None if tzid.lower() == "utc" else tzid
         else:
             self.mUTC = True
             self.mTimezone = None
@@ -57,7 +57,9 @@ class Timezone(object):
         elif self.mUTC != comp.mUTC:
             return False
         else:
-            return self.mUTC or stringutils.compareStringsSafe(self.mTimezone, comp.mTimezone)
+            return self.mUTC or stringutils.compareStringsSafe(
+                self.mTimezone, comp.mTimezone
+            )
 
     @staticmethod
     def same(utc1, tzid1, utc2, tzid2):
@@ -95,26 +97,37 @@ class Timezone(object):
         if self.mUTC:
             return 0
         elif self.mTimezone is None:
-            return TimezoneDatabase.getTimezoneOffsetSeconds(Timezone.sDefaultTimezone.getTimezoneID(), dt, relative_to_utc)
+            return TimezoneDatabase.getTimezoneOffsetSeconds(
+                Timezone.sDefaultTimezone.getTimezoneID(), dt, relative_to_utc
+            )
         elif isinstance(self.mTimezone, int):
             return self.mTimezone
         else:
             # Look up timezone and resolve date using default timezones
-            return TimezoneDatabase.getTimezoneOffsetSeconds(self.mTimezone, dt, relative_to_utc)
+            return TimezoneDatabase.getTimezoneOffsetSeconds(
+                self.mTimezone, dt, relative_to_utc
+            )
 
     def timeZoneDescriptor(self, dt):
         if self.mUTC:
             return "(UTC)"
         elif self.mTimezone is None:
-            return TimezoneDatabase.getTimezoneDescriptor(Timezone.sDefaultTimezone.getTimezoneID(), dt)
+            return TimezoneDatabase.getTimezoneDescriptor(
+                Timezone.sDefaultTimezone.getTimezoneID(), dt
+            )
         elif isinstance(self.mTimezone, int):
             sign = "-" if self.mTimezone < 0 else "+"
             hours = abs(self.mTimezone) / 3600
             minutes = divmod(abs(self.mTimezone) / 60, 60)[1]
-            return "%s%02d%02d" % (sign, hours, minutes,)
+            return "%s%02d%02d" % (
+                sign,
+                hours,
+                minutes,
+            )
         else:
             # Look up timezone and resolve date using default timezones
             return TimezoneDatabase.getTimezoneDescriptor(self.mTimezone, dt)
+
 
 Timezone.sDefaultTimezone = Timezone()
 Timezone.UTCTimezone = Timezone(utc=True)

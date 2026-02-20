@@ -4,20 +4,23 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('calendars', '0003_calendarobjectchange'),
+        ("calendars", "0003_calendarobjectchange"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='calendar',
-            name='component_kind',
-            field=models.CharField(choices=[('VEVENT', 'Event'), ('VTODO', 'Task')], default='VEVENT', max_length=16),
+            model_name="calendar",
+            name="component_kind",
+            field=models.CharField(
+                choices=[("VEVENT", "Event"), ("VTODO", "Task")],
+                default="VEVENT",
+                max_length=16,
+            ),
         ),
         migrations.AddField(
-            model_name='calendar',
-            name='sort_order',
+            model_name="calendar",
+            name="sort_order",
             field=models.IntegerField(blank=True, null=True),
         ),
     ]

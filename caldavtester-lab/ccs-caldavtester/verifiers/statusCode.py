@@ -20,7 +20,6 @@ Verifier that chec ks the response status code for a specific value.
 
 
 class Verifier(object):
-
     def verify(self, manager, uri, response, respdata, args):  # @UnusedVariable
         # If no status verification requested, then assume all 2xx codes are OK
         teststatus = args.get("status", ["2xx"])
@@ -31,10 +30,13 @@ class Verifier(object):
             else:
                 test = int(test)
             if test < 100:
-                result = ((response.status / 100) == test)
+                result = (response.status / 100) == test
             else:
-                result = (response.status == test)
+                result = response.status == test
             if result:
                 return True, ""
 
-        return False, "        HTTP Status Code Wrong (expected %s): %d" % (", ".join(teststatus), response.status,)
+        return False, "        HTTP Status Code Wrong (expected %s): %d" % (
+            ", ".join(teststatus),
+            response.status,
+        )

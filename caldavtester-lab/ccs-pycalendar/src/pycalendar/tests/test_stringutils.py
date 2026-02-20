@@ -19,7 +19,6 @@ from pycalendar.stringutils import strduptokenstr
 
 
 class TestStringUtils(unittest.TestCase):
-
     def test_strduptokenstr(self):
         """
         Make sure L{strduptokenstr} copes with all possibilities.
@@ -28,16 +27,14 @@ class TestStringUtils(unittest.TestCase):
         data = (
             # Leading space
             ("  abc:def", ":;", ("abc", ":def")),
-            ("  \"abc\":def", ":;", ("abc", ":def")),
+            ('  "abc":def', ":;", ("abc", ":def")),
             ("   ", ":;", (None, "")),
-
             # Quoted
-            ("\"abc\":def", ":;", ("abc", ":def")),
-            ("\"ab\\c\":def", ":;", ("ab\\c", ":def")),
-            ("\"ab\\c:def", ":;", (None, "\"ab\\c:def")),
-            ("\"abc\":", ":;", ("abc", ":")),
-            ("\"abc\"", ":;", ("abc", "")),
-
+            ('"abc":def', ":;", ("abc", ":def")),
+            ('"ab\\c":def', ":;", ("ab\\c", ":def")),
+            ('"ab\\c:def', ":;", (None, '"ab\\c:def')),
+            ('"abc":', ":;", ("abc", ":")),
+            ('"abc"', ":;", ("abc", "")),
             # Unuoted
             ("abc:def", ":;", ("abc", ":def")),
             ("abc:", ":;", ("abc", ":")),

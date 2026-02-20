@@ -34,7 +34,9 @@ def processHrefSubstitutions(hrefs, prefix):
     for href in hrefs:
         if href.startswith("["):
             children = href[1:-1].split(",")
-            results.extend([(prefix + (i if i != "-" else "")).rstrip("/") for i in children if i])
+            results.extend(
+                [(prefix + (i if i != "-" else "")).rstrip("/") for i in children if i]
+            )
         else:
             results.append((prefix + href).rstrip("/"))
 

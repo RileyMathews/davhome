@@ -22,7 +22,6 @@ from pycalendar.icalendar.validation import ICALENDAR_VALUE_CHECKS
 
 
 class VJournal(ComponentRecur):
-
     propertyCardinality_1 = (
         definitions.cICalProperty_DTSTAMP,
         definitions.cICalProperty_UID,
@@ -65,5 +64,6 @@ class VJournal(ComponentRecur):
             definitions.cICalProperty_RECURRENCE_ID,
             definitions.cICalProperty_DTSTART,
         )
+
 
 Component.registerComponent(definitions.cICalComponent_VJOURNAL, VJournal)

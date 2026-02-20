@@ -20,7 +20,6 @@ from pycalendar.valueutils import ValueMixin
 
 
 class Duration(ValueMixin):
-
     def __init__(self, duration=None, weeks=0, days=0, hours=0, minutes=0, seconds=0):
         self.mForward = True
 
@@ -61,8 +60,14 @@ class Duration(ValueMixin):
         return self.getTotalSeconds() < comp.getTotalSeconds()
 
     def getTotalSeconds(self):
-        return [1, -1][not self.mForward] \
-            * (self.mSeconds + (self.mMinutes + (self.mHours + (self.mDays + (self.mWeeks * 7)) * 24) * 60) * 60)
+        return [1, -1][not self.mForward] * (
+            self.mSeconds
+            + (
+                self.mMinutes
+                + (self.mHours + (self.mDays + (self.mWeeks * 7)) * 24) * 60
+            )
+            * 60
+        )
 
     def setDuration(self, seconds):
         self.mForward = seconds >= 0
@@ -129,8 +134,8 @@ class Duration(ValueMixin):
 
             # Look for +/-
             self.mForward = True
-            if data[offset] in ('-', '+'):
-                self.mForward = data[offset] == '+'
+            if data[offset] in ("-", "+"):
+                self.mForward = data[offset] == "+"
                 offset += 1
 
             # Must have a 'P'
@@ -151,7 +156,10 @@ class Duration(ValueMixin):
 
                     # There cannot be anything else after this so just exit
                     if offset != maxoffset:
-                        if ParserContext.INVALID_DURATION_VALUE != ParserContext.PARSER_RAISE:
+                        if (
+                            ParserContext.INVALID_DURATION_VALUE
+                            != ParserContext.PARSER_RAISE
+                        ):
                             return
                         raise ValueError("Duration: extra data after 'W'")
                     return
@@ -226,7 +234,13 @@ class Duration(ValueMixin):
 
     def generate(self, os):
         try:
-            if not self.mForward and (self.mWeeks or self.mDays or self.mHours or self.mMinutes or self.mSeconds):
+            if not self.mForward and (
+                self.mWeeks
+                or self.mDays
+                or self.mHours
+                or self.mMinutes
+                or self.mSeconds
+            ):
                 os.write("-")
             os.write("P")
 
@@ -242,7 +256,9 @@ class Duration(ValueMixin):
                     if self.mHours != 0:
                         os.write("%dH" % (self.mHours,))
 
-                    if (self.mMinutes != 0) or ((self.mHours != 0) and (self.mSeconds != 0)):
+                    if (self.mMinutes != 0) or (
+                        (self.mHours != 0) and (self.mSeconds != 0)
+                    ):
                         os.write("%dM" % (self.mMinutes,))
 
                     if self.mSeconds != 0:

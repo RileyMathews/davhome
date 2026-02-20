@@ -32,22 +32,16 @@ import urlparse
 import uuid
 
 algorithms = {
-    'md5': md5,
-    'md5-sess': md5,
-    'sha': sha1,
+    "md5": md5,
+    "md5-sess": md5,
+    "sha": sha1,
 }
 
 # DigestCalcHA1
 
 
 def calcHA1(
-    pszAlg,
-    pszUserName,
-    pszRealm,
-    pszPassword,
-    pszNonce,
-    pszCNonce,
-    preHA1=None
+    pszAlg, pszUserName, pszRealm, pszPassword, pszNonce, pszCNonce, preHA1=None
 ):
     """
     @param pszAlg: The name of the algorithm to use to calculate the digest.
@@ -64,9 +58,13 @@ def calcHA1(
        pszUserName, pszRealm, and pszPassword are ignored.
     """
 
-    if (preHA1 and (pszUserName or pszRealm or pszPassword)):
-        raise TypeError(("preHA1 is incompatible with the pszUserName, "
-                         "pszRealm, and pszPassword arguments"))
+    if preHA1 and (pszUserName or pszRealm or pszPassword):
+        raise TypeError(
+            (
+                "preHA1 is incompatible with the pszUserName, "
+                "pszRealm, and pszPassword arguments"
+            )
+        )
 
     if preHA1 is None:
         # We need to calculate the HA1 from the username:realm:password
@@ -79,7 +77,7 @@ def calcHA1(
         HA1 = m.digest()
     else:
         # We were given a username:realm:password
-        HA1 = preHA1.decode('hex')
+        HA1 = preHA1.decode("hex")
 
     if pszAlg == "md5-sess":
         m = algorithms[pszAlg]()
@@ -90,7 +88,7 @@ def calcHA1(
         m.update(pszCNonce)
         HA1 = m.digest()
 
-    return HA1.encode('hex')
+    return HA1.encode("hex")
 
 
 # DigestCalcResponse
@@ -112,7 +110,7 @@ def calcResponse(
     if pszQop == "auth-int":
         m.update(":")
         m.update(pszHEntity)
-    HA2 = m.digest().encode('hex')
+    HA2 = m.digest().encode("hex")
 
     m = algorithms[algo]()
     m.update(HA1)
@@ -127,11 +125,11 @@ def calcResponse(
         m.update(pszQop)
         m.update(":")
     m.update(HA2)
-    respHash = m.digest().encode('hex')
+    respHash = m.digest().encode("hex")
     return respHash
 
 
-class pause (object):
+class pause(object):
     pass
 
 
@@ -177,7 +175,10 @@ class request(object):
         self.grabcalparam = []
 
     def __str__(self):
-        return "Method: %s; uris: %s" % (self.method, self.ruris if len(self.ruris) > 1 else self.ruri,)
+        return "Method: %s; uris: %s" % (
+            self.method,
+            self.ruris if len(self.ruris) > 1 else self.ruri,
+        )
 
     def missingFeatures(self):
         return self.require_features - self.manager.server_info.features
@@ -227,7 +228,10 @@ class request(object):
         user = [self.user, si.user][self.user == ""]
         pswd = [self.pswd, si.pswd][self.pswd == ""]
         details = None
-        if user in self.manager.digestCache and self.manager.digestCache[user]["max-nonce-time"] > time.time():
+        if (
+            user in self.manager.digestCache
+            and self.manager.digestCache[user]["max-nonce-time"] > time.time()
+        ):
             details = self.manager.digestCache[user]
         else:
             # Redo digest auth from scratch to get a new nonce etc
@@ -244,7 +248,6 @@ class request(object):
                 http.close()
 
             if response.status == 401:
-
                 wwwauthorize = response.msg.getheaders("WWW-Authenticate")
                 for item in wwwauthorize:
                     if not item.lower().startswith("digest "):
@@ -255,11 +258,12 @@ class request(object):
                         if s[0] == s[-1] == '"':
                             return s[1:-1]
                         return s
-                    parts = wwwauthorize.split(',')
+
+                    parts = wwwauthorize.split(",")
 
                     details = {}
 
-                    for (k, v) in [p.split('=', 1) for p in parts]:
+                    for k, v in [p.split("=", 1) for p in parts]:
                         details[k.strip()] = unq(v.strip())
 
                     details["max-nonce-time"] = time.time() + 600
@@ -267,33 +271,64 @@ class request(object):
                     break
 
         if details:
-            if details.get('qop'):
-                if self.nc.get(details.get('nonce')) is None:
-                    self.nc[details.get('nonce')] = 1
+            if details.get("qop"):
+                if self.nc.get(details.get("nonce")) is None:
+                    self.nc[details.get("nonce")] = 1
                 else:
-                    self.nc[details.get('nonce')] += 1
-                details['nc'] = "%08x" % self.nc[details.get('nonce')]
-                if details.get('cnonce') is None:
-                    details['cnonce'] = "D4AAE4FF-ADA1-4149-BFE2-B506F9264318"
+                    self.nc[details.get("nonce")] += 1
+                details["nc"] = "%08x" % self.nc[details.get("nonce")]
+                if details.get("cnonce") is None:
+                    details["cnonce"] = "D4AAE4FF-ADA1-4149-BFE2-B506F9264318"
 
             digest = calcResponse(
-                calcHA1(details.get('algorithm', 'md5'), user, details.get('realm'), pswd, details.get('nonce'), details.get('cnonce')),
-                details.get('algorithm', 'md5'), details.get('nonce'), details.get('nc'), details.get('cnonce'), details.get('qop'), self.method, self.getURI(si), None
+                calcHA1(
+                    details.get("algorithm", "md5"),
+                    user,
+                    details.get("realm"),
+                    pswd,
+                    details.get("nonce"),
+                    details.get("cnonce"),
+                ),
+                details.get("algorithm", "md5"),
+                details.get("nonce"),
+                details.get("nc"),
+                details.get("cnonce"),
+                details.get("qop"),
+                self.method,
+                self.getURI(si),
+                None,
             )
 
-            if details.get('qop'):
+            if details.get("qop"):
                 response = (
                     'Digest username="%s", realm="%s", '
                     'nonce="%s", uri="%s", '
-                    'response=%s, algorithm=%s, cnonce="%s", qop=%s, nc=%s' %
-                    (user, details.get('realm'), details.get('nonce'), self.getURI(si), digest, details.get('algorithm', 'md5'), details.get('cnonce'), details.get('qop'), details.get('nc'),)
+                    'response=%s, algorithm=%s, cnonce="%s", qop=%s, nc=%s'
+                    % (
+                        user,
+                        details.get("realm"),
+                        details.get("nonce"),
+                        self.getURI(si),
+                        digest,
+                        details.get("algorithm", "md5"),
+                        details.get("cnonce"),
+                        details.get("qop"),
+                        details.get("nc"),
+                    )
                 )
             else:
                 response = (
                     'Digest username="%s", realm="%s", '
                     'nonce="%s", uri="%s", '
-                    'response=%s, algorithm=%s' %
-                    (user, details.get('realm'), details.get('nonce'), self.getURI(si), digest, details.get('algorithm'),)
+                    "response=%s, algorithm=%s"
+                    % (
+                        user,
+                        details.get("realm"),
+                        details.get("nonce"),
+                        self.getURI(si),
+                        digest,
+                        details.get("algorithm"),
+                    )
                 )
 
             return response
@@ -302,7 +337,11 @@ class request(object):
 
     def getFilePath(self):
         if self.data is not None:
-            return os.path.join(self.manager.data_dir, self.data.filepath) if self.manager.data_dir else self.data.filepath
+            return (
+                os.path.join(self.manager.data_dir, self.data.filepath)
+                if self.manager.data_dir
+                else self.data.filepath
+            )
         else:
             return ""
 
@@ -313,7 +352,12 @@ class request(object):
                 data = self.data.value
             elif self.data.filepath:
                 # read in the file data
-                fd = open(self.data.nextpath if hasattr(self.data, "nextpath") else self.getFilePath(), "r")
+                fd = open(
+                    self.data.nextpath
+                    if hasattr(self.data, "nextpath")
+                    else self.getFilePath(),
+                    "r",
+                )
                 try:
                     data = fd.read()
                 finally:
@@ -332,7 +376,13 @@ class request(object):
 
     def getNextData(self):
         if not hasattr(self, "dataList"):
-            self.dataList = sorted([path for path in os.listdir(self.getFilePath()) if not path.startswith(".")])
+            self.dataList = sorted(
+                [
+                    path
+                    for path in os.listdir(self.getFilePath())
+                    if not path.startswith(".")
+                ]
+            )
         if len(self.dataList):
             self.data.nextpath = os.path.join(self.getFilePath(), self.dataList.pop(0))
             return True
@@ -344,7 +394,13 @@ class request(object):
             return False
 
     def hasNextData(self):
-        dataList = sorted([path for path in os.listdir(self.getFilePath()) if not path.startswith(".")])
+        dataList = sorted(
+            [
+                path
+                for path in os.listdir(self.getFilePath())
+                if not path.startswith(".")
+            ]
+        )
         return len(dataList) != 0
 
     def generateCalendarData(self, data):
@@ -359,23 +415,59 @@ class request(object):
         data = re.sub("SUMMARY:(.*)", "SUMMARY:\\1 #%s" % (self.count,), data)
 
         now = datetime.date.today()
-        data = re.sub("(DTSTART;[^:]*):[0-9]{8,8}", "\\1:%04d%02d%02d" % (now.year, now.month, now.day,), data)
-        data = re.sub("(DTEND;[^:]*):[0-9]{8,8}", "\\1:%04d%02d%02d" % (now.year, now.month, now.day,), data)
+        data = re.sub(
+            "(DTSTART;[^:]*):[0-9]{8,8}",
+            "\\1:%04d%02d%02d"
+            % (
+                now.year,
+                now.month,
+                now.day,
+            ),
+            data,
+        )
+        data = re.sub(
+            "(DTEND;[^:]*):[0-9]{8,8}",
+            "\\1:%04d%02d%02d"
+            % (
+                now.year,
+                now.month,
+                now.day,
+            ),
+            data,
+        )
 
         return data
 
     def parseXML(self, node):
-        self.auth = node.get(src.xmlDefs.ATTR_AUTH, src.xmlDefs.ATTR_VALUE_YES) == src.xmlDefs.ATTR_VALUE_YES
-        self.user = self.manager.server_info.subs(node.get(src.xmlDefs.ATTR_USER, "").encode("utf-8"))
-        self.pswd = self.manager.server_info.subs(node.get(src.xmlDefs.ATTR_PSWD, "").encode("utf-8"))
-        self.cert = self.manager.server_info.subs(node.get(src.xmlDefs.ATTR_CERT, "").encode("utf-8"))
+        self.auth = (
+            node.get(src.xmlDefs.ATTR_AUTH, src.xmlDefs.ATTR_VALUE_YES)
+            == src.xmlDefs.ATTR_VALUE_YES
+        )
+        self.user = self.manager.server_info.subs(
+            node.get(src.xmlDefs.ATTR_USER, "").encode("utf-8")
+        )
+        self.pswd = self.manager.server_info.subs(
+            node.get(src.xmlDefs.ATTR_PSWD, "").encode("utf-8")
+        )
+        self.cert = self.manager.server_info.subs(
+            node.get(src.xmlDefs.ATTR_CERT, "").encode("utf-8")
+        )
         self.end_delete = getYesNoAttributeValue(node, src.xmlDefs.ATTR_END_DELETE)
-        self.print_request = self.manager.print_request or getYesNoAttributeValue(node, src.xmlDefs.ATTR_PRINT_REQUEST)
-        self.print_response = self.manager.print_response or getYesNoAttributeValue(node, src.xmlDefs.ATTR_PRINT_RESPONSE)
+        self.print_request = self.manager.print_request or getYesNoAttributeValue(
+            node, src.xmlDefs.ATTR_PRINT_REQUEST
+        )
+        self.print_response = self.manager.print_response or getYesNoAttributeValue(
+            node, src.xmlDefs.ATTR_PRINT_RESPONSE
+        )
         self.iterate_data = getYesNoAttributeValue(node, src.xmlDefs.ATTR_ITERATE_DATA)
-        self.wait_for_success = getYesNoAttributeValue(node, src.xmlDefs.ATTR_WAIT_FOR_SUCCESS)
+        self.wait_for_success = getYesNoAttributeValue(
+            node, src.xmlDefs.ATTR_WAIT_FOR_SUCCESS
+        )
 
-        if node.get(src.xmlDefs.ATTR_HOST2, src.xmlDefs.ATTR_VALUE_NO) == src.xmlDefs.ATTR_VALUE_YES:
+        if (
+            node.get(src.xmlDefs.ATTR_HOST2, src.xmlDefs.ATTR_VALUE_NO)
+            == src.xmlDefs.ATTR_VALUE_YES
+        ):
             self.host = self.manager.server_info.host2
             self.port = self.manager.server_info.port2
             self.afunix = self.manager.server_info.afunix2
@@ -390,8 +482,13 @@ class request(object):
             elif child.tag == src.xmlDefs.ELEMENT_HEADER:
                 self.parseHeader(child)
             elif child.tag == src.xmlDefs.ELEMENT_RURI:
-                self.ruri_quote = child.get(src.xmlDefs.ATTR_QUOTE, src.xmlDefs.ATTR_VALUE_YES) == src.xmlDefs.ATTR_VALUE_YES
-                self.ruris.append(self.manager.server_info.subs(child.text.encode("utf-8")))
+                self.ruri_quote = (
+                    child.get(src.xmlDefs.ATTR_QUOTE, src.xmlDefs.ATTR_VALUE_YES)
+                    == src.xmlDefs.ATTR_VALUE_YES
+                )
+                self.ruris.append(
+                    self.manager.server_info.subs(child.text.encode("utf-8"))
+                )
                 if len(self.ruris) == 1:
                     self.ruri = self.ruris[0]
             elif child.tag == src.xmlDefs.ELEMENT_DATA:
@@ -420,7 +517,9 @@ class request(object):
     def parseFeatures(self, node, require=True):
         for child in node.getchildren():
             if child.tag == src.xmlDefs.ELEMENT_FEATURE:
-                (self.require_features if require else self.exclude_features).add(child.text.encode("utf-8"))
+                (self.require_features if require else self.exclude_features).add(
+                    child.text.encode("utf-8")
+                )
 
     def parseHeader(self, node):
 
@@ -467,17 +566,34 @@ class request(object):
         parent = None
         variable = None
         for child in node.getchildren():
-            if child.tag in (src.xmlDefs.ELEMENT_NAME, src.xmlDefs.ELEMENT_PROPERTY, src.xmlDefs.ELEMENT_POINTER):
+            if child.tag in (
+                src.xmlDefs.ELEMENT_NAME,
+                src.xmlDefs.ELEMENT_PROPERTY,
+                src.xmlDefs.ELEMENT_POINTER,
+            ):
                 name = self.manager.server_info.subs(child.text.encode("utf-8"))
             elif child.tag == src.xmlDefs.ELEMENT_PARENT:
                 parent = self.manager.server_info.subs(child.text.encode("utf-8"))
             elif child.tag == src.xmlDefs.ELEMENT_VARIABLE:
                 if variable is None:
                     variable = []
-                variable.append(self.manager.server_info.subs(child.text.encode("utf-8")))
+                variable.append(
+                    self.manager.server_info.subs(child.text.encode("utf-8"))
+                )
 
         if (name is not None) and (variable is not None):
-            appendto.append((name, variable,) if parent is None else (name, parent, variable,))
+            appendto.append(
+                (
+                    name,
+                    variable,
+                )
+                if parent is None
+                else (
+                    name,
+                    parent,
+                    variable,
+                )
+            )
 
 
 class data(object):
@@ -497,8 +613,14 @@ class data(object):
 
     def parseXML(self, node):
 
-        self.substitute = node.get(src.xmlDefs.ATTR_SUBSTITUTIONS, src.xmlDefs.ATTR_VALUE_YES) == src.xmlDefs.ATTR_VALUE_YES
-        self.generate = node.get(src.xmlDefs.ATTR_GENERATE, src.xmlDefs.ATTR_VALUE_NO) == src.xmlDefs.ATTR_VALUE_YES
+        self.substitute = (
+            node.get(src.xmlDefs.ATTR_SUBSTITUTIONS, src.xmlDefs.ATTR_VALUE_YES)
+            == src.xmlDefs.ATTR_VALUE_YES
+        )
+        self.generate = (
+            node.get(src.xmlDefs.ATTR_GENERATE, src.xmlDefs.ATTR_VALUE_NO)
+            == src.xmlDefs.ATTR_VALUE_YES
+        )
 
         for child in node.getchildren():
             if child.tag == src.xmlDefs.ELEMENT_CONTENTTYPE:
@@ -538,7 +660,9 @@ class generator(object):
         # Re-do substitutions from values generated during the current test run
         if self.manager.server_info.hasextrasubs():
             for name, values in self.args.iteritems():
-                newvalues = [self.manager.server_info.extrasubs(value) for value in values]
+                newvalues = [
+                    self.manager.server_info.extrasubs(value) for value in values
+                ]
                 self.args[name] = newvalues
 
         generatorClass = self._importName(self.callback, "Generator")
@@ -572,7 +696,9 @@ class generator(object):
                 name = child.text.encode("utf-8")
             elif child.tag == src.xmlDefs.ELEMENT_VALUE:
                 if child.text is not None:
-                    values.append(self.manager.server_info.subs(child.text.encode("utf-8")))
+                    values.append(
+                        self.manager.server_info.subs(child.text.encode("utf-8"))
+                    )
                 else:
                     values.append("")
         if name:
@@ -605,7 +731,9 @@ class verify(object):
         # Re-do substitutions from values generated during the current test run
         if self.manager.server_info.hasextrasubs():
             for name, values in self.args.iteritems():
-                newvalues = [self.manager.server_info.extrasubs(value) for value in values]
+                newvalues = [
+                    self.manager.server_info.extrasubs(value) for value in values
+                ]
                 self.args[name] = newvalues
 
         verifierClass = self._importName("verifiers." + self.callback, "Verifier")
@@ -638,7 +766,9 @@ class verify(object):
     def parseFeatures(self, node, require=True):
         for child in node.getchildren():
             if child.tag == src.xmlDefs.ELEMENT_FEATURE:
-                (self.require_features if require else self.exclude_features).add(child.text.encode("utf-8"))
+                (self.require_features if require else self.exclude_features).add(
+                    child.text.encode("utf-8")
+                )
 
     def parseArgXML(self, node):
         name = None
@@ -648,7 +778,9 @@ class verify(object):
                 name = child.text.encode("utf-8")
             elif child.tag == src.xmlDefs.ELEMENT_VALUE:
                 if child.text is not None:
-                    values.append(self.manager.server_info.subs(child.text.encode("utf-8")))
+                    values.append(
+                        self.manager.server_info.subs(child.text.encode("utf-8"))
+                    )
                 else:
                     values.append("")
         if name:

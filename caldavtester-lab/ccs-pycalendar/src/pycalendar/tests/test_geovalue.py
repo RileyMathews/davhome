@@ -20,7 +20,6 @@ import unittest
 
 
 class TestURIValue(unittest.TestCase):
-
     def testParseValue(self):
 
         items = (
@@ -32,7 +31,9 @@ class TestURIValue(unittest.TestCase):
             req = GeoValue()
             req.parse(item, "icalendar")
             test = req.getText()
-            self.assertEqual(test, result, "Failed to parse and re-generate '%s'" % (item,))
+            self.assertEqual(
+                test, result, "Failed to parse and re-generate '%s'" % (item,)
+            )
 
     def testParseProperty(self):
 
@@ -44,4 +45,6 @@ class TestURIValue(unittest.TestCase):
         for item, result in items:
             prop = Property.parseText(item)
             test = prop.getText()
-            self.assertEqual(test, result + "\r\n", "Failed to parse and re-generate '%s'" % (item,))
+            self.assertEqual(
+                test, result + "\r\n", "Failed to parse and re-generate '%s'" % (item,)
+            )

@@ -22,7 +22,6 @@ import re
 
 
 class Verifier(object):
-
     def verify(self, manager, uri, response, respdata, args):  # @UnusedVariable
         # Split into header/value tuples
         testheader = args.get("header", [])[:]
@@ -36,17 +35,32 @@ class Verifier(object):
                 p = p[1:]
                 present = "multiple"
             if p.find("$") != -1:
-                testheader[i] = (p.split("$", 1)[0], p.split("$", 1)[1], present, True,)
+                testheader[i] = (
+                    p.split("$", 1)[0],
+                    p.split("$", 1)[1],
+                    present,
+                    True,
+                )
             elif p.find("!") != -1:
-                testheader[i] = (p.split("!", 1)[0], p.split("!", 1)[1], present, False,)
+                testheader[i] = (
+                    p.split("!", 1)[0],
+                    p.split("!", 1)[1],
+                    present,
+                    False,
+                )
             else:
-                testheader[i] = (p, None, present, True,)
+                testheader[i] = (
+                    p,
+                    None,
+                    present,
+                    True,
+                )
 
         result = True
         resulttxt = ""
         for hdrname, hdrvalue, presence, matchvalue in testheader:
             hdrs = response.msg.getheaders(hdrname)
-            if (hdrs is None or (len(hdrs) == 0)):
+            if hdrs is None or (len(hdrs) == 0):
                 if presence != "none":
                     result = False
                     if len(resulttxt):
@@ -60,7 +74,10 @@ class Verifier(object):
                 result = False
                 if len(resulttxt):
                     resulttxt += "\n"
-                resulttxt += "        Response Header was present one or more times: %s" % (hdrname,)
+                resulttxt += (
+                    "        Response Header was present one or more times: %s"
+                    % (hdrname,)
+                )
                 continue
 
             if (len(hdrs) != 1) and (presence == "single"):
@@ -70,12 +87,12 @@ class Verifier(object):
                 resulttxt += "        Multiple Response Headers: %s" % (hdrname,)
                 continue
 
-            if (hdrvalue is not None):
+            if hdrvalue is not None:
                 hdrvalue = hdrvalue.replace(" ", "")
                 matched = False
                 for hdr in hdrs:
                     hdr = hdr.replace(" ", "")
-                    if (re.match(hdrvalue, hdr) is not None):
+                    if re.match(hdrvalue, hdr) is not None:
                         matched = True
                         break
 
@@ -83,6 +100,9 @@ class Verifier(object):
                     result = False
                     if len(resulttxt):
                         resulttxt += "\n"
-                    resulttxt += "        Wrong Response Header Value: %s: %s" % (hdrname, str(hdrs))
+                    resulttxt += "        Wrong Response Header Value: %s: %s" % (
+                        hdrname,
+                        str(hdrs),
+                    )
 
         return result, resulttxt

@@ -24,7 +24,6 @@ import unittest
 
 
 class TestCard(unittest.TestCase):
-
     data = (
         (
             """BEGIN:VCARD
@@ -220,7 +219,11 @@ END:VCARD
             s = StringIO.StringIO()
             card.generate(s)
             test = s.getvalue()
-            self.assertEqual(test, result, "\n".join(difflib.unified_diff(test.splitlines(), result.splitlines())))
+            self.assertEqual(
+                test,
+                result,
+                "\n".join(difflib.unified_diff(test.splitlines(), result.splitlines())),
+            )
 
         for item, result in self.data:
             _doDuplicateRoundtrip(item, result)
@@ -234,7 +237,15 @@ END:VCARD
             card2 = Card()
             card2.parse(StringIO.StringIO(caldata))
 
-            self.assertEqual(card1, card2, "\n".join(difflib.unified_diff(str(card1).splitlines(), str(card2).splitlines())))
+            self.assertEqual(
+                card1,
+                card2,
+                "\n".join(
+                    difflib.unified_diff(
+                        str(card1).splitlines(), str(card2).splitlines()
+                    )
+                ),
+            )
 
         def _doNonEquality(caldata):
             card1 = Card()
@@ -280,7 +291,7 @@ TEL;type=CELL:1-444-444-4444
 item1.X-ABADR:us
 END:VCARD
 """.replace("\n", "\r\n"),
-                )
+                ),
             ),
             (
                 """BEGIN:VCARD
@@ -334,16 +345,23 @@ TEL;type=CELL:1-444-444-4445
 item1.X-ABADR:us
 END:VCARD
 """.replace("\n", "\r\n"),
-                )
+                ),
             ),
         )
 
         for item, results in data:
-
             cards = Card.parseMultipleTextData(StringIO.StringIO(item))
             self.assertEqual(len(cards), len(results))
             for card, result in zip(cards, results):
-                self.assertEqual(str(card), result, "\n".join(difflib.unified_diff(str(card).splitlines(), result.splitlines())))
+                self.assertEqual(
+                    str(card),
+                    result,
+                    "\n".join(
+                        difflib.unified_diff(
+                            str(card).splitlines(), result.splitlines()
+                        )
+                    ),
+                )
 
     def testABapp(self):
 
@@ -400,13 +418,11 @@ item1.ADR;type=WORK;type=pref:;;1245 Test;Sesame Street;California;11111;USA
 item1.X-ABADR:us
 UID:ED7A5AEC-AB19-4CE0-AD6A-2923A3E5C4E1:ABPerson
 """.replace("\n", "\r\n"),
-
             """BEGIN:VCALENDAR
 PRODID:-//mulberrymail.com//Mulberry v4.0//EN
 VERSION:2.0
 END:VCALENDAR
 """.replace("\n", "\r\n"),
-
             """BOGUS
 BEGIN:VCARD
 VERSION:3.0
@@ -420,7 +436,6 @@ item1.X-ABADR:us
 UID:ED7A5AEC-AB19-4CE0-AD6A-2923A3E5C4E1:ABPerson
 END:VCARD
 """.replace("\n", "\r\n"),
-
             """BOGUS
 
 BEGIN:VCARD
@@ -435,7 +450,6 @@ item1.X-ABADR:us
 UID:ED7A5AEC-AB19-4CE0-AD6A-2923A3E5C4E1:ABPerson
 END:VCARD
 """.replace("\n", "\r\n"),
-
             """BEGIN:VCARD
 VERSION:3.0
 N:Thompson;Default;;;
@@ -449,7 +463,6 @@ UID:ED7A5AEC-AB19-4CE0-AD6A-2923A3E5C4E1:ABPerson
 END:VCARD
 BOGUS
 """.replace("\n", "\r\n"),
-
             """BEGIN:VCARD
 VERSION:3.0
 N:Thompson;Default;;;
@@ -464,7 +477,6 @@ END:VCARD
 
 BOGUS
 """.replace("\n", "\r\n"),
-
         )
 
         for item in data:
@@ -487,7 +499,6 @@ TEL;type=CELL:1-444-444-4444
 item1.X-ABADR:us
 END:VCARD
 """.replace("\n", "\r\n"),
-
             """
 
 BEGIN:VCARD
@@ -503,7 +514,6 @@ TEL;type=CELL:1-444-444-4444
 item1.X-ABADR:us
 END:VCARD
 """.replace("\n", "\r\n"),
-
             """BEGIN:VCARD
 VERSION:3.0
 UID:ED7A5AEC-AB19-4CE0-AD6A-2923A3E5C4E1:ABPerson
@@ -519,7 +529,6 @@ END:VCARD
 
 
 """.replace("\n", "\r\n"),
-
             """BEGIN:VCARD
 VERSION:3.0
 UID:ED7A5AEC-AB19-4CE0-AD6A-2923A3E5C4E1:ABPerson
@@ -534,7 +543,6 @@ TEL;type=CELL:1-444-444-4444
 item1.X-ABADR:us
 END:VCARD
 """.replace("\n", "\r\n"),
-
             """BEGIN:VCARD
 VERSION:3.0
 UID:ED7A5AEC-AB19-4CE0-AD6A-2923A3E5C4E1:ABPerson

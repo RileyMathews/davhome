@@ -27,7 +27,6 @@ except ImportError:
 
 
 class Verifier(object):
-
     def verify(self, manager, uri, response, respdata, args):  # @UnusedVariable
 
         # Must have status 200
@@ -80,9 +79,9 @@ class Verifier(object):
 
             # Set sizes must match
             if (
-                (len(busy) != len(busyp)) or
-                (len(unavailable) != len(unavailablep)) or
-                (len(tentative) != len(tentativep))
+                (len(busy) != len(busyp))
+                or (len(unavailable) != len(unavailablep))
+                or (len(tentative) != len(tentativep))
             ):
                 raise ValueError("Period list sizes do not match.")
 
@@ -99,7 +98,11 @@ class Verifier(object):
 
             # Compare all periods
             if len(busyp.symmetric_difference(busy)):
-                raise ValueError("Busy periods do not match: {}".format(busyp.symmetric_difference(busy)))
+                raise ValueError(
+                    "Busy periods do not match: {}".format(
+                        busyp.symmetric_difference(busy)
+                    )
+                )
             elif len(tentativep.symmetric_difference(tentative)):
                 raise ValueError("Busy-tentative periods do not match")
             elif len(unavailablep.symmetric_difference(unavailable)):

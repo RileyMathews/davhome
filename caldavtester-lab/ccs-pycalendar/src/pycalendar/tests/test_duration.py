@@ -21,7 +21,6 @@ import unittest
 
 
 class TestDuration(unittest.TestCase):
-
     test_data = (
         (0, "PT0S"),
         (1, "PT1S"),
@@ -90,7 +89,6 @@ class TestDuration(unittest.TestCase):
             ("-P1W1D", -7 * 24 * 60 * 60, "-P1W"),
         )
         for text, seconds, result in test_relaxed_data:
-
             ParserContext.INVALID_DURATION_VALUE = ParserContext.PARSER_FIX
             self.assertEqual(Duration.parseText(text).getTotalSeconds(), seconds)
             self.assertEqual(Duration.parseText(text).getText(), result)

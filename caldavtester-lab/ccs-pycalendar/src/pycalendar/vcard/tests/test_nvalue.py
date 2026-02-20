@@ -20,7 +20,6 @@ import unittest
 
 
 class TestNValue(unittest.TestCase):
-
     def testParseValue(self):
 
         items = (
@@ -37,7 +36,9 @@ class TestNValue(unittest.TestCase):
             req = NValue()
             req.parse(item, "vcard")
             test = req.getText()
-            self.assertEqual(test, result, "Failed to parse and re-generate '%s'" % (item,))
+            self.assertEqual(
+                test, result, "Failed to parse and re-generate '%s'" % (item,)
+            )
 
     def testParseProperty(self):
 
@@ -55,4 +56,6 @@ class TestNValue(unittest.TestCase):
         for item, result in items:
             prop = Property.parseText(item)
             test = prop.getText()
-            self.assertEqual(test, result + "\r\n", "Failed to parse and re-generate '%s'" % (item,))
+            self.assertEqual(
+                test, result + "\r\n", "Failed to parse and re-generate '%s'" % (item,)
+            )

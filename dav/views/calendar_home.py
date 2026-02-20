@@ -54,7 +54,6 @@ from dav.common import (
     _log_dav_create,
     _parse_propfind_payload,
     _proppatch_multistatus_response,
-    _require_dav_user,
     _sync_token_for_calendar,
     _visible_calendars_for_home,
     _xml_response,

@@ -47,10 +47,7 @@ class RuleSet(object):
         return self.generate()
 
     def __eq__(self, other):
-        return other and (
-            self.name == other.name and
-            self.rules == other.rules
-        )
+        return other and (self.name == other.name and self.rules == other.rules)
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -70,7 +67,11 @@ class RuleSet(object):
             assert name, "Must have a zone name: '%s'" % (lines,)
             if not self.name:
                 self.name = name
-            assert self.name == name, "Different zone names %s and %s: %s" % (self.name, name, line,)
+            assert self.name == name, "Different zone names %s and %s: %s" % (
+                self.name,
+                name,
+                line,
+            )
             rule = Rule()
             rule.parse(line)
             self.rules.append(rule)
@@ -162,7 +163,21 @@ class Rule(object):
         "Dec": 12,
     }
 
-    MONTH_POS_TO_NAME = ("", "Jan", "Feb", "Mar", "Apr", "May", "Jun", "Jul", "Aug", "Sep", "Oct", "Nov", "Dec")
+    MONTH_POS_TO_NAME = (
+        "",
+        "Jan",
+        "Feb",
+        "Mar",
+        "Apr",
+        "May",
+        "Jun",
+        "Jul",
+        "Aug",
+        "Sep",
+        "Oct",
+        "Nov",
+        "Dec",
+    )
 
     def __init__(self):
         self.name = ""
@@ -182,15 +197,15 @@ class Rule(object):
 
     def __eq__(self, other):
         return other and (
-            self.name == other.name and
-            self.fromYear == other.fromYear and
-            self.toYear == other.toYear and
-            self.type == other.type and
-            self.inMonth == other.inMonth and
-            self.onDay == other.onDay and
-            self.atTime == other.atTime and
-            self.saveTime == other.saveTime and
-            self.letter == other.letter
+            self.name == other.name
+            and self.fromYear == other.fromYear
+            and self.toYear == other.toYear
+            and self.type == other.type
+            and self.inMonth == other.inMonth
+            and self.onDay == other.onDay
+            and self.atTime == other.atTime
+            and self.saveTime == other.saveTime
+            and self.letter == other.letter
         )
 
     def __ne__(self, other):
@@ -289,7 +304,10 @@ class Rule(object):
         splits = self.atTime.split(":")
         if len(splits) == 1:
             splits.append("0")
-        assert len(splits) == 2, "atTime format is wrong: %s, %s" % (self.atTime, self,)
+        assert len(splits) == 2, "atTime format is wrong: %s, %s" % (
+            self.atTime,
+            self,
+        )
         hours = int(splits[0])
         if len(splits[1]) > 2:
             minutes = int(splits[1][:2])
@@ -343,7 +361,10 @@ class Rule(object):
         # shifted to the previous day if the offset is negative
         if indicatedDay != dayOfWeek:
             difference = dayOfWeek - indicatedDay
-            if difference in (1, -6,):
+            if difference in (
+                1,
+                -6,
+            ):
                 indicatedOffset += 1
 
                 # Adjust the month down too if needed
@@ -351,7 +372,10 @@ class Rule(object):
                     month -= 1
                     if month < 1:
                         month = 12
-            elif difference in (-1, 6,):
+            elif difference in (
+                -1,
+                6,
+            ):
                 assert indicatedOffset != 1, "Bad RRULE adjustment"
                 indicatedOffset -= 1
             elif difference in (-5,):
@@ -381,7 +405,9 @@ class Rule(object):
                 elif days_in_month - offset == 20:
                     offset = -3
                 else:
-                    bymday = [offset + i for i in range(7) if (offset + i) <= days_in_month]
+                    bymday = [
+                        offset + i for i in range(7) if (offset + i) <= days_in_month
+                    ]
                     offset = 0
         except:
             assert False, "onDay value is not recognized: %s" % (self.onDay,)
@@ -483,7 +509,6 @@ class Rule(object):
             rrule.setFreq(definitions.eRecurrence_YEARLY)
             rrule.setByMonth((Rule.MONTH_NAME_TO_POS[self.inMonth],))
             if self.onDay in Rule.LASTDAY_NAME_TO_RDAY:
-
                 # Need to check whether day has changed due to time shifting
                 dayOfWeek = start.getDayOfWeek()
                 indicatedDay = Rule.LASTDAY_NAME_TO_DAY[self.onDay]
@@ -494,7 +519,9 @@ class Rule(object):
                     # This is OK as we have moved back a day and thus no month transition
                     # could have occurred
                     fakeOffset = daysInMonth(start.getMonth(), start.getYear()) - 6
-                    offset, rday, bymday = self.getOnDayDetails(start, indicatedDay, fakeOffset)
+                    offset, rday, bymday = self.getOnDayDetails(
+                        start, indicatedDay, fakeOffset
+                    )
                     if bymday:
                         rrule.setByMonthDay(bymday)
                     rrule.setByDay(((offset, rday),))
@@ -503,9 +530,31 @@ class Rule(object):
                     # What we do is switch to using a BYYEARDAY rule with offset from the end of the year
                     rrule.setByMonth(())
                     daysBackStartOfMonth = (
-                        365, 334, 306, 275, 245, 214, 184, 153, 122, 92, 61, 31, 0     # Does not account for leap year
+                        365,
+                        334,
+                        306,
+                        275,
+                        245,
+                        214,
+                        184,
+                        153,
+                        122,
+                        92,
+                        61,
+                        31,
+                        0,  # Does not account for leap year
                     )
-                    rrule.setByYearDay([-(daysBackStartOfMonth[Rule.MONTH_NAME_TO_POS[self.inMonth]] + i) for i in range(7)])
+                    rrule.setByYearDay(
+                        [
+                            -(
+                                daysBackStartOfMonth[
+                                    Rule.MONTH_NAME_TO_POS[self.inMonth]
+                                ]
+                                + i
+                            )
+                            for i in range(7)
+                        ]
+                    )
                     rrule.setByDay(
                         ((0, divmod(Rule.LASTDAY_NAME_TO_DAY[self.onDay] + 1, 7)[1]),),
                     )
@@ -518,7 +567,9 @@ class Rule(object):
                 indicatedDay = Rule.DAY_NAME_TO_DAY[indicatedDay]
 
                 if dayOfWeek == indicatedDay:
-                    offset, rday, bymday = self.getOnDayDetails(start, indicatedDay, int(dayoffset))
+                    offset, rday, bymday = self.getOnDayDetails(
+                        start, indicatedDay, int(dayoffset)
+                    )
                     if bymday:
                         rrule.setByMonthDay(bymday)
                     rrule.setByDay(((offset, rday),))
@@ -527,16 +578,40 @@ class Rule(object):
                     # What we do is switch to using a BYYEARDAY rule with offset from the end of the year
                     rrule.setByMonth(())
                     daysBackStartOfMonth = (
-                        365, 334, 306, 275, 245, 214, 184, 153, 122, 92, 61, 31, 0     # Does not account for leap year
+                        365,
+                        334,
+                        306,
+                        275,
+                        245,
+                        214,
+                        184,
+                        153,
+                        122,
+                        92,
+                        61,
+                        31,
+                        0,  # Does not account for leap year
                     )
-                    rrule.setByYearDay([-(daysBackStartOfMonth[Rule.MONTH_NAME_TO_POS[self.inMonth]] + i) for i in range(7)])
+                    rrule.setByYearDay(
+                        [
+                            -(
+                                daysBackStartOfMonth[
+                                    Rule.MONTH_NAME_TO_POS[self.inMonth]
+                                ]
+                                + i
+                            )
+                            for i in range(7)
+                        ]
+                    )
                     rrule.setByDay(
                         ((0, divmod(indicatedDay + 1, 7)[1]),),
                     )
                 else:
                     # This is OK as we have moved forward a day and thus no month transition
                     # could have occurred
-                    offset, rday, bymday = self.getOnDayDetails(start, indicatedDay, int(dayoffset))
+                    offset, rday, bymday = self.getOnDayDetails(
+                        start, indicatedDay, int(dayoffset)
+                    )
                     if bymday:
                         rrule.setByMonthDay(bymday)
                     rrule.setByDay(((offset, rday),))

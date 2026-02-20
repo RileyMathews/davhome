@@ -21,7 +21,6 @@ import uuid
 
 
 class UnknownComponent(Component):
-
     propertyValueChecks = ICALENDAR_VALUE_CHECKS
 
     def __init__(self, parent=None, comptype=""):
@@ -30,7 +29,9 @@ class UnknownComponent(Component):
         self.mMapKey = str(uuid.uuid4())
 
     def duplicate(self, parent=None):
-        return super(UnknownComponent, self).duplicate(parent=parent, comptype=self.mType)
+        return super(UnknownComponent, self).duplicate(
+            parent=parent, comptype=self.mType
+        )
 
     def getType(self):
         return self.mType
@@ -54,8 +55,7 @@ class UnknownComponent(Component):
         return ""
 
     def sortedPropertyKeyOrder(self):
-        return (
-            definitions.cICalProperty_UID,
-        )
+        return (definitions.cICalProperty_UID,)
+
 
 Component.registerComponent(definitions.cICalComponent_UNKNOWN, UnknownComponent)

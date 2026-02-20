@@ -40,20 +40,24 @@ class Observer(BaseResultsObserver):
 
     def updateCalls(self):
         super(Observer, self).updateCalls()
-        self._calls.update({
-            "start": self.start,
-            "testProgress": self.testProgress,
-            "testFile": self.testFile,
-            "testSuite": self.testSuite,
-            "testResult": self.testResult,
-            "protocol": self.protocol,
-            "finish": self.finish,
-        })
+        self._calls.update(
+            {
+                "start": self.start,
+                "testProgress": self.testProgress,
+                "testFile": self.testFile,
+                "testSuite": self.testSuite,
+                "testResult": self.testResult,
+                "protocol": self.protocol,
+                "finish": self.finish,
+            }
+        )
 
     def start(self):
         self.manager.logit("Starting tests")
         if self.manager.randomSeed is not None:
-            self.manager.logit("Randomizing order using seed '{rs}'".format(rs=self.manager.randomSeed))
+            self.manager.logit(
+                "Randomizing order using seed '{rs}'".format(rs=self.manager.randomSeed)
+            )
 
     def testProgress(self, result):
         self.manager.logit("")
@@ -104,7 +108,9 @@ class Observer(BaseResultsObserver):
     def _logResult(self, name, result):
         if result["result"] is not None:
             result_value = self.RESULT_STRINGS[result["result"]]
-            self.manager.logit("{name:<60}{value:>10}".format(name=name, value=result_value))
+            self.manager.logit(
+                "{name:<60}{value:>10}".format(name=name, value=result_value)
+            )
         else:
             self.manager.logit("{name:<60}".format(name=name))
         if self._print_details and result["details"]:
@@ -115,7 +121,11 @@ class Observer(BaseResultsObserver):
 
     def finish(self):
         self.manager.logit("")
-        if self.manager.totals[manager.RESULT_FAILED] + self.manager.totals[manager.RESULT_ERROR] != 0:
+        if (
+            self.manager.totals[manager.RESULT_FAILED]
+            + self.manager.totals[manager.RESULT_ERROR]
+            != 0
+        ):
             for failed in self.loggedFailures:
                 self.manager.logit("=" * 70)
                 self.manager.logit(failed)
@@ -131,9 +141,11 @@ class Observer(BaseResultsObserver):
                 i=self.manager.totals[manager.RESULT_IGNORED],
             )
         self.manager.logit("-" * 70)
-        self.manager.logit("Ran {total} tests in {time:.3f}s\n".format(
-            total=sum(self.manager.totals.values()),
-            time=self.manager.timeDiff,
-        ))
+        self.manager.logit(
+            "Ran {total} tests in {time:.3f}s\n".format(
+                total=sum(self.manager.totals.values()),
+                time=self.manager.timeDiff,
+            )
+        )
 
         self.manager.logit(overall)

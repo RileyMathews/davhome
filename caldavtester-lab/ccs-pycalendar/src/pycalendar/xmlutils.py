@@ -18,7 +18,10 @@ import xml.etree.cElementTree as XML
 
 
 def makeTag(namespace, name):
-    return "{%s}%s" % (namespace, name.lower(),)
+    return "{%s}%s" % (
+        namespace,
+        name.lower(),
+    )
 
 
 def toString(root):

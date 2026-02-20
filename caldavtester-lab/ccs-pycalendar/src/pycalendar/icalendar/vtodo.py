@@ -25,7 +25,6 @@ import cStringIO as StringIO
 
 
 class VToDo(ComponentRecur):
-
     OVERDUE = 0
     DUE_NOW = 1
     DUE_LATER = 2
@@ -153,7 +152,10 @@ class VToDo(ComponentRecur):
     def getStatusText(self):
         sout = StringIO()
 
-        if self.mStatus in (definitions.eStatus_VToDo_NeedsAction, definitions.eStatus_VToDo_InProcess):
+        if self.mStatus in (
+            definitions.eStatus_VToDo_NeedsAction,
+            definitions.eStatus_VToDo_InProcess,
+        ):
             if self.hasEnd():
                 # Check due date
                 today = DateTime()
@@ -191,7 +193,10 @@ class VToDo(ComponentRecur):
         return sout.toString()
 
     def getCompletionState(self):
-        if self.mStatus in (definitions.eStatus_VToDo_NeedsAction, definitions.eStatus_VToDo_InProcess):
+        if self.mStatus in (
+            definitions.eStatus_VToDo_NeedsAction,
+            definitions.eStatus_VToDo_InProcess,
+        ):
             if self.hasEnd():
                 # Check due date
                 today = DateTime()
@@ -255,7 +260,9 @@ class VToDo(ComponentRecur):
                 self.mStatus = definitions.eStatus_VToDo_Cancelled
 
         # Get PERCENT-COMPLETE
-        self.mPercentComplete = self.loadValueInteger(definitions.cICalProperty_PERCENT_COMPLETE)
+        self.mPercentComplete = self.loadValueInteger(
+            definitions.cICalProperty_PERCENT_COMPLETE
+        )
 
         # Get COMPLETED
         temp = self.loadValueDateTime(definitions.cICalProperty_COMPLETED)
@@ -273,7 +280,9 @@ class VToDo(ComponentRecur):
         fixed, unfixed = super(VToDo, self).validate(doFix)
 
         # Extra constraint: only one of DUE or DURATION
-        if self.hasProperty(definitions.cICalProperty_DUE) and self.hasProperty(definitions.cICalProperty_DURATION):
+        if self.hasProperty(definitions.cICalProperty_DUE) and self.hasProperty(
+            definitions.cICalProperty_DURATION
+        ):
             # Fix by removing the DURATION
             logProblem = "[%s] Properties must not both be present: %s, %s" % (
                 self.getType(),
@@ -287,7 +296,9 @@ class VToDo(ComponentRecur):
                 unfixed.append(logProblem)
 
         # Extra constraint: DTSTART must be present if DURATION is present
-        if self.hasProperty(definitions.cICalProperty_DURATION) and not self.hasProperty(definitions.cICalProperty_DTSTART):
+        if self.hasProperty(
+            definitions.cICalProperty_DURATION
+        ) and not self.hasProperty(definitions.cICalProperty_DTSTART):
             # Cannot fix this one
             logProblem = "[%s] Property must be present: %s with %s" % (
                 self.getType(),
@@ -319,7 +330,9 @@ class VToDo(ComponentRecur):
                 # Add the completed item
                 self.mCompleted.setNowUTC()
                 self.mHasCompleted = True
-                prop = Property(definitions.cICalProperty_STATUS_COMPLETED, self.mCompleted)
+                prop = Property(
+                    definitions.cICalProperty_STATUS_COMPLETED, self.mCompleted
+                )
                 self.addProperty(prop)
             elif status == definitions.eStatus_VToDo_InProcess:
                 value = definitions.cICalProperty_STATUS_IN_PROCESS
@@ -349,5 +362,6 @@ class VToDo(ComponentRecur):
             definitions.cICalProperty_DUE,
             definitions.cICalProperty_COMPLETED,
         )
+
 
 Component.registerComponent(definitions.cICalComponent_VTODO, VToDo)

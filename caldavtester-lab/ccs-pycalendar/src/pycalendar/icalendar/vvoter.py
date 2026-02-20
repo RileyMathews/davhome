@@ -20,10 +20,7 @@ from pycalendar.icalendar.validation import ICALENDAR_VALUE_CHECKS
 
 
 class VVoter(Component):
-
-    propertyCardinality_1 = (
-        definitions.cICalProperty_VOTER,
-    )
+    propertyCardinality_1 = (definitions.cICalProperty_VOTER,)
 
     propertyCardinality_0_1 = (
         definitions.cICalProperty_CREATED,
@@ -52,9 +49,7 @@ class VVoter(Component):
             raise ValueError("Only 'VOTE' components allowed in 'VVOTER'")
 
     def sortedPropertyKeyOrder(self):
-        return (
-            definitions.cICalProperty_VOTER,
-        )
+        return (definitions.cICalProperty_VOTER,)
 
     def sortedComponents(self):
         """
@@ -62,6 +57,10 @@ class VVoter(Component):
         """
 
         components = self.mComponents[:]
-        return sorted(components, key=lambda x: x.loadValueInteger(definitions.cICalProperty_POLL_ITEM_ID))
+        return sorted(
+            components,
+            key=lambda x: x.loadValueInteger(definitions.cICalProperty_POLL_ITEM_ID),
+        )
+
 
 Component.registerComponent(definitions.cICalComponent_VVOTER, VVoter)

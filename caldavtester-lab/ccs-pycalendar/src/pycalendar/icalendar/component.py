@@ -25,7 +25,6 @@ import uuid
 
 
 class Component(ComponentBase):
-
     uid_ctr = 1
 
     mapper = {}
@@ -42,7 +41,9 @@ class Component(ComponentBase):
         try:
             return cls.mapper[compname](parent=parent)
         except KeyError:
-            return cls.mapper[definitions.cICalComponent_UNKNOWN](parent=parent, comptype=compname)
+            return cls.mapper[definitions.cICalComponent_UNKNOWN](
+                parent=parent, comptype=compname
+            )
 
     def __init__(self, parent=None):
 
@@ -64,7 +65,10 @@ class Component(ComponentBase):
         return other
 
     def __repr__(self):
-        return "%s: UID: %s" % (self.getType(), self.getMapKey(),)
+        return "%s: UID: %s" % (
+            self.getType(),
+            self.getMapKey(),
+        )
 
     def getMimeComponentName(self):
         raise NotImplementedError
@@ -107,6 +111,7 @@ class Component(ComponentBase):
 
             # Use app name
             from pycalendar.icalendar.calendar import Calendar
+
             domain = Calendar.sDomain
             domain += str(Component.uid_ctr)
 
@@ -187,5 +192,6 @@ class Component(ComponentBase):
                     # Add timezone id if appropriate
                     if dtv.getValue().getTimezoneID():
                         tzids.add(dtv.getValue().getTimezoneID())
+
 
 Component.sComponentType = Component

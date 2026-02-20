@@ -24,9 +24,11 @@ class Observer(BaseResultsObserver):
 
     def updateCalls(self):
         super(Observer, self).updateCalls()
-        self._calls.update({
-            "load": self.load,
-        })
+        self._calls.update(
+            {
+                "load": self.load,
+            }
+        )
 
     def load(self, name, current, total):
         """
@@ -41,6 +43,10 @@ class Observer(BaseResultsObserver):
         """
 
         if name is not None:
-            self.manager.logit("Loading {current} of {total}: {name}".format(current=current, total=total, name=name))
+            self.manager.logit(
+                "Loading {current} of {total}: {name}".format(
+                    current=current, total=total, name=name
+                )
+            )
         else:
             self.manager.logit("Loading files complete.\n")

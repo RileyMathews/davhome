@@ -12,7 +12,6 @@ from calendars.models import Calendar
 from calendars.models import CalendarObjectChange
 from calendars.permissions import can_view_calendar
 
-from .auth import get_dav_user, unauthorized_response
 from .core import davxml as core_davxml
 from .core import paths as core_paths
 from .core import payloads as core_payloads
@@ -146,13 +145,6 @@ def _remote_ip(forwarded_header, remote_addr):
     if forwarded:
         return forwarded.split(",", 1)[0].strip()
     return (remote_addr or "").strip()
-
-
-def _require_dav_user(request):
-    user = get_dav_user(request)
-    if user is None:
-        return None, unauthorized_response()
-    return user, None
 
 
 def _client_ip(request):

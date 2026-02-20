@@ -21,7 +21,6 @@ from pycalendar.icalendar.validation import ICALENDAR_VALUE_CHECKS
 
 
 class VPoll(Component):
-
     propertyCardinality_1 = (
         definitions.cICalProperty_DTSTAMP,
         definitions.cICalProperty_UID,
@@ -74,9 +73,18 @@ class VPoll(Component):
         # VVOTER sorts above components with POLL-ITEM-ID
         def _sortKey(subcomponent):
             if subcomponent.getType().upper() == definitions.cICalComponent_VVOTER:
-                return ("0", subcomponent.loadValueString(definitions.cICalProperty_VOTER),)
+                return (
+                    "0",
+                    subcomponent.loadValueString(definitions.cICalProperty_VOTER),
+                )
             else:
-                return (subcomponent.getType().upper(), subcomponent.loadValueInteger(definitions.cICalProperty_POLL_ITEM_ID),)
+                return (
+                    subcomponent.getType().upper(),
+                    subcomponent.loadValueInteger(
+                        definitions.cICalProperty_POLL_ITEM_ID
+                    ),
+                )
+
         return sorted(components, key=_sortKey)
 
 

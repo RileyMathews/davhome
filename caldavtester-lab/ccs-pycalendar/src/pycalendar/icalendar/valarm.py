@@ -25,7 +25,6 @@ from pycalendar.value import Value
 
 
 class VAlarm(Component):
-
     sActionMap = {
         definitions.cICalProperty_ACTION_AUDIO: definitions.eAction_VAlarm_Audio,
         definitions.cICalProperty_ACTION_DISPLAY: definitions.eAction_VAlarm_Display,
@@ -46,7 +45,6 @@ class VAlarm(Component):
 
     # Classes for each action encapsulating action-specific data
     class VAlarmAction(object):
-
         propertyCardinality_1 = ()
         propertyCardinality_1_Fix_Empty = ()
         propertyCardinality_0_1 = ()
@@ -71,7 +69,6 @@ class VAlarm(Component):
             return self.mType
 
     class VAlarmAudio(VAlarmAction):
-
         propertyCardinality_1 = (
             definitions.cICalProperty_ACTION,
             definitions.cICalProperty_TRIGGER,
@@ -85,7 +82,9 @@ class VAlarm(Component):
         )
 
         def __init__(self, speak=None):
-            super(VAlarm.VAlarmAudio, self).__init__(type=definitions.eAction_VAlarm_Audio)
+            super(VAlarm.VAlarmAudio, self).__init__(
+                type=definitions.eAction_VAlarm_Audio
+            )
             self.mSpeakText = speak
 
         def duplicate(self):
@@ -93,13 +92,17 @@ class VAlarm(Component):
 
         def load(self, valarm):
             # Get properties
-            self.mSpeakText = valarm.loadValueString(definitions.cICalProperty_ACTION_X_SPEAKTEXT)
+            self.mSpeakText = valarm.loadValueString(
+                definitions.cICalProperty_ACTION_X_SPEAKTEXT
+            )
 
         def add(self, valarm):
             # Delete existing then add
             self.remove(valarm)
 
-            prop = Property(definitions.cICalProperty_ACTION_X_SPEAKTEXT, self.mSpeakText)
+            prop = Property(
+                definitions.cICalProperty_ACTION_X_SPEAKTEXT, self.mSpeakText
+            )
             valarm.addProperty(prop)
 
         def remove(self, valarm):
@@ -112,15 +115,12 @@ class VAlarm(Component):
             return self.mSpeakText
 
     class VAlarmDisplay(VAlarmAction):
-
         propertyCardinality_1 = (
             definitions.cICalProperty_ACTION,
             definitions.cICalProperty_TRIGGER,
         )
 
-        propertyCardinality_1_Fix_Empty = (
-            definitions.cICalProperty_DESCRIPTION,
-        )
+        propertyCardinality_1_Fix_Empty = (definitions.cICalProperty_DESCRIPTION,)
 
         propertyCardinality_0_1 = (
             definitions.cICalProperty_DURATION,
@@ -129,7 +129,9 @@ class VAlarm(Component):
         )
 
         def __init__(self, description=None):
-            super(VAlarm.VAlarmDisplay, self).__init__(type=definitions.eAction_VAlarm_Display)
+            super(VAlarm.VAlarmDisplay, self).__init__(
+                type=definitions.eAction_VAlarm_Display
+            )
             self.mDescription = description
 
         def duplicate(self):
@@ -137,7 +139,9 @@ class VAlarm(Component):
 
         def load(self, valarm):
             # Get properties
-            self.mDescription = valarm.loadValueString(definitions.cICalProperty_DESCRIPTION)
+            self.mDescription = valarm.loadValueString(
+                definitions.cICalProperty_DESCRIPTION
+            )
 
         def add(self, valarm):
             # Delete existing then add
@@ -153,7 +157,6 @@ class VAlarm(Component):
             return self.mDescription
 
     class VAlarmEmail(VAlarmAction):
-
         propertyCardinality_1 = (
             definitions.cICalProperty_ACTION,
             definitions.cICalProperty_TRIGGER,
@@ -170,12 +173,12 @@ class VAlarm(Component):
             definitions.cICalProperty_ACKNOWLEDGED,
         )
 
-        propertyCardinality_1_More = (
-            definitions.cICalProperty_ATTENDEE,
-        )
+        propertyCardinality_1_More = (definitions.cICalProperty_ATTENDEE,)
 
         def __init__(self, description=None, summary=None, attendees=None):
-            super(VAlarm.VAlarmEmail, self).__init__(type=definitions.eAction_VAlarm_Email)
+            super(VAlarm.VAlarmEmail, self).__init__(
+                type=definitions.eAction_VAlarm_Email
+            )
             self.mDescription = description
             self.mSummary = summary
             self.mAttendees = attendees
@@ -185,13 +188,17 @@ class VAlarm(Component):
 
         def load(self, valarm):
             # Get properties
-            self.mDescription = valarm.loadValueString(definitions.cICalProperty_DESCRIPTION)
+            self.mDescription = valarm.loadValueString(
+                definitions.cICalProperty_DESCRIPTION
+            )
             self.mSummary = valarm.loadValueString(definitions.cICalProperty_SUMMARY)
 
             self.mAttendees = []
             if valarm.hasProperty(definitions.cICalProperty_ATTENDEE):
                 # Get each attendee
-                range = valarm.getProperties().get(definitions.cICalProperty_ATTENDEE, ())
+                range = valarm.getProperties().get(
+                    definitions.cICalProperty_ATTENDEE, ()
+                )
                 for iter in range:
                     # Get the attendee value
                     attendee = iter.getCalAddressValue()
@@ -209,7 +216,9 @@ class VAlarm(Component):
             valarm.addProperty(prop)
 
             for iter in self.mAttendees:
-                prop = Property(definitions.cICalProperty_ATTENDEE, iter, Value.VALUETYPE_CALADDRESS)
+                prop = Property(
+                    definitions.cICalProperty_ATTENDEE, iter, Value.VALUETYPE_CALADDRESS
+                )
                 valarm.addProperty(prop)
 
         def remove(self, valarm):
@@ -227,7 +236,6 @@ class VAlarm(Component):
             return self.mAttendees
 
     class VAlarmUnknown(VAlarmAction):
-
         propertyCardinality_1 = (
             definitions.cICalProperty_ACTION,
             definitions.cICalProperty_TRIGGER,
@@ -240,13 +248,14 @@ class VAlarm(Component):
         )
 
         def __init__(self):
-            super(VAlarm.VAlarmUnknown, self).__init__(type=definitions.eAction_VAlarm_Unknown)
+            super(VAlarm.VAlarmUnknown, self).__init__(
+                type=definitions.eAction_VAlarm_Unknown
+            )
 
         def duplicate(self):
             return VAlarm.VAlarmUnknown()
 
     class VAlarmURI(VAlarmAction):
-
         propertyCardinality_1 = (
             definitions.cICalProperty_ACTION,
             definitions.cICalProperty_TRIGGER,
@@ -284,13 +293,12 @@ class VAlarm(Component):
             return self.mURI
 
     class VAlarmNone(VAlarmAction):
-
-        propertyCardinality_1 = (
-            definitions.cICalProperty_ACTION,
-        )
+        propertyCardinality_1 = (definitions.cICalProperty_ACTION,)
 
         def __init__(self):
-            super(VAlarm.VAlarmNone, self).__init__(type=definitions.eAction_VAlarm_None)
+            super(VAlarm.VAlarmNone, self).__init__(
+                type=definitions.eAction_VAlarm_None
+            )
 
         def duplicate(self):
             return VAlarm.VAlarmNone()
@@ -417,7 +425,9 @@ class VAlarm(Component):
         # Get the ACTION
         temp = self.loadValueString(definitions.cICalProperty_ACTION)
         if temp is not None:
-            self.mAction = VAlarm.sActionMap.get(temp, definitions.eAction_VAlarm_Unknown)
+            self.mAction = VAlarm.sActionMap.get(
+                temp, definitions.eAction_VAlarm_Unknown
+            )
             self.loadAction()
 
         # Get the trigger
@@ -454,7 +464,10 @@ class VAlarm(Component):
             self.mRepeatInterval = temp
 
         # Set a map key for sorting
-        self.mMapKey = "%s:%s" % (self.mAction, self.mTriggerOn if self.mTriggerAbsolute else self.mTriggerBy,)
+        self.mMapKey = "%s:%s" % (
+            self.mAction,
+            self.mTriggerOn if self.mTriggerAbsolute else self.mTriggerBy,
+        )
 
         # Alarm status - private to Mulberry
         status = self.loadValueString(definitions.cICalProperty_ALARM_X_ALARMSTATUS)
@@ -482,14 +495,18 @@ class VAlarm(Component):
 
         # Validate using action specific constraints
         self.propertyCardinality_1 = self.mActionData.propertyCardinality_1
-        self.propertyCardinality_1_Fix_Empty = self.mActionData.propertyCardinality_1_Fix_Empty
+        self.propertyCardinality_1_Fix_Empty = (
+            self.mActionData.propertyCardinality_1_Fix_Empty
+        )
         self.propertyCardinality_0_1 = self.mActionData.propertyCardinality_0_1
         self.propertyCardinality_1_More = self.mActionData.propertyCardinality_1_More
 
         fixed, unfixed = super(VAlarm, self).validate(doFix)
 
         # Extra constraint: both DURATION and REPEAT must be present togethe
-        if self.hasProperty(definitions.cICalProperty_DURATION) ^ self.hasProperty(definitions.cICalProperty_REPEAT):
+        if self.hasProperty(definitions.cICalProperty_DURATION) ^ self.hasProperty(
+            definitions.cICalProperty_REPEAT
+        ):
             # Cannot fix this
             logProblem = "[%s] Properties must be present together: %s, %s" % (
                 self.getType(),
@@ -515,7 +532,9 @@ class VAlarm(Component):
             status_txt = definitions.cICalProperty_ALARM_X_ALARMSTATUS_COMPLETED
         elif self.mAlarmStatus == definitions.eAlarm_Status_Disabled:
             status_txt = definitions.cICalProperty_ALARM_X_ALARMSTATUS_DISABLED
-        self.addProperty(Property(definitions.cICalProperty_ALARM_X_ALARMSTATUS, status_txt))
+        self.addProperty(
+            Property(definitions.cICalProperty_ALARM_X_ALARMSTATUS, status_txt)
+        )
 
     def editAction(self, action, data):
         # Remove existing
@@ -528,7 +547,9 @@ class VAlarm(Component):
         self.mActionData = data
 
         # Add new properties to alarm
-        action_txt = VAlarm.sActionValueMap.get(self.mAction, definitions.cICalProperty_ACTION_PROCEDURE)
+        action_txt = VAlarm.sActionValueMap.get(
+            self.mAction, definitions.cICalProperty_ACTION_PROCEDURE
+        )
 
         prop = Property(definitions.cICalProperty_ACTION, action_txt)
         self.addProperty(prop)
@@ -562,8 +583,8 @@ class VAlarm(Component):
             definitions.cICalParameter_RELATED,
             (
                 definitions.cICalParameter_RELATED_START,
-                definitions.cICalParameter_RELATED_END
-            )[not trigger_start]
+                definitions.cICalParameter_RELATED_END,
+            )[not trigger_start],
         )
         prop.addParameter(attr)
         self.addProperty(prop)
@@ -615,7 +636,9 @@ class VAlarm(Component):
             status = definitions.cICalProperty_ALARM_X_ALARMSTATUS_COMPLETED
         elif self.mAlarmStatus == definitions.eAlarm_Status_Disabled:
             status = definitions.cICalProperty_ALARM_X_ALARMSTATUS_DISABLED
-        self.addProperty(Property(definitions.cICalProperty_ALARM_X_ALARMSTATUS, status))
+        self.addProperty(
+            Property(definitions.cICalProperty_ALARM_X_ALARMSTATUS, status)
+        )
 
         # Now update dt to the next alarm time
         return self.mAlarmStatus == definitions.eAlarm_Status_Pending
@@ -623,7 +646,9 @@ class VAlarm(Component):
     def loadAction(self):
         # Delete current one
         self.mActionData = None
-        self.mActionData = VAlarm.sActionToAlarmMap.get(self.mAction, VAlarm.VAlarmUnknown)()
+        self.mActionData = VAlarm.sActionToAlarmMap.get(
+            self.mAction, VAlarm.VAlarmUnknown
+        )()
         self.mActionData.load(self)
 
     def initNextTrigger(self):
@@ -651,7 +676,10 @@ class VAlarm(Component):
             trigger = next_trigger
 
         # Check for completion
-        if trigger == self.mLastTrigger or (nowutc - trigger).getTotalSeconds() > 24 * 60 * 60:
+        if (
+            trigger == self.mLastTrigger
+            or (nowutc - trigger).getTotalSeconds() > 24 * 60 * 60
+        ):
             if self.mDoneCount == self.mRepeats:
                 self.mAlarmStatus = definitions.eAlarm_Status_Completed
                 return
@@ -671,9 +699,12 @@ class VAlarm(Component):
             owner = self.getEmbedder()
             if owner is not None:
                 # Determine time at which alarm will trigger
-                trigger = (owner.getStart(), owner.getEnd())[not self.isTriggerOnStart()]
+                trigger = (owner.getStart(), owner.getEnd())[
+                    not self.isTriggerOnStart()
+                ]
 
                 # Offset by duration
                 dt.copy(trigger + self.getTriggerDuration())
+
 
 Component.registerComponent(definitions.cICalComponent_VALARM, VAlarm)

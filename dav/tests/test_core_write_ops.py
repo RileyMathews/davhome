@@ -46,8 +46,9 @@ class DavCoreWriteOpsTests(SimpleTestCase):
             filename="event.ics",
             raw_content_type="text/calendar; charset=utf-8",
             normalize_content_type=lambda value: value.split(";", 1)[0].strip(),
-            is_ical_resource=lambda filename, content_type: filename.endswith(".ics")
-            and content_type == "text/calendar",
+            is_ical_resource=lambda filename, content_type: (
+                filename.endswith(".ics") and content_type == "text/calendar"
+            ),
         )
         self.assertEqual(plan.content_type, "text/calendar")
         self.assertTrue(plan.is_ical)

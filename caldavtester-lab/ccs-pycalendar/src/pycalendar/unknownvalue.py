@@ -22,8 +22,8 @@ from pycalendar.value import Value
 
 
 class UnknownValue(PlainTextValue):
-
     def getType(self):
         return UnknownValue.VALUETYPE_UNKNOWN
+
 
 Value.registerType(Value.VALUETYPE_UNKNOWN, UnknownValue, xmldefinitions.value_unknown)

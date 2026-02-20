@@ -19,7 +19,6 @@ from pycalendar.utils import encodeParameterValue, decodeParameterValue
 
 
 class TestUtils(unittest.TestCase):
-
     def test_encodeParameterValue(self):
         """
         Round trip encodeParameterValue and decodeParameterValue.
@@ -27,7 +26,7 @@ class TestUtils(unittest.TestCase):
 
         data = (
             ("abc", "abc", None),
-            ("\"abc\"", "^'abc^'", None),
+            ('"abc"', "^'abc^'", None),
             ("abc\ndef", "abc^ndef", None),
             ("abc\rdef", "abc^ndef", "abc\ndef"),
             ("abc\r\ndef", "abc^ndef", "abc\ndef"),

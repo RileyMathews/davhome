@@ -25,14 +25,7 @@ class N(ValueMixin):
     mValue is a tuple of seven str or tuples of str
     """
 
-    (
-        LAST,
-        FIRST,
-        MIDDLE,
-        PREFIX,
-        SUFFIX,
-        MAXITEMS
-    ) = range(6)
+    (LAST, FIRST, MIDDLE, PREFIX, SUFFIX, MAXITEMS) = range(6)
 
     def __init__(self, last="", first="", middle="", prefix="", suffix=""):
         self.mValue = (last, first, middle, prefix, suffix)

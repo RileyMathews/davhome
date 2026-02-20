@@ -4,15 +4,14 @@ from django.db import migrations, models
 
 
 class Migration(migrations.Migration):
-
     dependencies = [
-        ('calendars', '0004_calendar_component_kind_calendar_sort_order'),
+        ("calendars", "0004_calendar_component_kind_calendar_sort_order"),
     ]
 
     operations = [
         migrations.AddField(
-            model_name='calendarobject',
-            name='dead_properties',
+            model_name="calendarobject",
+            name="dead_properties",
             field=models.JSONField(blank=True, default=dict),
         ),
     ]

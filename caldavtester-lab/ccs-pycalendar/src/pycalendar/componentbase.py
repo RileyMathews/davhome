@@ -24,13 +24,12 @@ from pycalendar.exceptions import InvalidComponent, ErrorBase
 
 
 class ComponentBase(object):
-
     # These are class attributes for sets of properties for testing cardinality constraints. The sets
     # must contain property names.
-    propertyCardinality_1 = ()           # Must be present
+    propertyCardinality_1 = ()  # Must be present
     propertyCardinality_1_Fix_Empty = ()  # Must be present but can be fixed by adding an empty value
-    propertyCardinality_0_1 = ()         # 0 or 1 only
-    propertyCardinality_1_More = ()      # 1 or more
+    propertyCardinality_0_1 = ()  # 0 or 1 only
+    propertyCardinality_1_More = ()  # 1 or more
 
     propertyValueChecks = None  # Either iCalendar or vCard validation
 
@@ -72,7 +71,11 @@ class ComponentBase(object):
     def __eq__(self, other):
         if not isinstance(other, ComponentBase):
             return False
-        return self.getType() == other.getType() and self.compareProperties(other) and self.compareComponents(other)
+        return (
+            self.getType() == other.getType()
+            and self.compareProperties(other)
+            and self.compareComponents(other)
+        )
 
     def getType(self):
         raise NotImplementedError
@@ -107,7 +110,11 @@ class ComponentBase(object):
 
     def getComponents(self, compname=None):
         compname = compname.upper() if compname else None
-        return [component for component in self.mComponents if compname is None or component.getType().upper() == compname]
+        return [
+            component
+            for component in self.mComponents
+            if compname is None or component.getType().upper() == compname
+        ]
 
     def getComponentByKey(self, key):
         for component in self.mComponents:
@@ -157,7 +164,9 @@ class ComponentBase(object):
         return mine == theirs
 
     def getProperties(self, propname=None):
-        return self.mProperties.get(propname.upper(), []) if propname else self.mProperties
+        return (
+            self.mProperties.get(propname.upper(), []) if propname else self.mProperties
+        )
 
     def setProperties(self, props):
         self.mProperties = props
@@ -219,7 +228,10 @@ class ComponentBase(object):
                     if propname in self.propertyValueChecks:
                         if not self.propertyValueChecks[propname](property):
                             # Cannot fix a bad property value
-                            logProblem = "[%s] Property value incorrect: %s" % (self.getType(), propname,)
+                            logProblem = "[%s] Property value incorrect: %s" % (
+                                self.getType(),
+                                propname,
+                            )
                             unfixed.append(logProblem)
 
         # Validate all subcomponents
@@ -232,17 +244,32 @@ class ComponentBase(object):
 
     def check_cardinality_1(self, fixed, unfixed, doFix):
         for propname in self.propertyCardinality_1:
-            if self.countProperty(propname) != 1:  # Cannot fix a missing required property
-                logProblem = "[%s] Missing or too many required property: %s" % (self.getType(), propname)
+            if (
+                self.countProperty(propname) != 1
+            ):  # Cannot fix a missing required property
+                logProblem = "[%s] Missing or too many required property: %s" % (
+                    self.getType(),
+                    propname,
+                )
                 unfixed.append(logProblem)
 
     def check_cardinality_1_Fix_Empty(self, fixed, unfixed, doFix):
         for propname in self.propertyCardinality_1_Fix_Empty:
-            if self.countProperty(propname) > 1:  # Cannot fix too many required property
-                logProblem = "[%s] Too many required property: %s" % (self.getType(), propname)
+            if (
+                self.countProperty(propname) > 1
+            ):  # Cannot fix too many required property
+                logProblem = "[%s] Too many required property: %s" % (
+                    self.getType(),
+                    propname,
+                )
                 unfixed.append(logProblem)
-            elif self.countProperty(propname) == 0:  # Possibly fix by adding empty property
-                logProblem = "[%s] Missing required property: %s" % (self.getType(), propname)
+            elif (
+                self.countProperty(propname) == 0
+            ):  # Possibly fix by adding empty property
+                logProblem = "[%s] Missing required property: %s" % (
+                    self.getType(),
+                    propname,
+                )
                 if doFix:
                     self.addProperty(self.sPropertyType(propname, ""))
                     fixed.append(logProblem)
@@ -251,14 +278,24 @@ class ComponentBase(object):
 
     def check_cardinality_0_1(self, fixed, unfixed, doFix):
         for propname in self.propertyCardinality_0_1:
-            if self.countProperty(propname) > 1:  # Cannot be fixed - no idea which one to delete
-                logProblem = "[%s] Too many properties present: %s" % (self.getType(), propname)
+            if (
+                self.countProperty(propname) > 1
+            ):  # Cannot be fixed - no idea which one to delete
+                logProblem = "[%s] Too many properties present: %s" % (
+                    self.getType(),
+                    propname,
+                )
                 unfixed.append(logProblem)
 
     def check_cardinality_1_More(self, fixed, unfixed, doFix):
         for propname in self.propertyCardinality_1_More:
-            if not self.countProperty(propname) > 0:  # Cannot fix a missing required property
-                logProblem = "[%s] Missing required property: %s" % (self.getType(), propname)
+            if (
+                not self.countProperty(propname) > 0
+            ):  # Cannot fix a missing required property
+                logProblem = "[%s] Missing required property: %s" % (
+                    self.getType(),
+                    propname,
+                )
                 unfixed.append(logProblem)
 
     def getText(self):
@@ -376,7 +413,6 @@ class ComponentBase(object):
         # Write each component based on specific order
         orderedNames = self.sortedComponentNames()
         for name in orderedNames:
-
             # Group by name then sort by map key (UID/R-ID)
             namedcomponents = []
             for component in tuple(components):
@@ -388,7 +424,13 @@ class ComponentBase(object):
 
         # Write out the remainder sorted by name, sortKey
         if self.sortSubComponents:
-            remainder = sorted(components, key=lambda x: (x.getType().upper(), x.getSortKey(),))
+            remainder = sorted(
+                components,
+                key=lambda x: (
+                    x.getType().upper(),
+                    x.getSortKey(),
+                ),
+            )
         else:
             remainder = components
         for component in remainder:
@@ -415,7 +457,9 @@ class ComponentBase(object):
     def writeComponentsXML(self, node, namespace):
 
         if self.mComponents:
-            comps = XML.SubElement(node, xmlutils.makeTag(namespace, xmldefinitions.components))
+            comps = XML.SubElement(
+                node, xmlutils.makeTag(namespace, xmldefinitions.components)
+            )
 
             # Write out the remainder
             for component in self.sortedComponents():
@@ -424,7 +468,9 @@ class ComponentBase(object):
     def writeComponentsFilteredXML(self, node, namespace, filter):
 
         if self.mComponents:
-            comps = XML.SubElement(node, xmlutils.makeTag(namespace, xmldefinitions.components))
+            comps = XML.SubElement(
+                node, xmlutils.makeTag(namespace, xmldefinitions.components)
+            )
 
             # Shortcut for all sub-components
             if filter.isAllSubComponents():
@@ -469,7 +515,7 @@ class ComponentBase(object):
                         return ivalue.getValue()
                 elif type == Value.VALUETYPE_UTC_OFFSET:
                     uvalue = self.findFirstProperty(value_name).getUTCOffsetValue()
-                    if (uvalue is not None):
+                    if uvalue is not None:
                         return uvalue.getValue()
 
             return None
@@ -479,7 +525,7 @@ class ComponentBase(object):
     def loadValueString(self, value_name):
         if self.hasProperty(value_name):
             tvalue = self.findFirstProperty(value_name).getTextValue()
-            if (tvalue is not None):
+            if tvalue is not None:
                 return tvalue.getValue()
 
         return None
@@ -495,7 +541,7 @@ class ComponentBase(object):
     def loadValueDuration(self, value_name):
         if self.hasProperty(value_name):
             dvalue = self.findFirstProperty(value_name).getDurationValue()
-            if (dvalue is not None):
+            if dvalue is not None:
                 return dvalue.getValue()
 
         return None
@@ -503,7 +549,7 @@ class ComponentBase(object):
     def loadValuePeriod(self, value_name):
         if self.hasProperty(value_name):
             pvalue = self.findFirstProperty(value_name).getPeriodValue()
-            if (pvalue is not None):
+            if pvalue is not None:
                 return pvalue.getValue()
 
         return None
@@ -514,7 +560,7 @@ class ComponentBase(object):
             items = self.getProperties()[value_name]
             for iter in items:
                 rvalue = iter.getRecurrenceValue()
-                if (rvalue is not None):
+                if rvalue is not None:
                     if add:
                         value.addRule(rvalue.getValue())
                     else:
@@ -528,7 +574,7 @@ class ComponentBase(object):
         if self.hasProperty(value_name):
             for iter in self.getProperties(value_name):
                 mvalue = iter.getMultiValue()
-                if (mvalue is not None):
+                if mvalue is not None:
                     for obj in mvalue.getValues():
                         # cast to date-time
                         if isinstance(obj, DateTimeValue):
@@ -586,7 +632,9 @@ class ComponentBase(object):
 
     def writePropertiesXML(self, node, namespace):
 
-        properties = XML.SubElement(node, xmlutils.makeTag(namespace, xmldefinitions.properties))
+        properties = XML.SubElement(
+            node, xmlutils.makeTag(namespace, xmldefinitions.properties)
+        )
 
         # Sort properties by name
         keys = self.sortedPropertyKeys()
@@ -597,7 +645,9 @@ class ComponentBase(object):
 
     def writePropertiesFilteredXML(self, node, namespace, filter):
 
-        props = XML.SubElement(node, xmlutils.makeTag(namespace, xmldefinitions.properties))
+        props = XML.SubElement(
+            node, xmlutils.makeTag(namespace, xmldefinitions.properties)
+        )
 
         # Sort properties by name
         keys = self.sortedPropertyKeys()
@@ -640,7 +690,7 @@ class ComponentBase(object):
         # Read it in from properties list and then delete the property from the
         # main list
         result = self.loadValueString(value_name)
-        if (result is not None):
+        if result is not None:
             self.removeProperties(value_name)
         return result
 

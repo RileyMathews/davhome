@@ -36,43 +36,34 @@ missingParameterValues = "fix"
 
 
 class Property(PropertyBase):
-
     sDefaultValueTypeMap = {
-
         #     2425 Properties
         definitions.Property_SOURCE: Value.VALUETYPE_URI,
         definitions.Property_NAME: Value.VALUETYPE_TEXT,
         definitions.Property_PROFILE: Value.VALUETYPE_TEXT,
-
         #     2426 vCard Properties
-
         #     2426 Section 3.1
         definitions.Property_FN: Value.VALUETYPE_TEXT,
         definitions.Property_N: Value.VALUETYPE_TEXT,
         definitions.Property_NICKNAME: Value.VALUETYPE_TEXT,
         definitions.Property_PHOTO: Value.VALUETYPE_BINARY,
         definitions.Property_BDAY: Value.VALUETYPE_DATE,
-
         #     2426 Section 3.2
         definitions.Property_ADR: Value.VALUETYPE_TEXT,
         definitions.Property_LABEL: Value.VALUETYPE_TEXT,
-
         #     2426 Section 3.3
         definitions.Property_TEL: Value.VALUETYPE_TEXT,
         definitions.Property_EMAIL: Value.VALUETYPE_TEXT,
         definitions.Property_MAILER: Value.VALUETYPE_TEXT,
-
         #     2426 Section 3.4
         definitions.Property_TZ: Value.VALUETYPE_UTC_OFFSET,
         definitions.Property_GEO: Value.VALUETYPE_FLOAT,
-
         #     2426 Section 3.5
         definitions.Property_TITLE: Value.VALUETYPE_TEXT,
         definitions.Property_ROLE: Value.VALUETYPE_TEXT,
         definitions.Property_LOGO: Value.VALUETYPE_BINARY,
         definitions.Property_AGENT: Value.VALUETYPE_VCARD,
         definitions.Property_ORG: Value.VALUETYPE_TEXT,
-
         #     2426 Section 3.6
         definitions.Property_CATEGORIES: Value.VALUETYPE_TEXT,
         definitions.Property_NOTE: Value.VALUETYPE_TEXT,
@@ -83,7 +74,6 @@ class Property(PropertyBase):
         definitions.Property_UID: Value.VALUETYPE_TEXT,
         definitions.Property_URL: Value.VALUETYPE_URI,
         definitions.Property_VERSION: Value.VALUETYPE_TEXT,
-
         #     2426 Section 3.7
         definitions.Property_CLASS: Value.VALUETYPE_TEXT,
         definitions.Property_KEY: Value.VALUETYPE_BINARY,
@@ -121,10 +111,12 @@ class Property(PropertyBase):
         Value.VALUETYPE_VCARD: definitions.Value_VCARD,
     }
 
-    sMultiValues = set((
-        definitions.Property_NICKNAME,
-        definitions.Property_CATEGORIES,
-    ))
+    sMultiValues = set(
+        (
+            definitions.Property_NICKNAME,
+            definitions.Property_CATEGORIES,
+        )
+    )
 
     sSpecialVariants = {
         definitions.Property_ADR: Value.VALUETYPE_ADR,
@@ -154,7 +146,14 @@ class Property(PropertyBase):
             self._init_attr_value_int(value)
 
         elif isinstance(value, str):
-            self._init_attr_value_text(value, valuetype if valuetype else self.sDefaultValueTypeMap.get(self.mName.upper(), Value.VALUETYPE_TEXT))
+            self._init_attr_value_text(
+                value,
+                valuetype
+                if valuetype
+                else self.sDefaultValueTypeMap.get(
+                    self.mName.upper(), Value.VALUETYPE_TEXT
+                ),
+            )
 
         elif isinstance(value, DateTime):
             self._init_attr_value_datetime(value)
@@ -186,21 +185,28 @@ class Property(PropertyBase):
         return other
 
     def __hash__(self):
-        return hash((
-            self.mGroup,
-            self.mName,
-            tuple([tuple(self.mParameters[attrname]) for attrname in sorted(self.mParameters.keys())]),
-            self.mValue,
-        ))
+        return hash(
+            (
+                self.mGroup,
+                self.mName,
+                tuple(
+                    [
+                        tuple(self.mParameters[attrname])
+                        for attrname in sorted(self.mParameters.keys())
+                    ]
+                ),
+                self.mValue,
+            )
+        )
 
     def __eq__(self, other):
         if not isinstance(other, Property):
             return False
         return (
-            self.mGroup == self.mGroup and
-            self.mName == other.mName and
-            self.mValue == other.mValue and
-            self.mParameters == other.mParameters
+            self.mGroup == self.mGroup
+            and self.mName == other.mName
+            and self.mValue == other.mValue
+            and self.mParameters == other.mParameters
         )
 
     def parseTextParameters(self, txt, data):
@@ -209,9 +215,9 @@ class Property(PropertyBase):
         """
 
         try:
-            stripValueSpaces = False    # Fix for AB.app base PHOTO properties that use two spaces at start of line
+            stripValueSpaces = False  # Fix for AB.app base PHOTO properties that use two spaces at start of line
             while txt:
-                if txt[0] == ';':
+                if txt[0] == ";":
                     # Parse parameter
 
                     # Move past delimiter
@@ -222,18 +228,29 @@ class Property(PropertyBase):
                     # ":;"
                     parameter_name, txt = stringutils.strduptokenstr(txt, "=:;")
                     if parameter_name is None:
-                        raise InvalidProperty("Invalid property: empty parameter name", data)
+                        raise InvalidProperty(
+                            "Invalid property: empty parameter name", data
+                        )
 
                     if txt[0] != "=":
                         # Deal with parameters without values
-                        if ParserContext.VCARD_2_NO_PARAMETER_VALUES == ParserContext.PARSER_RAISE:
+                        if (
+                            ParserContext.VCARD_2_NO_PARAMETER_VALUES
+                            == ParserContext.PARSER_RAISE
+                        ):
                             raise InvalidProperty("Invalid property parameter", data)
-                        elif ParserContext.VCARD_2_NO_PARAMETER_VALUES == ParserContext.PARSER_ALLOW:
+                        elif (
+                            ParserContext.VCARD_2_NO_PARAMETER_VALUES
+                            == ParserContext.PARSER_ALLOW
+                        ):
                             parameter_value = None
                         else:  # PARSER_IGNORE and PARSER_FIX
                             parameter_name = None
 
-                        if parameter_name.upper() == "BASE64" and ParserContext.VCARD_2_BASE64 == ParserContext.PARSER_FIX:
+                        if (
+                            parameter_name.upper() == "BASE64"
+                            and ParserContext.VCARD_2_BASE64 == ParserContext.PARSER_FIX
+                        ):
                             parameter_name = definitions.Parameter_ENCODING
                             parameter_value = definitions.Parameter_Value_ENCODING_B
                             stripValueSpaces = True
@@ -241,21 +258,30 @@ class Property(PropertyBase):
                         txt = txt[1:]
                         parameter_value, txt = stringutils.strduptokenstr(txt, ":;,")
                         if parameter_value is None:
-                            raise InvalidProperty("Invalid property: empty parameter name", data)
+                            raise InvalidProperty(
+                                "Invalid property: empty parameter name", data
+                            )
 
                     # Now add parameter value (decode ^-escaping)
                     if parameter_name is not None:
-                        attrvalue = Parameter(name=parameter_name, value=decodeParameterValue(parameter_value))
-                        self.mParameters.setdefault(parameter_name.upper(), []).append(attrvalue)
+                        attrvalue = Parameter(
+                            name=parameter_name,
+                            value=decodeParameterValue(parameter_value),
+                        )
+                        self.mParameters.setdefault(parameter_name.upper(), []).append(
+                            attrvalue
+                        )
 
                     # Look for additional values
-                    while txt[0] == ',':
+                    while txt[0] == ",":
                         txt = txt[1:]
                         parameter_value2, txt = stringutils.strduptokenstr(txt, ":;,")
                         if parameter_value2 is None:
-                            raise InvalidProperty("Invalid property: empty parameter multi-value", data)
+                            raise InvalidProperty(
+                                "Invalid property: empty parameter multi-value", data
+                            )
                         attrvalue.addValue(decodeParameterValue(parameter_value2))
-                elif txt[0] == ':':
+                elif txt[0] == ":":
                     txt = txt[1:]
                     if stripValueSpaces:
                         txt = txt.replace(" ", "")
@@ -268,7 +294,10 @@ class Property(PropertyBase):
     def generateValue(self, os, novalue):
 
         # Special case AB.app PHOTO values
-        if self.mName.upper() == "PHOTO" and self.mValue.getType() == Value.VALUETYPE_BINARY:
+        if (
+            self.mName.upper() == "PHOTO"
+            and self.mValue.getType() == Value.VALUETYPE_BINARY
+        ):
             self.setupValueParameter()
 
             # Must write to temp buffer and then wrap
@@ -290,9 +319,9 @@ class Property(PropertyBase):
             value = self.mValue.getText()
             value_len = len(value)
             offset = 0
-            while(value_len > 72):
+            while value_len > 72:
                 sout.write(" ")
-                sout.write(value[offset:offset + 72])
+                sout.write(value[offset : offset + 72])
                 sout.write("\r\n")
                 value_len -= 72
                 offset += 72

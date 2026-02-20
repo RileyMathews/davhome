@@ -25,16 +25,13 @@ from pycalendar.value import Value
 
 
 class VTimezoneElement(Component):
-
     propertyCardinality_1 = (
         definitions.cICalProperty_DTSTART,
         definitions.cICalProperty_TZOFFSETTO,
         definitions.cICalProperty_TZOFFSETFROM,
     )
 
-    propertyCardinality_0_1 = (
-        definitions.cICalProperty_RRULE,
-    )
+    propertyCardinality_0_1 = (definitions.cICalProperty_RRULE,)
 
     propertyValueChecks = ICALENDAR_VALUE_CHECKS
 
@@ -66,12 +63,16 @@ class VTimezoneElement(Component):
             self.mStart = temp
 
         # Get TZOFFSETTO
-        temp = self.loadValueInteger(definitions.cICalProperty_TZOFFSETTO, Value.VALUETYPE_UTC_OFFSET)
+        temp = self.loadValueInteger(
+            definitions.cICalProperty_TZOFFSETTO, Value.VALUETYPE_UTC_OFFSET
+        )
         if temp is not None:
             self.mUTCOffset = temp
 
         # Get TZOFFSETFROM
-        temp = self.loadValueInteger(definitions.cICalProperty_TZOFFSETFROM, Value.VALUETYPE_UTC_OFFSET)
+        temp = self.loadValueInteger(
+            definitions.cICalProperty_TZOFFSETFROM, Value.VALUETYPE_UTC_OFFSET
+        )
         if temp is not None:
             self.mUTCOffsetFrom = temp
 
@@ -134,7 +135,12 @@ class VTimezoneElement(Component):
             if temp > self.mCachedExpandBelow:
                 self.mCachedExpandBelowItems = []
                 period = Period(self.mStart, temp)
-                self.mRecurrences.expand(self.mStart, period, self.mCachedExpandBelowItems, float_offset=self.mUTCOffsetFrom)
+                self.mRecurrences.expand(
+                    self.mStart,
+                    period,
+                    self.mCachedExpandBelowItems,
+                    float_offset=self.mUTCOffsetFrom,
+                )
                 self.mCachedExpandBelow = temp
 
             if len(self.mCachedExpandBelowItems) != 0:
@@ -155,10 +161,14 @@ class VTimezoneElement(Component):
             start = self.mStart
 
         # Ignore if there is no change in offset
-        offsetto = self.loadValueInteger(definitions.cICalProperty_TZOFFSETTO, Value.VALUETYPE_UTC_OFFSET)
-        offsetfrom = self.loadValueInteger(definitions.cICalProperty_TZOFFSETFROM, Value.VALUETYPE_UTC_OFFSET)
-#        if offsetto == offsetfrom:
-#            return ()
+        offsetto = self.loadValueInteger(
+            definitions.cICalProperty_TZOFFSETTO, Value.VALUETYPE_UTC_OFFSET
+        )
+        offsetfrom = self.loadValueInteger(
+            definitions.cICalProperty_TZOFFSETFROM, Value.VALUETYPE_UTC_OFFSET
+        )
+        #        if offsetto == offsetfrom:
+        #            return ()
 
         # Look for recurrences
         if self.mStart > end:
@@ -167,7 +177,11 @@ class VTimezoneElement(Component):
         elif not self.mRecurrences.hasRecurrence():
             # Return DTSTART even if it is newer
             if self.mStart >= start:
-                result = (self.mStart, offsetfrom, offsetto,)
+                result = (
+                    self.mStart,
+                    offsetfrom,
+                    offsetto,
+                )
                 if with_name:
                     result += (self.getTZName(),)
                 return (result,)
@@ -194,7 +208,12 @@ class VTimezoneElement(Component):
             if temp > self.mCachedExpandBelow:
                 self.mCachedExpandBelowItems = []
                 period = Period(self.mStart, end)
-                self.mRecurrences.expand(self.mStart, period, self.mCachedExpandBelowItems, float_offset=self.mUTCOffsetFrom)
+                self.mRecurrences.expand(
+                    self.mStart,
+                    period,
+                    self.mCachedExpandBelowItems,
+                    float_offset=self.mUTCOffsetFrom,
+                )
                 self.mCachedExpandBelow = temp
 
             if len(self.mCachedExpandBelowItems) != 0:
@@ -202,7 +221,11 @@ class VTimezoneElement(Component):
                 results = []
                 for dt in self.mCachedExpandBelowItems:
                     if dt >= start and dt < end:
-                        result = (dt, offsetfrom, offsetto,)
+                        result = (
+                            dt,
+                            offsetfrom,
+                            offsetto,
+                        )
                         if with_name:
                             result += (self.getTZName(),)
                         results.append(result)

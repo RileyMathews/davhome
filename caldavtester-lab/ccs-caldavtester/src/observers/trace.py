@@ -26,9 +26,11 @@ class Observer(LogObserver):
 
     def updateCalls(self):
         super(Observer, self).updateCalls()
-        self._calls.update({
-            "trace": self.trace,
-        })
+        self._calls.update(
+            {
+                "trace": self.trace,
+            }
+        )
 
     def trace(self, text, indent=0):
         self.manager.logit(text)

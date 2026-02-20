@@ -19,7 +19,6 @@ from src.jsonPointer import JSONPointer, JSONPointerMatchError, JSONMatcher
 
 
 class TestJSONPointer(unittest.TestCase):
-
     def testValidPointers(self):
         data = (
             (None, False),
@@ -42,10 +41,32 @@ class TestJSONPointer(unittest.TestCase):
     def testUnescape(self):
         data = (
             ("/", None),
-            ("/~0", ["~", ]),
-            ("/abc~1def", ["abc/def", ]),
-            ("/abc/~0~1a", ["abc", "~/a", ]),
-            ("/~0ab~1c/~0~1a", ["~ab/c", "~/a", ]),
+            (
+                "/~0",
+                [
+                    "~",
+                ],
+            ),
+            (
+                "/abc~1def",
+                [
+                    "abc/def",
+                ],
+            ),
+            (
+                "/abc/~0~1a",
+                [
+                    "abc",
+                    "~/a",
+                ],
+            ),
+            (
+                "/~0ab~1c/~0~1a",
+                [
+                    "~ab/c",
+                    "~/a",
+                ],
+            ),
         )
 
         for pointer, result in data:
@@ -61,7 +82,6 @@ class TestJSONPointer(unittest.TestCase):
             ("/1", '{"1": {"1.1": "foo"}}', {"1.1": "foo"}),
             ("/1/1.1", '{"1": {"1.1": "foo", "1.2": "bar"}}', "foo"),
             ("/1/1.2", '{"1": {"1.1": "foo", "1.2": "bar"}}', "bar"),
-
             # Arrays
             ("/", '["1", "2"]', ["1", "2"]),
             ("/0", '["1", "2"]', "1"),
@@ -72,7 +92,6 @@ class TestJSONPointer(unittest.TestCase):
             ("/0/0", '[["1", "2"]]', "1"),
             ("/0/1", '[["1", "2"]]', "2"),
             ("/0/-", '[["1", "2"]]', "2"),
-
             # Both
             ("/", '{"1": ["foo", "bar"]}', {"1": ["foo", "bar"]}),
             ("/1", '{"1": ["foo", "bar"]}', ["foo", "bar"]),
@@ -99,17 +118,14 @@ class TestJSONPointer(unittest.TestCase):
             ("/1/3", '{"1": {"1.1": "foo", "1.2": "bar"}}'),
             ("/1/a", '{"1": {"1.1": "foo", "1.2": "bar"}}'),
             ("/1/-", '{"1": {"1.1": "foo", "1.2": "bar"}}'),
-
             # Arrays
             ("/2", '["1", "2"]'),
             ("/0/2", '[["1", "2"]]'),
-
             # Both
             ("/1/3", '{"1": ["foo", "bar"]}'),
             ("/0/3", '[{"1.1": "foo", "1.2": "bar"}]'),
             ("/0/a", '[{"1.1": "foo", "1.2": "bar"}]'),
             ("/0/-", '[{"1.1": "foo", "1.2": "bar"}]'),
-
             # Wrong Object
             ("/1/0", '{"1": "foo"}'),
             ("/1/0", '{"1": 1}'),
@@ -123,7 +139,6 @@ class TestJSONPointer(unittest.TestCase):
 
 
 class TestJSONMatcher(unittest.TestCase):
-
     def testMatchOK(self):
         data = (
             # Objects
@@ -133,7 +148,6 @@ class TestJSONMatcher(unittest.TestCase):
             ("/1", '{"1": {"1.1": "foo"}}', [{"1.1": "foo"}]),
             ("/1/1.1", '{"1": {"1.1": "foo", "1.2": "bar"}}', ["foo"]),
             ("/1/1.2", '{"1": {"1.1": "foo", "1.2": "bar"}}', ["bar"]),
-
             # Arrays
             ("/", '["1", "2"]', [["1", "2"]]),
             ("/0", '["1", "2"]', ["1"]),
@@ -144,7 +158,6 @@ class TestJSONMatcher(unittest.TestCase):
             ("/0/0", '[["1", "2"]]', ["1"]),
             ("/0/1", '[["1", "2"]]', ["2"]),
             ("/0/-", '[["1", "2"]]', ["2"]),
-
             # Both
             ("/", '{"1": ["foo", "bar"]}', [{"1": ["foo", "bar"]}]),
             ("/1", '{"1": ["foo", "bar"]}', [["foo", "bar"]]),
@@ -171,17 +184,14 @@ class TestJSONMatcher(unittest.TestCase):
             ("/1/3", '{"1": {"1.1": "foo", "1.2": "bar"}}', False),
             ("/1/a", '{"1": {"1.1": "foo", "1.2": "bar"}}', False),
             ("/1/-", '{"1": {"1.1": "foo", "1.2": "bar"}}', False),
-
             # Arrays
             ("/2", '["1", "2"]', False),
             ("/0/2", '[["1", "2"]]', False),
-
             # Both
             ("/1/3", '{"1": ["foo", "bar"]}', False),
             ("/0/3", '[{"1.1": "foo", "1.2": "bar"}]', False),
             ("/0/a", '[{"1.1": "foo", "1.2": "bar"}]', False),
             ("/0/-", '[{"1.1": "foo", "1.2": "bar"}]', False),
-
             # Wrong Object
             ("/1/0", '{"1": "foo"}', True),
             ("/1/0", '{"1": 1}', True),
@@ -201,27 +211,41 @@ class TestJSONMatcher(unittest.TestCase):
             (
                 "/",
                 '{"1":"foo", "2": "bar"}',
-                [{"1": "foo", "2": "bar"}, ],
+                [
+                    {"1": "foo", "2": "bar"},
+                ],
             ),
             (
                 "/.",
                 '{"1":"foo", "2": "bar"}',
-                ["foo", "bar", ],
+                [
+                    "foo",
+                    "bar",
+                ],
             ),
             (
                 "/./0",
                 '{"1":["foo1", "foo2"], "2": ["bar1", "bar2"]}',
-                ["foo1", "bar1", ],
+                [
+                    "foo1",
+                    "bar1",
+                ],
             ),
             (
                 "/./1",
                 '{"1":["foo1", "foo2"], "2": ["bar1", "bar2"]}',
-                ["foo2", "bar2", ],
+                [
+                    "foo2",
+                    "bar2",
+                ],
             ),
             (
                 "/./-",
                 '{"1":["foo1", "foo2"], "2": ["bar1", "bar2"]}',
-                ["foo2", "bar2", ],
+                [
+                    "foo2",
+                    "bar2",
+                ],
             ),
             (
                 "/./2",
@@ -231,17 +255,24 @@ class TestJSONMatcher(unittest.TestCase):
             (
                 "/./foo1",
                 '{"1":{"foo1": "bar1", "foo2": "bar2"}, "2": {"foo1": "bar3", "foo4": "bar4"}}',
-                ["bar1", "bar3", ],
+                [
+                    "bar1",
+                    "bar3",
+                ],
             ),
             (
                 "/./foo2",
                 '{"1":{"foo1": "bar1", "foo2": "bar2"}, "2": {"foo1": "bar3", "foo4": "bar4"}}',
-                ["bar2", ],
+                [
+                    "bar2",
+                ],
             ),
             (
                 "/./foo4",
                 '{"1":{"foo1": "bar1", "foo2": "bar2"}, "2": {"foo1": "bar3", "foo4": "bar4"}}',
-                ["bar4", ],
+                [
+                    "bar4",
+                ],
             ),
             (
                 "/./foo3",

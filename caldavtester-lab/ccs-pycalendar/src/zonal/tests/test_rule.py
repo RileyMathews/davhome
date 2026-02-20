@@ -20,7 +20,6 @@ from pycalendar.datetime import DateTime
 
 
 class TestRule(unittest.TestCase):
-
     def test_parse(self):
         data = (
             "Rule\tGuat\t2006\tonly\t-\tOct\t1\t0:00\t0\tS",
@@ -37,9 +36,24 @@ class TestRule(unittest.TestCase):
 
     def test_datetimeforyear(self):
         data = (
-            ("Rule\tGuat\t2006\tonly\t-\tOct\t1\t0:00\t0\tS", 2006, DateTime(2006, 10, 1, 0, 0, 0), ""),
-            ("Rule\tAlgeria\t1916\t1919\t-\tOct\tSun>=1\t23:00s\t0\t-", 1916, DateTime(1916, 10, 1, 23, 0, 0), "s"),
-            ("Rule\tGhana\t1936\t1942\t-\tSep\t1\t0:00\t0:20\tGHST", 1937, DateTime(1937, 9, 1, 0, 0, 0), ""),
+            (
+                "Rule\tGuat\t2006\tonly\t-\tOct\t1\t0:00\t0\tS",
+                2006,
+                DateTime(2006, 10, 1, 0, 0, 0),
+                "",
+            ),
+            (
+                "Rule\tAlgeria\t1916\t1919\t-\tOct\tSun>=1\t23:00s\t0\t-",
+                1916,
+                DateTime(1916, 10, 1, 23, 0, 0),
+                "s",
+            ),
+            (
+                "Rule\tGhana\t1936\t1942\t-\tSep\t1\t0:00\t0:20\tGHST",
+                1937,
+                DateTime(1937, 9, 1, 0, 0, 0),
+                "",
+            ),
         )
 
         for ruletext, year, dt, special in data:
@@ -63,7 +77,6 @@ class TestRule(unittest.TestCase):
 
 
 class TestRuleSet(unittest.TestCase):
-
     def test_parse(self):
         data = """Rule\tUS\t1918\t1919\t-\tMar\tlastSun\t2:00\t1:00\tD
 Rule\tUS\t1918\t1919\t-\tOct\tlastSun\t2:00\t0\tS

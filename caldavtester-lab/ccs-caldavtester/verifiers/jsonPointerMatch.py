@@ -29,7 +29,6 @@ from src.jsonPointer import JSONMatcher, JSONPointerMatchError
 
 
 class Verifier(object):
-
     class JsonNull(object):
         pass
 
@@ -37,7 +36,12 @@ class Verifier(object):
 
     def verify(self, manager, uri, response, respdata, args):  # @UnusedVariable
         # Get arguments
-        statusCodes = args.get("status", ["200", ])
+        statusCodes = args.get(
+            "status",
+            [
+                "200",
+            ],
+        )
         exists = args.get("exists", [])
         notexists = args.get("notexists", [])
 
@@ -61,8 +65,8 @@ class Verifier(object):
             return False, "        Response data is not JSON data: %s" % (e,)
 
         def _splitPathTests(path):
-            if '[' in path:
-                return path.split('[', 1)
+            if "[" in path:
+                return path.split("[", 1)
             else:
                 return path, None
 
@@ -85,10 +89,17 @@ class Verifier(object):
                     jobjs = jp.match(j)
                     if not jobjs:
                         result = False
-                        resulttxt += "        Items not returned in JSON for %s\n" % (path,)
-                    if value and value not in map(lambda x: self.null if x is None else str(x), jobjs):
+                        resulttxt += "        Items not returned in JSON for %s\n" % (
+                            path,
+                        )
+                    if value and value not in map(
+                        lambda x: self.null if x is None else str(x), jobjs
+                    ):
                         result = False
-                        resulttxt += "        Item values not returned in JSON for %s\n" % (jpath,)
+                        resulttxt += (
+                            "        Item values not returned in JSON for %s\n"
+                            % (jpath,)
+                        )
                 except JSONPointerMatchError:
                     result = False
                     resulttxt += "        Items not returned in JSON for %s\n" % (path,)
@@ -110,7 +121,9 @@ class Verifier(object):
                     pass
                 else:
                     if len(jobjs):
-                        resulttxt += "        Items returned in JSON for %s\n" % (jpath,)
+                        resulttxt += "        Items returned in JSON for %s\n" % (
+                            jpath,
+                        )
                         result = False
 
         return result, resulttxt

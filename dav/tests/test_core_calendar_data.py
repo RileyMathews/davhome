@@ -177,14 +177,16 @@ class DavCoreCalendarDataTests(SimpleTestCase):
                 None,
                 core_time.parse_ical_datetime,
                 core_time.as_utc_datetime,
-                lambda expanded, _tz, master_starts, excluded: captured.update(
-                    {
-                        "expanded": expanded,
-                        "master_starts": master_starts,
-                        "excluded": excluded,
-                    }
-                )
-                or "BEGIN:VCALENDAR\r\nDTSTAMP:20260220T100000Z\r\nEND:VCALENDAR\r\n",
+                lambda expanded, _tz, master_starts, excluded: (
+                    captured.update(
+                        {
+                            "expanded": expanded,
+                            "master_starts": master_starts,
+                            "excluded": excluded,
+                        }
+                    )
+                    or "BEGIN:VCALENDAR\r\nDTSTAMP:20260220T100000Z\r\nEND:VCALENDAR\r\n"
+                ),
                 lambda blob, *_: blob,
             )
         finally:

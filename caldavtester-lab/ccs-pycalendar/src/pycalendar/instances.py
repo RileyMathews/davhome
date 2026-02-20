@@ -40,6 +40,5 @@ def instances(start, rrule):
     print("Instances: {}".format(", ".join(map(str, items))))
 
 
-if __name__ == '__main__':
-
+if __name__ == "__main__":
     instances(sys.argv[1], sys.argv[2])

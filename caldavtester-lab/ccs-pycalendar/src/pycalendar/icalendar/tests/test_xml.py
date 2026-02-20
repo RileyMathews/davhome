@@ -21,7 +21,6 @@ import unittest
 
 
 class TestXML(unittest.TestCase):
-
     data = (
         (
             """BEGIN:VCALENDAR
@@ -38,7 +37,6 @@ END:VEVENT
 X-TEST:Testing
 END:VCALENDAR
 """.replace("\n", "\r\n"),
-
             """<?xml version="1.0" encoding="utf-8"?>
 <ns0:icalendar xmlns:ns0="urn:ietf:params:xml:ns:icalendar-2.0">
   <ns0:vcalendar>
@@ -98,7 +96,9 @@ END:VCALENDAR
             self.assertEqual(
                 test1,
                 test2,
-                "\n".join(difflib.unified_diff(str(test1).splitlines(), test2.splitlines()))
+                "\n".join(
+                    difflib.unified_diff(str(test1).splitlines(), test2.splitlines())
+                ),
             )
 
         for item1, item2 in self.data:

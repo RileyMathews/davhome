@@ -19,7 +19,6 @@ import unittest
 
 
 class TestAdrValue(unittest.TestCase):
-
     def testInit(self):
 
         data = (
@@ -29,7 +28,16 @@ class TestAdrValue(unittest.TestCase):
                 "prefix first middle last suffix",
             ),
             (
-                ("last", ("first",), ("middle1", "middle2",), (), ("suffix",)),
+                (
+                    "last",
+                    ("first",),
+                    (
+                        "middle1",
+                        "middle2",
+                    ),
+                    (),
+                    ("suffix",),
+                ),
                 "last;first;middle1,middle2;;suffix",
                 "first middle1 middle2 last suffix",
             ),
@@ -62,12 +70,27 @@ class TestAdrValue(unittest.TestCase):
 
         data = (
             (
-                {"first": "first", "last": "last", "middle": "middle", "prefix": "prefix", "suffix": "suffix"},
+                {
+                    "first": "first",
+                    "last": "last",
+                    "middle": "middle",
+                    "prefix": "prefix",
+                    "suffix": "suffix",
+                },
                 "last;first;middle;prefix;suffix",
                 "prefix first middle last suffix",
             ),
             (
-                {"first": ("first",), "last": "last", "middle": ("middle1", "middle2",), "prefix": (), "suffix": ("suffix",)},
+                {
+                    "first": ("first",),
+                    "last": "last",
+                    "middle": (
+                        "middle1",
+                        "middle2",
+                    ),
+                    "prefix": (),
+                    "suffix": ("suffix",),
+                },
                 "last;first;middle1,middle2;;suffix",
                 "first middle1 middle2 last suffix",
             ),

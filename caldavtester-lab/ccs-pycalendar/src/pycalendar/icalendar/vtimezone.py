@@ -21,10 +21,7 @@ from pycalendar.icalendar.validation import ICALENDAR_VALUE_CHECKS
 
 
 class VTimezone(Component):
-
-    propertyCardinality_1 = (
-        definitions.cICalProperty_TZID,
-    )
+    propertyCardinality_1 = (definitions.cICalProperty_TZID,)
 
     propertyCardinality_0_1 = (
         definitions.cICalProperty_LAST_MODIFIED,
@@ -59,11 +56,14 @@ class VTimezone(Component):
 
     def addComponent(self, comp):
         # We can embed the timezone components only
-        if ((comp.getType() == definitions.cICalComponent_STANDARD) or
-                (comp.getType() == definitions.cICalComponent_DAYLIGHT)):
+        if (comp.getType() == definitions.cICalComponent_STANDARD) or (
+            comp.getType() == definitions.cICalComponent_DAYLIGHT
+        ):
             super(VTimezone, self).addComponent(comp)
         else:
-            raise ValueError("Only 'STANDARD' or 'DAYLIGHT' components allowed in 'VTIMEZONE'")
+            raise ValueError(
+                "Only 'STANDARD' or 'DAYLIGHT' components allowed in 'VTIMEZONE'"
+            )
 
     def getMapKey(self):
         return self.mID
@@ -91,7 +91,10 @@ class VTimezone(Component):
 
         # Must have at least one STANDARD or DAYLIGHT sub-component
         for component in self.mComponents:
-            if component.getType() in (definitions.cICalComponent_STANDARD, definitions.cICalComponent_DAYLIGHT):
+            if component.getType() in (
+                definitions.cICalComponent_STANDARD,
+                definitions.cICalComponent_DAYLIGHT,
+            ):
                 break
         else:
             # Cannot fix a missing required component
@@ -151,7 +154,10 @@ class VTimezone(Component):
         temp.setTimezoneID(None)
 
         # Check whether we need to recache
-        if self.mCachedExpandAllMaxYear is None or temp.mYear >= self.mCachedExpandAllMaxYear:
+        if (
+            self.mCachedExpandAllMaxYear is None
+            or temp.mYear >= self.mCachedExpandAllMaxYear
+        ):
             cacheMax = temp.duplicate()
             cacheMax.setHHMMSS(0, 0, 0)
             cacheMax.offsetYear(2)
@@ -163,10 +169,19 @@ class VTimezone(Component):
 
         # Now search for the transition just below the time we want
         if len(self.mCachedExpandAll):
-            cacheKey = (temp.mYear, temp.mMonth, temp.mDay, temp.mHours, temp.mMinutes, relative_to_utc)
+            cacheKey = (
+                temp.mYear,
+                temp.mMonth,
+                temp.mDay,
+                temp.mHours,
+                temp.mMinutes,
+                relative_to_utc,
+            )
             i = self.mCachedOffsets.get(cacheKey)
             if i is None:
-                i = VTimezone.tuple_bisect_right(self.mCachedExpandAll, temp, relative_to_utc)
+                i = VTimezone.tuple_bisect_right(
+                    self.mCachedExpandAll, temp, relative_to_utc
+                )
                 if len(self.mCachedOffsets) >= self.UTCOFFSET_CACHE_MAX_ENTRIES:
                     self.mCachedOffsets = {}
                 self.mCachedOffsets[cacheKey] = i
@@ -286,5 +301,6 @@ class VTimezone(Component):
             return tz1.getID().compareToIgnoreCase(tz2.getID())
         else:
             return (1, -1)[sort1 < sort2]
+
 
 Component.registerComponent(definitions.cICalComponent_VTIMEZONE, VTimezone)

@@ -20,21 +20,46 @@ import unittest
 
 
 class TestValidation(unittest.TestCase):
-
     def test_partial(self):
 
         def _test(a, b):
             return (a, b)
 
-        self.assertEqual(partial(_test, "a", "b")(), ("a", "b",))
-        self.assertEqual(partial(_test, "a")("b"), ("a", "b",))
-        self.assertEqual(partial(_test)("a", "b"), ("a", "b",))
+        self.assertEqual(
+            partial(_test, "a", "b")(),
+            (
+                "a",
+                "b",
+            ),
+        )
+        self.assertEqual(
+            partial(_test, "a")("b"),
+            (
+                "a",
+                "b",
+            ),
+        )
+        self.assertEqual(
+            partial(_test)("a", "b"),
+            (
+                "a",
+                "b",
+            ),
+        )
 
     def test_stringValue(self):
 
         props = (
-            ("SUMMARY:Test", "Test", True,),
-            ("SUMMARY:Test", "TEST", True,),
+            (
+                "SUMMARY:Test",
+                "Test",
+                True,
+            ),
+            (
+                "SUMMARY:Test",
+                "TEST",
+                True,
+            ),
             ("DTSTART:20110623T174806", "Test", False),
         )
 
@@ -45,7 +70,10 @@ class TestValidation(unittest.TestCase):
     def test_alwaysUTC(self):
 
         props = (
-            ("SUMMARY:Test", False,),
+            (
+                "SUMMARY:Test",
+                False,
+            ),
             ("DTSTART:20110623T174806", False),
             ("DTSTART;VALUE=DATE:20110623", False),
             ("DTSTART:20110623T174806Z", True),
@@ -58,27 +86,73 @@ class TestValidation(unittest.TestCase):
     def test_numericRange(self):
 
         props = (
-            ("SUMMARY:Test", 0, 100, False,),
-            ("PERCENT-COMPLETE:0", 0, 100, True,),
-            ("PERCENT-COMPLETE:100", 0, 100, True,),
-            ("PERCENT-COMPLETE:50", 0, 100, True,),
-            ("PERCENT-COMPLETE:200", 0, 100, False,),
-            ("PERCENT-COMPLETE:-1", 0, 100, False,),
+            (
+                "SUMMARY:Test",
+                0,
+                100,
+                False,
+            ),
+            (
+                "PERCENT-COMPLETE:0",
+                0,
+                100,
+                True,
+            ),
+            (
+                "PERCENT-COMPLETE:100",
+                0,
+                100,
+                True,
+            ),
+            (
+                "PERCENT-COMPLETE:50",
+                0,
+                100,
+                True,
+            ),
+            (
+                "PERCENT-COMPLETE:200",
+                0,
+                100,
+                False,
+            ),
+            (
+                "PERCENT-COMPLETE:-1",
+                0,
+                100,
+                False,
+            ),
         )
 
         for prop, low, high, result in props:
             property = Property.parseText(prop)
-            self.assertEqual(PropertyValueChecks.numericRange(low, high, property), result)
+            self.assertEqual(
+                PropertyValueChecks.numericRange(low, high, property), result
+            )
 
     def test_positiveIntegerOrZero(self):
 
         props = (
-            ("SUMMARY:Test", False,),
-            ("REPEAT:0", True,),
-            ("REPEAT:100", True,),
-            ("REPEAT:-1", False,),
+            (
+                "SUMMARY:Test",
+                False,
+            ),
+            (
+                "REPEAT:0",
+                True,
+            ),
+            (
+                "REPEAT:100",
+                True,
+            ),
+            (
+                "REPEAT:-1",
+                False,
+            ),
         )
 
         for prop, result in props:
             property = Property.parseText(prop)
-            self.assertEqual(PropertyValueChecks.positiveIntegerOrZero(property), result)
+            self.assertEqual(
+                PropertyValueChecks.positiveIntegerOrZero(property), result
+            )

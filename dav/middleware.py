@@ -1,4 +1,8 @@
 import logging
+import base64
+import binascii
+
+from django.contrib.auth import authenticate
 
 
 logger = logging.getLogger("dav.audit")
@@ -84,3 +88,33 @@ class DavAuditRejectLoggingMiddleware:
             request.body,
         )
         return response
+
+
+class DavBasicAuthMiddleware:
+    def __init__(self, get_response):
+        self.get_response = get_response
+
+    def __call__(self, request):
+        if request.path.startswith("/dav/") and request.method != "OPTIONS":
+            user = self._resolve_dav_user(request)
+            if user is not None:
+                request.user = user
+
+        return self.get_response(request)
+
+    def _resolve_dav_user(self, request):
+        if request.user.is_authenticated:
+            return request.user
+
+        auth_header = request.META.get("HTTP_AUTHORIZATION", "")
+        if not auth_header.startswith("Basic "):
+            return None
+
+        encoded = auth_header.split(" ", 1)[1].strip()
+        try:
+            decoded = base64.b64decode(encoded).decode("utf-8")
+            username, password = decoded.split(":", 1)
+        except (ValueError, UnicodeDecodeError, binascii.Error):
+            return None
+
+        return authenticate(request, username=username, password=password)

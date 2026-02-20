@@ -68,13 +68,15 @@ class serverinfo(object):
         @param mapping: mapping of substitution name to value
         @type mapping: L{dict}
         """
+
         # Helper function for .sub()
         def convert(mo):
-            named = mo.group('name')
+            named = mo.group("name")
             if named is not None and named in mapping:
                 return mapping[named]
             else:
                 return named
+
         return self.subspattern.sub(convert, sub)
 
     def subs(self, sub, db=None):
@@ -84,23 +86,34 @@ class serverinfo(object):
         while pos != -1:
             endpos = pos + sub[pos:].find(":")
             if sub[pos:].startswith("$now.year."):
-                yearoffset = int(sub[pos + 10:endpos])
+                yearoffset = int(sub[pos + 10 : endpos])
                 value = "%d" % (self.dtnow.year + yearoffset,)
             elif sub[pos:].startswith("$now.month."):
-                monthoffset = int(sub[pos + 11:endpos])
+                monthoffset = int(sub[pos + 11 : endpos])
                 month = self.dtnow.month + monthoffset
                 year = self.dtnow.year + divmod(month - 1, 12)[0]
                 month = divmod(month - 1, 12)[1] + 1
-                value = "%d%02d" % (year, month,)
+                value = "%d%02d" % (
+                    year,
+                    month,
+                )
             elif sub[pos:].startswith("$now.week."):
-                weekoffset = int(sub[pos + 10:endpos])
+                weekoffset = int(sub[pos + 10 : endpos])
                 dtoffset = self.dtnow + datetime.timedelta(days=7 * weekoffset)
-                value = "%d%02d%02d" % (dtoffset.year, dtoffset.month, dtoffset.day,)
+                value = "%d%02d%02d" % (
+                    dtoffset.year,
+                    dtoffset.month,
+                    dtoffset.day,
+                )
             else:
-                dayoffset = int(sub[pos + 5:endpos])
+                dayoffset = int(sub[pos + 5 : endpos])
                 dtoffset = self.dtnow + datetime.timedelta(days=dayoffset)
-                value = "%d%02d%02d" % (dtoffset.year, dtoffset.month, dtoffset.day,)
-            sub = "%s%s%s" % (sub[:pos], value, sub[endpos + 1:])
+                value = "%d%02d%02d" % (
+                    dtoffset.year,
+                    dtoffset.month,
+                    dtoffset.day,
+                )
+            sub = "%s%s%s" % (sub[:pos], value, sub[endpos + 1 :])
             pos = sub.find("$now.")
 
         if sub.find("$uidrandom:") != -1:
@@ -108,7 +121,7 @@ class serverinfo(object):
 
         if db is None:
             db = self.subsdict
-        while '$' in sub:
+        while "$" in sub:
             newstr = self._re_subs(sub, db)
             if newstr == sub:
                 break
@@ -138,15 +151,14 @@ class serverinfo(object):
         # Various "functions" might be applied to a variable name to cause the value to
         # be changed in various ways
         for variable, value in items.items():
-
             # basename() - extract just the URL last path segment from the value
             if variable.startswith("basename("):
-                variable = variable[len("basename("):-1]
+                variable = variable[len("basename(") : -1]
                 value = value.rstrip("/").split("/")[-1]
 
             # urlpath() - extract just the URL path segment from the value
             elif variable.startswith("urlpath("):
-                variable = variable[len("urlpath("):-1]
+                variable = variable[len("urlpath(") : -1]
                 value = urlparse(value).path
 
             processed[variable] = value
@@ -213,7 +225,7 @@ class serverinfo(object):
 
         # Expand substitutions fully at this point
         for k, v in self.subsdict.items():
-            while '$' in v:
+            while "$" in v:
                 v = self._re_subs(v, self.subsdict)
             self.subsdict[k] = v
 
@@ -254,6 +266,8 @@ class serverinfo(object):
             if key and value:
                 if repeat:
                     for count in range(1, int(repeat) + 1):
-                        self.subsdict[key % (count,)] = (value % (count,)) if "%" in value else value
+                        self.subsdict[key % (count,)] = (
+                            (value % (count,)) if "%" in value else value
+                        )
                 else:
                     self.subsdict[key] = value

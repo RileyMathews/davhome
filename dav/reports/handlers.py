@@ -37,7 +37,10 @@ from dav.views.helpers.report_paths import _object_href_for_style
 from dav.views.helpers.report_paths import _object_href_for_style_data
 from dav.views.helpers.report_paths import _report_href_style
 from dav.views.helpers.identity import _principal_href_for_user
-from dav.views.helpers.sync_tokens import _build_sync_token, _parse_sync_token_for_calendar
+from dav.views.helpers.sync_tokens import (
+    _build_sync_token,
+    _parse_sync_token_for_calendar,
+)
 from dav.common import _caldav_error_response
 from dav.common import _dav_common_headers
 from dav.common import _etag_for_object

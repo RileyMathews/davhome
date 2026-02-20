@@ -65,29 +65,52 @@ class RequestStatusValue(Value):
             else:
                 raise ValueError("RequestStatus: too many value components")
 
-        if "\\" in code and ParserContext.INVALID_REQUEST_STATUS_VALUE in (ParserContext.PARSER_IGNORE, ParserContext.PARSER_FIX):
+        if "\\" in code and ParserContext.INVALID_REQUEST_STATUS_VALUE in (
+            ParserContext.PARSER_IGNORE,
+            ParserContext.PARSER_FIX,
+        ):
             code = code.replace("\\", "")
         elif ParserContext.INVALID_REQUEST_STATUS_VALUE == ParserContext.PARSER_RAISE:
             raise ValueError("RequestStatus: cannot have '\\' in value")
 
         # Decoding required
-        self.mValue = [code, desc, rest, ] if rest else [code, desc, ]
+        self.mValue = (
+            [
+                code,
+                desc,
+                rest,
+            ]
+            if rest
+            else [
+                code,
+                desc,
+            ]
+        )
 
     # os - StringIO object
     def generate(self, os):
-        utils.generateTextList(os, self.mValue if len(self.mValue) < 3 or self.mValue[2] else self.mValue[:2])
+        utils.generateTextList(
+            os,
+            self.mValue if len(self.mValue) < 3 or self.mValue[2] else self.mValue[:2],
+        )
 
     def writeXML(self, node, namespace):
         value = self.getXMLNode(node, namespace)
 
-        code = XML.SubElement(value, xmlutils.makeTag(namespace, xmldefinitions.req_status_code))
+        code = XML.SubElement(
+            value, xmlutils.makeTag(namespace, xmldefinitions.req_status_code)
+        )
         code.text = self.mValue[0]
 
-        description = XML.SubElement(value, xmlutils.makeTag(namespace, xmldefinitions.req_status_description))
+        description = XML.SubElement(
+            value, xmlutils.makeTag(namespace, xmldefinitions.req_status_description)
+        )
         description.text = self.mValue[1]
 
         if len(self.mValue) == 3 and self.mValue[2]:
-            data = XML.SubElement(value, xmlutils.makeTag(namespace, xmldefinitions.req_status_data))
+            data = XML.SubElement(
+                value, xmlutils.makeTag(namespace, xmldefinitions.req_status_data)
+            )
             data.text = self.mValue[2]
 
     def parseJSONValue(self, jobject):
@@ -105,4 +128,10 @@ class RequestStatusValue(Value):
     def setValue(self, value):
         self.mValue = value
 
-Value.registerType(Value.VALUETYPE_REQUEST_STATUS, RequestStatusValue, None, xmldefinitions_top.value_text)
+
+Value.registerType(
+    Value.VALUETYPE_REQUEST_STATUS,
+    RequestStatusValue,
+    None,
+    xmldefinitions_top.value_text,
+)

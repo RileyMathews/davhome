@@ -25,7 +25,6 @@ import urllib
 
 
 class Verifier(object):
-
     def verify(self, manager, uri, response, respdata, args):  # @UnusedVariable
 
         # If no status verification requested, then assume all 2xx codes are OK
@@ -34,11 +33,13 @@ class Verifier(object):
 
         def normalizeXML(value):
 
-            if value[0] == '<':
+            if value[0] == "<":
                 try:
                     tree = ElementTree(file=StringIO(value))
                 except Exception:
-                    return False, "           Could not parse XML value: %s\n" % (value,)
+                    return False, "           Could not parse XML value: %s\n" % (
+                        value,
+                    )
                 value = tostring(tree.getroot())
             return value
 
@@ -47,14 +48,18 @@ class Verifier(object):
         props_match = []
         for i in range(len(testprops)):
             p = testprops[i]
-            if (p.find("$") != -1):
+            if p.find("$") != -1:
                 if p.find("$") != len(p) - 1:
-                    props_match.append((p.split("$")[0], normalizeXML(p.split("$")[1]), True))
+                    props_match.append(
+                        (p.split("$")[0], normalizeXML(p.split("$")[1]), True)
+                    )
                 else:
                     props_match.append((p.split("$")[0], "", True))
-            elif (p.find("!") != -1):
+            elif p.find("!") != -1:
                 if p.find("!") != len(p) - 1:
-                    props_match.append((p.split("!")[0], normalizeXML(p.split("!")[1]), False))
+                    props_match.append(
+                        (p.split("!")[0], normalizeXML(p.split("!")[1]), False)
+                    )
                 else:
                     props_match.append((p.split("!")[0], "", False))
 
@@ -64,7 +69,9 @@ class Verifier(object):
 
         # Must have MULTISTATUS response code
         if response.status != 207:
-            return False, "           HTTP Status for Request: %d\n" % (response.status,)
+            return False, "           HTTP Status for Request: %d\n" % (
+                response.status,
+            )
 
         try:
             tree = ElementTree(file=StringIO(respdata))
@@ -74,7 +81,6 @@ class Verifier(object):
         result = True
         resulttxt = ""
         for response in tree.findall("{DAV:}response"):
-
             # Get href for this response
             href = response.findall("{DAV:}href")
             if len(href) != 1:
@@ -95,7 +101,7 @@ class Verifier(object):
                     statustxt = status[0].text
                     status = False
                     if statustxt.startswith("HTTP/1.1 ") and (len(statustxt) >= 10):
-                        status = (statustxt[9] == "2")
+                        status = statustxt[9] == "2"
                 else:
                     status = False
 
@@ -129,15 +135,29 @@ class Verifier(object):
             # Look at each property we want to test and see if present
             for propname, value, match in props_match:
                 if propname not in ok_status_props:
-                    resulttxt += "        Items not returned in report (OK) for %s: %s\n" % (href, propname,)
+                    resulttxt += (
+                        "        Items not returned in report (OK) for %s: %s\n"
+                        % (
+                            href,
+                            propname,
+                        )
+                    )
                     result = False
                     continue
                 matched = re.match(value, ok_status_props[propname])
                 if match and not matched:
-                    resulttxt += "        Items not matching for %s: %s %s\n" % (href, propname, ok_status_props[propname])
+                    resulttxt += "        Items not matching for %s: %s %s\n" % (
+                        href,
+                        propname,
+                        ok_status_props[propname],
+                    )
                     result = False
                 elif not match and matched:
-                    resulttxt += "        Items incorrectly match for %s: %s %s\n" % (href, propname, ok_status_props[propname])
+                    resulttxt += "        Items incorrectly match for %s: %s %s\n" % (
+                        href,
+                        propname,
+                        ok_status_props[propname],
+                    )
                     result = False
 
         return result, resulttxt

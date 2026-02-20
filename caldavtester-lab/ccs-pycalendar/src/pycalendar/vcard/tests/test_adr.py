@@ -19,15 +19,33 @@ import unittest
 
 
 class TestAdrValue(unittest.TestCase):
-
     def testInit(self):
         data = (
             (
-                ("pobox", "extended", "street", "locality", "region", "postalcode", "country"),
+                (
+                    "pobox",
+                    "extended",
+                    "street",
+                    "locality",
+                    "region",
+                    "postalcode",
+                    "country",
+                ),
                 "pobox;extended;street;locality;region;postalcode;country",
             ),
             (
-                (("pobox",), ("extended",), ("street1", "street2",), "locality", "region", (), "country"),
+                (
+                    ("pobox",),
+                    ("extended",),
+                    (
+                        "street1",
+                        "street2",
+                    ),
+                    "locality",
+                    "region",
+                    (),
+                    "country",
+                ),
                 "pobox;extended;street1,street2;locality;region;;country",
             ),
         )

@@ -35,7 +35,6 @@ import xml.etree.cElementTree as XML
 
 
 class PropertyBase(object):
-
     # Mappings between various tokens and internal definitions
 
     # Map a property name to its default value type
@@ -59,7 +58,7 @@ class PropertyBase(object):
 
     sUsesGroup = False
 
-    sVariant = "none"   # Used to differentiate different forms of text parsing
+    sVariant = "none"  # Used to differentiate different forms of text parsing
 
     sValue = None
     sText = None
@@ -281,7 +280,7 @@ class PropertyBase(object):
 
         try:
             while txt:
-                if txt[0] == ';':
+                if txt[0] == ";":
                     # Parse parameter
 
                     # Move past delimiter
@@ -290,28 +289,40 @@ class PropertyBase(object):
                     # Get quoted string or token
                     parameter_name, txt = stringutils.strduptokenstr(txt, "=")
                     if parameter_name is None:
-                        raise InvalidProperty("Invalid property: empty parameter name", data)
+                        raise InvalidProperty(
+                            "Invalid property: empty parameter name", data
+                        )
                     txt = txt[1:]
                     parameter_value, txt = stringutils.strduptokenstr(txt, ":;,")
                     if parameter_value is None:
-                        raise InvalidProperty("Invalid property: empty parameter value", data)
+                        raise InvalidProperty(
+                            "Invalid property: empty parameter value", data
+                        )
 
                     # Now add parameter value (decode ^-escaping)
-                    attrvalue = Parameter(name=parameter_name, value=decodeParameterValue(parameter_value))
-                    self.mParameters.setdefault(parameter_name.upper(), []).append(attrvalue)
+                    attrvalue = Parameter(
+                        name=parameter_name, value=decodeParameterValue(parameter_value)
+                    )
+                    self.mParameters.setdefault(parameter_name.upper(), []).append(
+                        attrvalue
+                    )
 
                     # Look for additional values
-                    while txt[0] == ',':
+                    while txt[0] == ",":
                         txt = txt[1:]
                         parameter_value2, txt = stringutils.strduptokenstr(txt, ":;,")
                         if parameter_value2 is None:
-                            raise InvalidProperty("Invalid property: empty parameter multi-value", data)
+                            raise InvalidProperty(
+                                "Invalid property: empty parameter multi-value", data
+                            )
                         attrvalue.addValue(decodeParameterValue(parameter_value2))
-                elif txt[0] == ':':
+                elif txt[0] == ":":
                     return txt[1:]
                 else:
                     # We should never get here but if we do we need to terminate the loop
-                    raise InvalidProperty("Invalid property: missing value separator", data)
+                    raise InvalidProperty(
+                        "Invalid property: missing value separator", data
+                    )
 
         except IndexError:
             raise InvalidProperty("Invalid property: 'parameter index error'", data)
@@ -376,14 +387,16 @@ class PropertyBase(object):
                     written = len(temp)
                 else:
                     # Check whether next char is valid utf8 lead byte
-                    while (temp[offset] > 0x7F) and ((ord(temp[offset]) & 0xC0) == 0x80):
+                    while (temp[offset] > 0x7F) and (
+                        (ord(temp[offset]) & 0xC0) == 0x80
+                    ):
                         # Step back until we have a valid char
                         offset -= 1
 
                     line = temp[start:offset]
                     os.write(line)
                     os.write("\r\n ")
-                    lineWrap = 73   # We are now adding a space at the start
+                    lineWrap = 73  # We are now adding a space at the start
                     written += offset - start
                     start = offset
 
@@ -408,7 +421,9 @@ class PropertyBase(object):
 
         # Write all parameters
         if len(self.mParameters):
-            params = XML.SubElement(prop, xmlutils.makeTag(namespace, xmldefinitions.parameters))
+            params = XML.SubElement(
+                prop, xmlutils.makeTag(namespace, xmldefinitions.parameters)
+            )
             for key in sorted(self.mParameters.keys()):
                 for attr in self.mParameters[key]:
                     if attr.getName().lower() != "value":
@@ -440,14 +455,22 @@ class PropertyBase(object):
                 for name, value in jobject[1].items():
                     # Now add parameter value
                     name = name.upper()
-                    attrvalue = Parameter(name=name.encode("utf-8"), value=value.encode("utf-8"))
+                    attrvalue = Parameter(
+                        name=name.encode("utf-8"), value=value.encode("utf-8")
+                    )
                     prop.mParameters.setdefault(name, []).append(attrvalue)
 
             # Get default value type from property name and insert a VALUE parameter if current value type is not default
-            value_type = cls.sValueTypeMap.get(jobject[2].upper(), Value.VALUETYPE_UNKNOWN)
-            default_type = cls.sDefaultValueTypeMap.get(prop.mName.upper(), Value.VALUETYPE_UNKNOWN)
+            value_type = cls.sValueTypeMap.get(
+                jobject[2].upper(), Value.VALUETYPE_UNKNOWN
+            )
+            default_type = cls.sDefaultValueTypeMap.get(
+                prop.mName.upper(), Value.VALUETYPE_UNKNOWN
+            )
             if default_type != value_type:
-                attrvalue = Parameter(name=cls.sValue, value=jobject[2].encode("utf-8").upper())
+                attrvalue = Parameter(
+                    name=cls.sValue, value=jobject[2].encode("utf-8").upper()
+                )
                 prop.mParameters.setdefault(cls.sValue, []).append(attrvalue)
 
             # Get value type from property name
@@ -503,7 +526,9 @@ class PropertyBase(object):
 
     def determineValueType(self):
         # Get value type from property name
-        value_type = self.sDefaultValueTypeMap.get(self.mName.upper(), Value.VALUETYPE_UNKNOWN)
+        value_type = self.sDefaultValueTypeMap.get(
+            self.mName.upper(), Value.VALUETYPE_UNKNOWN
+        )
 
         # Check whether custom value is set
         if self.sValue in self.mParameters:
@@ -513,7 +538,9 @@ class PropertyBase(object):
         # Check for specials
         if self.mName.upper() in self.sSpecialVariants:
             # Make sure we have the default value for the special
-            if value_type == self.sDefaultValueTypeMap.get(self.mName.upper(), Value.VALUETYPE_UNKNOWN):
+            if value_type == self.sDefaultValueTypeMap.get(
+                self.mName.upper(), Value.VALUETYPE_UNKNOWN
+            ):
                 value_type = self.sSpecialVariants[self.mName.upper()]
 
         return value_type
@@ -554,11 +581,15 @@ class PropertyBase(object):
         self.mValue = None
 
         # Get value type from property name
-        value_type = self.sDefaultValueTypeMap.get(self.mName.upper(), Value.VALUETYPE_TEXT)
+        value_type = self.sDefaultValueTypeMap.get(
+            self.mName.upper(), Value.VALUETYPE_TEXT
+        )
 
         # Check whether custom value is set
         if self.sValue in self.mParameters:
-            value_type = self.sValueTypeMap.get(self.getParameterValue(self.sValue), value_type)
+            value_type = self.sValueTypeMap.get(
+                self.getParameterValue(self.sValue), value_type
+            )
 
         # Check for multivalued
         if self.mName.upper() in self.sMultiValues:
@@ -588,10 +619,18 @@ class PropertyBase(object):
             actual_type = default_type
         else:
             actual_type = self.mValue.getType()
-        if default_type is None or default_type != actual_type or self.mName.upper() in self.sAlwaysValueTypes:
+        if (
+            default_type is None
+            or default_type != actual_type
+            or self.mName.upper() in self.sAlwaysValueTypes
+        ):
             actual_value = self.sTypeValueMap.get(actual_type)
-            if actual_value is not None and (default_type is not None or actual_type != Value.VALUETYPE_TEXT):
-                self.mParameters.setdefault(self.sValue, []).append(Parameter(name=self.sValue, value=actual_value))
+            if actual_value is not None and (
+                default_type is not None or actual_type != Value.VALUETYPE_TEXT
+            ):
+                self.mParameters.setdefault(self.sValue, []).append(
+                    Parameter(name=self.sValue, value=actual_value)
+                )
 
     # Creation
     def _init_attr_value_int(self, ival):
@@ -604,7 +643,9 @@ class PropertyBase(object):
     def _init_attr_value_text(self, txt, value_type):
         # Value
         self.mValue = Value.createFromType(value_type)
-        if isinstance(self.mValue, PlainTextValue) or isinstance(self.mValue, UnknownValue):
+        if isinstance(self.mValue, PlainTextValue) or isinstance(
+            self.mValue, UnknownValue
+        ):
             self.mValue.setValue(txt)
 
         # Parameters

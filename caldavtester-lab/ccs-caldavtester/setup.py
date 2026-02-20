@@ -37,12 +37,14 @@ def find_packages():
 
     for pkg in filter(
         lambda p: os.path.isdir(p) and os.path.isfile(os.path.join(p, "__init__.py")),
-        os.listdir(".")
+        os.listdir("."),
     ):
-        modules.extend([pkg, ] + [
-            "{}.{}".format(pkg, subpkg)
-            for subpkg in setuptools_find_packages(pkg)
-        ])
+        modules.extend(
+            [
+                pkg,
+            ]
+            + ["{}.{}".format(pkg, subpkg) for subpkg in setuptools_find_packages(pkg)]
+        )
     return modules
 
 
@@ -112,34 +114,33 @@ def version():
         # We don't have GIT info...
         return "{}a1+unknown".format(base_version)
 
-    assert info["project"] == base_project, (
-        "GIT project {!r} != {!r}"
-        .format(info["project"], base_project)
+    assert info["project"] == base_project, "GIT project {!r} != {!r}".format(
+        info["project"], base_project
     )
 
     if info["tag"]:
         project_version = info["tag"]
         project, version = project_version.split("-")
-        assert project == project_name, (
-            "Tagged project {!r} != {!r}".format(project, project_name)
+        assert project == project_name, "Tagged project {!r} != {!r}".format(
+            project, project_name
         )
-        assert version == base_version, (
-            "Tagged version {!r} != {!r}".format(version, base_version)
+        assert version == base_version, "Tagged version {!r} != {!r}".format(
+            version, base_version
         )
         # This is a correctly tagged release of this project.
         return base_version
 
     if info["branch"].startswith("release/"):
-        project_version = info["branch"][len("release/"):]
+        project_version = info["branch"][len("release/") :]
         project, version, dev = project_version.split("-")
-        assert project == project_name, (
-            "Branched project {!r} != {!r}".format(project, project_name)
+        assert project == project_name, "Branched project {!r} != {!r}".format(
+            project, project_name
         )
-        assert version == base_version, (
-            "Branched version {!r} != {!r}".format(version, base_version)
+        assert version == base_version, "Branched version {!r} != {!r}".format(
+            version, base_version
         )
-        assert dev == "dev", (
-            "Branch name doesn't end in -dev: {!r}".format(info["branch"])
+        assert dev == "dev", "Branch name doesn't end in -dev: {!r}".format(
+            info["branch"]
         )
         # This is a release branch of this project.
         # Designate this as beta2, dev version based on git revision.
@@ -214,6 +215,7 @@ extensions = []
 #
 # Run setup
 #
+
 
 def doSetup():
     version_string = version()

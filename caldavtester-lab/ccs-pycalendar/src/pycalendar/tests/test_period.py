@@ -21,7 +21,6 @@ import unittest
 
 
 class TestPeriod(unittest.TestCase):
-
     test_data = (
         "20000101T000000Z/20000101T010000Z",
         "20000101T000000Z/PT1H",

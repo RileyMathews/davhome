@@ -46,7 +46,9 @@ class HTTPSVersionConnection(httplib.HTTPSConnection):
         "Connect to a host on a given (SSL) port."
 
         sock = socket.create_connection((self.host, self.port), self.timeout)
-        self.sock = sslmodule.wrap_socket(sock, self.key_file, self.cert_file, ssl_version=self._ssl_version)
+        self.sock = sslmodule.wrap_socket(
+            sock, self.key_file, self.cert_file, ssl_version=self._ssl_version
+        )
 
 
 class UnixSocketHTTPConnection(httplib.HTTPConnection):
@@ -86,7 +88,9 @@ def SmartHTTPConnection(host, port, ssl, afunix, cert=None):
     """
 
     def trySSL(version, cert=None):
-        connect = HTTPSVersionConnection(host, port, ssl_version=version, cert_file=cert)
+        connect = HTTPSVersionConnection(
+            host, port, ssl_version=version, cert_file=cert
+        )
         connect.connect()
         return connect
 

@@ -22,7 +22,6 @@ import xml.etree.cElementTree as XML
 
 
 class Value(ValueMixin):
-
     (
         VALUETYPE_ADR,
         VALUETYPE_BINARY,
@@ -108,4 +107,6 @@ class Value(ValueMixin):
         raise NotImplementedError
 
     def getXMLNode(self, node, namespace):
-        return XML.SubElement(node, xmlutils.makeTag(namespace, self._xmlMap[self.getType()]))
+        return XML.SubElement(
+            node, xmlutils.makeTag(namespace, self._xmlMap[self.getType()])
+        )

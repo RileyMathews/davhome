@@ -22,7 +22,6 @@ from pycalendar.value import Value
 
 
 class UTCOffsetValue(Value):
-
     def __init__(self, value=0):
         self.mValue = value
 
@@ -34,25 +33,35 @@ class UTCOffsetValue(Value):
 
     def parse(self, data, variant):
 
-        fullISO = (variant == "vcard")
+        fullISO = variant == "vcard"
 
         # Must be of specific lengths
         datalen = len(data)
-        if datalen not in ((6, 9,) if fullISO else (5, 7,)):
+        if datalen not in (
+            (
+                6,
+                9,
+            )
+            if fullISO
+            else (
+                5,
+                7,
+            )
+        ):
             self.mValue = 0
             raise ValueError("UTCOffset: invalid format")
 
         # Get sign
-        if data[0] not in ('+', '-'):
+        if data[0] not in ("+", "-"):
             raise ValueError("UTCOffset: does not start with '+' or '-'")
-        plus = (data[0] == '+')
+        plus = data[0] == "+"
 
         # Get hours
         hours = int(data[1:3])
 
         # Get minutes
         index = 4 if fullISO else 3
-        mins = int(data[index:index + 2])
+        mins = int(data[index : index + 2])
 
         # Get seconds if present
         secs = 0
@@ -78,9 +87,16 @@ class UTCOffsetValue(Value):
             mins = (abs_value / 60) % 60
             hours = abs_value / (60 * 60)
 
-            s = ("%s%02d:%02d" if fullISO else "%s%02d%02d") % (sign, hours, mins,)
-            if (secs != 0):
-                s = ("%s:%02d" if fullISO else "%s%02d") % (s, secs,)
+            s = ("%s%02d:%02d" if fullISO else "%s%02d%02d") % (
+                sign,
+                hours,
+                mins,
+            )
+            if secs != 0:
+                s = ("%s:%02d" if fullISO else "%s%02d") % (
+                    s,
+                    secs,
+                )
 
             os.write(s)
         except:
@@ -112,4 +128,7 @@ class UTCOffsetValue(Value):
     def setValue(self, value):
         self.mValue = value
 
-Value.registerType(Value.VALUETYPE_UTC_OFFSET, UTCOffsetValue, xmldefinitions.value_utc_offset)
+
+Value.registerType(
+    Value.VALUETYPE_UTC_OFFSET, UTCOffsetValue, xmldefinitions.value_utc_offset
+)

@@ -49,7 +49,7 @@ class GeoValue(Value):
         try:
             self.mValue = [float(splits[0]), float(splits[1])]
         except ValueError:
-            if splits[0][-1] == '\\':
+            if splits[0][-1] == "\\":
                 try:
                     self.mValue = [float(splits[0][:-1]), float(splits[1])]
                 except ValueError:
@@ -59,15 +59,25 @@ class GeoValue(Value):
 
     # os - StringIO object
     def generate(self, os):
-        os.write("%s;%s" % (self.mValue[0], self.mValue[1],))
+        os.write(
+            "%s;%s"
+            % (
+                self.mValue[0],
+                self.mValue[1],
+            )
+        )
 
     def writeXML(self, node, namespace):
         value = self.getXMLNode(node, namespace)
 
-        latitude = XML.SubElement(value, xmlutils.makeTag(namespace, xmldefinitions.geo_latitude))
+        latitude = XML.SubElement(
+            value, xmlutils.makeTag(namespace, xmldefinitions.geo_latitude)
+        )
         latitude.text = self.mValue[0]
 
-        longitude = XML.SubElement(value, xmlutils.makeTag(namespace, xmldefinitions.geo_longitude))
+        longitude = XML.SubElement(
+            value, xmlutils.makeTag(namespace, xmldefinitions.geo_longitude)
+        )
         longitude.text = self.mValue[1]
 
     def parseJSONValue(self, jobject):
@@ -82,4 +92,7 @@ class GeoValue(Value):
     def setValue(self, value):
         self.mValue = value
 
-Value.registerType(Value.VALUETYPE_GEO, GeoValue, xmldefinitions.geo, xmldefinitions_top.value_float)
+
+Value.registerType(
+    Value.VALUETYPE_GEO, GeoValue, xmldefinitions.geo, xmldefinitions_top.value_float
+)

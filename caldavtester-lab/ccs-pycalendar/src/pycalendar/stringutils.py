@@ -27,16 +27,16 @@ def strduptokenstr(txt, tokens):
             return None, ""
 
     # Handle quoted string
-    if txt[0] == '\"':
+    if txt[0] == '"':
         skip = False
         for end, s in enumerate(txt[1:]):
             if skip:
                 skip = False
                 continue
-            elif s == '\"':
-                return txt[1:end + 1], txt[end + 2:]
+            elif s == '"':
+                return txt[1 : end + 1], txt[end + 2 :]
             else:
-                skip = (s == '\\')
+                skip = s == "\\"
         else:
             return None, txt
     else:

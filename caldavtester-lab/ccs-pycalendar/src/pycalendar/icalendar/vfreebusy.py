@@ -27,7 +27,6 @@ from pycalendar.value import Value
 
 
 class VFreeBusy(Component):
-
     propertyCardinality_1 = (
         definitions.cICalProperty_DTSTAMP,
         definitions.cICalProperty_UID,
@@ -193,8 +192,11 @@ class VFreeBusy(Component):
         self.addProperty(prop)
 
         # If its an all day event and the duration is one day, ignore it
-        if (not start.isDateOnly() or (duration.getWeeks() != 0) or
-                (duration.getDays() > 1)):
+        if (
+            not start.isDateOnly()
+            or (duration.getWeeks() != 0)
+            or (duration.getDays() > 1)
+        ):
             prop = Property(definitions.cICalProperty_DURATION, duration)
             self.addProperty(prop)
 
@@ -229,47 +231,39 @@ class VFreeBusy(Component):
         props = self.getProperties()
         result = props.get(definitions.cICalProperty_FREEBUSY, ())
         for iter in result:
-
             # Check the properties FBTYPE parameter
             type = 0
             is_busy = False
             if iter.hasParameter(definitions.cICalParameter_FBTYPE):
-
                 fbyype = iter.getParameterValue(definitions.cICalParameter_FBTYPE)
                 if fbyype.upper() == definitions.cICalParameter_FBTYPE_BUSY:
-
                     is_busy = True
                     type = FreeBusy.BUSY
 
-                elif fbyype.upper() == definitions.cICalParameter_FBTYPE_BUSYUNAVAILABLE:
-
+                elif (
+                    fbyype.upper() == definitions.cICalParameter_FBTYPE_BUSYUNAVAILABLE
+                ):
                     is_busy = True
                     type = FreeBusy.BUSYUNAVAILABLE
 
                 elif fbyype.upper() == definitions.cICalParameter_FBTYPE_BUSYTENTATIVE:
-
                     is_busy = True
                     type = FreeBusy.BUSYTENTATIVE
 
                 else:
-
                     is_busy = False
                     type = FreeBusy.FREE
 
             else:
-
                 # Default is busy when no parameter
                 is_busy = True
                 type = FreeBusy.BUSY
 
             # Add this period
             if is_busy:
-
                 multi = iter.getMultiValue()
                 if (multi is not None) and (multi.getType() == Value.VALUETYPE_PERIOD):
-
                     for o in multi.getValues():
-
                         # Double-check type
                         period = None
                         if isinstance(o, PeriodValue):
@@ -277,16 +271,13 @@ class VFreeBusy(Component):
 
                         # Double-check type
                         if period is not None:
-
                             self.mBusyTime.append(FreeBusy(type, period.getValue()))
 
                             if len(self.mBusyTime) == 1:
-
                                 min_start = period.getValue().getStart()
                                 max_end = period.getValue().getEnd()
 
                             else:
-
                                 if min_start > period.getValue().getStart():
                                     min_start = period.getValue().getStart()
                                 if max_end < period.getValue().getEnd():
@@ -294,13 +285,15 @@ class VFreeBusy(Component):
 
         # If nothing present, empty the list
         if len(self.mBusyTime) == 0:
-
             self.mBusyTime = None
 
         else:
-
             # Sort the list by period
-            self.mBusyTime.sort(cmp=lambda x, y: x.getPeriod().getStart().compareDateTime(y.getPeriod().getStart()))
+            self.mBusyTime.sort(
+                cmp=lambda x, y: (
+                    x.getPeriod().getStart().compareDateTime(y.getPeriod().getStart())
+                )
+            )
 
             # Determine range
             start = DateTime()
@@ -325,5 +318,6 @@ class VFreeBusy(Component):
             definitions.cICalProperty_DURATION,
             definitions.cICalProperty_DTEND,
         )
+
 
 Component.registerComponent(definitions.cICalComponent_VFREEBUSY, VFreeBusy)

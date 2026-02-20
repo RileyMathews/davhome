@@ -21,7 +21,6 @@ from pycalendar.value import Value
 
 
 class FloatValue(Value):
-
     def __init__(self, value=None):
         self.mValue = value if value is not None else 0.0
 
@@ -56,5 +55,6 @@ class FloatValue(Value):
 
     def setValue(self, value):
         self.mValue = value
+
 
 Value.registerType(Value.VALUETYPE_FLOAT, FloatValue, xmldefinitions.value_float)

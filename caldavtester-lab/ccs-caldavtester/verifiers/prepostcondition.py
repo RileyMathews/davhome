@@ -23,7 +23,6 @@ from StringIO import StringIO
 
 
 class Verifier(object):
-
     def verify(self, manager, uri, response, respdata, args):  # @UnusedVariable
         # If no status verification requested, then assume all 2xx codes are OK
         teststatus = args.get("error", [])
@@ -50,7 +49,10 @@ class Verifier(object):
         expected = set(teststatus)
         got = set()
         for child in tree.getroot().getchildren():
-            if child.tag != "{http://twistedmatrix.com/xml_namespace/dav/}error-description":
+            if (
+                child.tag
+                != "{http://twistedmatrix.com/xml_namespace/dav/}error-description"
+            ):
                 got.add(child.tag)
 
         missing = expected.difference(got)
@@ -62,7 +64,9 @@ class Verifier(object):
         if len(extras) and not ignoreextras:
             if len(err_txt):
                 err_txt += "\n"
-            err_txt += "        Unexpected items returned in error element: %s" % str(extras)
+            err_txt += "        Unexpected items returned in error element: %s" % str(
+                extras
+            )
         if len(missing) or len(extras) and not ignoreextras:
             return False, err_txt
 

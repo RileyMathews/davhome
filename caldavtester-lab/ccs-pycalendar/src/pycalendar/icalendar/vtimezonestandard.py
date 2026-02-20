@@ -20,7 +20,6 @@ from pycalendar.icalendar.vtimezoneelement import VTimezoneElement
 
 
 class Standard(VTimezoneElement):
-
     def __init__(self, parent=None):
         super(Standard, self).__init__(parent=parent)
 
@@ -29,5 +28,6 @@ class Standard(VTimezoneElement):
 
     def getType(self):
         return definitions.cICalComponent_STANDARD
+
 
 Component.registerComponent(definitions.cICalComponent_STANDARD, Standard)

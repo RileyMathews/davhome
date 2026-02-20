@@ -14,8 +14,7 @@
 #    limitations under the License.
 ##
 
-from pycalendar.exceptions import NoTimezoneInDatabase, \
-    InvalidData
+from pycalendar.exceptions import NoTimezoneInDatabase, InvalidData
 import os
 
 
@@ -39,6 +38,7 @@ class TimezoneDatabase(object):
 
     def __init__(self):
         from pycalendar.icalendar.calendar import Calendar
+
         self.dbpath = None
         self.calendar = Calendar()
         self.tzcache = {}
@@ -50,6 +50,7 @@ class TimezoneDatabase(object):
 
     def clear(self):
         from pycalendar.icalendar.calendar import Calendar
+
         self.calendar = Calendar()
         self.tzcache.clear()
         self.stdtzcache.clear()
@@ -74,6 +75,7 @@ class TimezoneDatabase(object):
         tz = TimezoneDatabase.getTimezone(tzid)
         if tz is not None:
             from pycalendar.icalendar.calendar import Calendar
+
             cal = Calendar()
             cal.addComponent(tz.duplicate(cal))
             return cal

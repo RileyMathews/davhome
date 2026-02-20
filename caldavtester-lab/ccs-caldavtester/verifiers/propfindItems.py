@@ -66,11 +66,13 @@ class Verifier(object):
 
         def normalizeXML(value):
 
-            if value[0] == '<':
+            if value[0] == "<":
                 try:
                     tree = ElementTree(file=StringIO(value))
                 except Exception:
-                    return False, "           Could not parse XML value: %s\n" % (value,)
+                    return False, "           Could not parse XML value: %s\n" % (
+                        value,
+                    )
                 value = tostring(tree.getroot())
             return value
 
@@ -80,12 +82,14 @@ class Verifier(object):
         okprops_nomatch = {}
         for i in range(len(okprops)):
             p = okprops[i]
-            if (p.find("$") != -1):
+            if p.find("$") != -1:
                 if p.find("$") != len(p) - 1:
-                    ok_props_match.append((p.split("$")[0], normalizeXML(p.split("$")[1])))
+                    ok_props_match.append(
+                        (p.split("$")[0], normalizeXML(p.split("$")[1]))
+                    )
                 else:
                     ok_props_match.append((p.split("$")[0], None))
-            elif (p.find("!") != -1):
+            elif p.find("!") != -1:
                 if p.find("!") != len(p) - 1:
                     okprops_nomatch[p.split("!")[0]] = normalizeXML(p.split("!")[1])
                 else:
@@ -109,7 +113,9 @@ class Verifier(object):
 
         # Must have MULTISTATUS response code
         if response.status != status:
-            return False, "           HTTP Status for Request: %d\n" % (response.status,)
+            return False, "           HTTP Status for Request: %d\n" % (
+                response.status,
+            )
 
         # Read in XML
         try:
@@ -125,7 +131,6 @@ class Verifier(object):
         resulttxt = ""
         ctr = 0
         for response in tree.findall("{DAV:}response"):
-
             # Get href for this response
             href = response.find("{DAV:}href")
             if href is None:
@@ -151,7 +156,7 @@ class Verifier(object):
                     statustxt = status.text
                     status = False
                     if statustxt.startswith("HTTP/1.1 ") and (len(statustxt) >= 10):
-                        status = (statustxt[9] == "2")
+                        status = statustxt[9] == "2"
                 else:
                     status = False
 
@@ -168,26 +173,48 @@ class Verifier(object):
                             temp = temp.strip()
                             value += temp
                         if status:
-                            if (fqname, None,) in ok_test_set:
+                            if (
+                                fqname,
+                                None,
+                            ) in ok_test_set:
                                 value = None
                         else:
-                            if (fqname, None,) in bad_test_set:
+                            if (
+                                fqname,
+                                None,
+                            ) in bad_test_set:
                                 value = None
                     elif child.text:
                         value = child.text
                         if status:
-                            if (fqname, None,) in ok_test_set:
+                            if (
+                                fqname,
+                                None,
+                            ) in ok_test_set:
                                 value = None
                         else:
-                            if (fqname, None,) in bad_test_set:
+                            if (
+                                fqname,
+                                None,
+                            ) in bad_test_set:
                                 value = None
                     else:
                         value = None
 
                     if status:
-                        ok_status_props.append((fqname, value,))
+                        ok_status_props.append(
+                            (
+                                fqname,
+                                value,
+                            )
+                        )
                     else:
-                        bad_status_props.append((fqname, value,))
+                        bad_status_props.append(
+                            (
+                                fqname,
+                                value,
+                            )
+                        )
 
             ok_result_set = set(ok_status_props)
             bad_result_set = set(bad_status_props)
@@ -203,28 +230,41 @@ class Verifier(object):
                 if name in okprops_nomatch and okprops_nomatch[name] != value:
                     ok_extras.remove((name, value))
 
-            if len(ok_missing) + len(ok_extras) + len(bad_missing) + len(bad_extras) != 0:
+            if (
+                len(ok_missing) + len(ok_extras) + len(bad_missing) + len(bad_extras)
+                != 0
+            ):
                 if len(ok_missing) != 0:
                     l = list(ok_missing)
-                    resulttxt += "        Items not returned in report (OK) for %s:" % href
+                    resulttxt += (
+                        "        Items not returned in report (OK) for %s:" % href
+                    )
                     for i in l:
                         resulttxt += " " + str(i)
                     resulttxt += "\n"
                 if len(ok_extras) != 0:
                     l = list(ok_extras)
-                    resulttxt += "        Unexpected items returned in report (OK) for %s:" % href
+                    resulttxt += (
+                        "        Unexpected items returned in report (OK) for %s:"
+                        % href
+                    )
                     for i in l:
                         resulttxt += " " + str(i)
                     resulttxt += "\n"
                 if len(bad_missing) != 0:
                     l = list(bad_missing)
-                    resulttxt += "        Items not returned in report (BAD) for %s:" % href
+                    resulttxt += (
+                        "        Items not returned in report (BAD) for %s:" % href
+                    )
                     for i in l:
                         resulttxt += " " + str(i)
                     resulttxt += "\n"
                 if len(bad_extras) != 0:
                     l = list(bad_extras)
-                    resulttxt += "        Unexpected items returned in report (BAD) for %s:" % href
+                    resulttxt += (
+                        "        Unexpected items returned in report (BAD) for %s:"
+                        % href
+                    )
                     for i in l:
                         resulttxt += " " + str(i)
                     resulttxt += "\n"
@@ -232,6 +272,9 @@ class Verifier(object):
 
         if count is not None and count != ctr:
             result = False
-            resulttxt = "        Expected %d response items but got %d." % (count, ctr,)
+            resulttxt = "        Expected %d response items but got %d." % (
+                count,
+                ctr,
+            )
 
         return result, resulttxt

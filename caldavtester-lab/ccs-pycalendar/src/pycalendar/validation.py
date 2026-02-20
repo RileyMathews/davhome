@@ -24,6 +24,7 @@ def partial(func, *args, **keywords):
         newkeywords = keywords.copy()
         newkeywords.update(fkeywords)
         return func(*(args + fargs), **newkeywords)
+
     newfunc.func = func
     newfunc.args = args
     newfunc.keywords = keywords
@@ -31,7 +32,6 @@ def partial(func, *args, **keywords):
 
 
 class PropertyValueChecks(object):
-
     @staticmethod
     def stringValue(text, property):
 

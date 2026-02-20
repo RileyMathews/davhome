@@ -125,11 +125,9 @@ class ContainerBase(ComponentBase):
         componentstack = []
 
         while readFoldedLine(ins, lines):
-
             line = lines[0]
 
             if state == LOOK_FOR_CONTAINER:
-
                 # Look for start
                 if line == self.getBeginDelimiter():
                     # Next state
@@ -142,19 +140,26 @@ class ContainerBase(ComponentBase):
                 elif len(line) == 0:
                     # Raise if requested, otherwise just ignore
                     if ParserContext.BLANK_LINES_IN_DATA == ParserContext.PARSER_RAISE:
-                        raise InvalidData("%s data has blank lines" % (self.sContainerDescriptor,))
+                        raise InvalidData(
+                            "%s data has blank lines" % (self.sContainerDescriptor,)
+                        )
 
                 # Unrecognized data
                 else:
-                    raise InvalidData("%s data not recognized" % (self.sContainerDescriptor,), line)
+                    raise InvalidData(
+                        "%s data not recognized" % (self.sContainerDescriptor,), line
+                    )
 
             elif state == GET_PROPERTY_OR_COMPONENT:
-
                 # Parse property or look for start of component
                 if line.startswith("BEGIN:") and self.sComponentType is not None:
-
                     # Push previous details to stack
-                    componentstack.append((comp, compend,))
+                    componentstack.append(
+                        (
+                            comp,
+                            compend,
+                        )
+                    )
 
                     # Start a new component
                     comp = self.sComponentType.makeComponent(line[6:], comp)
@@ -162,7 +167,6 @@ class ContainerBase(ComponentBase):
 
                 # Look for end of object
                 elif line == self.getEndDelimiter():
-
                     # Finalise the current calendar
                     self.finalise()
 
@@ -171,7 +175,6 @@ class ContainerBase(ComponentBase):
 
                 # Look for end of current component
                 elif line == compend:
-
                     # Finalise the component (this caches data from the properties)
                     comp.finalise()
 
@@ -183,11 +186,12 @@ class ContainerBase(ComponentBase):
                 elif len(line) == 0:
                     # Raise if requested, otherwise just ignore
                     if ParserContext.BLANK_LINES_IN_DATA == ParserContext.PARSER_RAISE:
-                        raise InvalidData("%s data has blank lines" % (self.sContainerDescriptor,))
+                        raise InvalidData(
+                            "%s data has blank lines" % (self.sContainerDescriptor,)
+                        )
 
                 # Must be a property
                 else:
-
                     # Parse parameter/value for top-level calendar item
                     prop = self.sPropertyType.parseText(line)
 
@@ -234,7 +238,7 @@ class ContainerBase(ComponentBase):
     def getTextJSON(self):
         jobject = []
         self.writeJSON(jobject)
-        return json.dumps(jobject[0], indent=2, separators=(',', ':'))
+        return json.dumps(jobject[0], indent=2, separators=(",", ":"))
 
     def addDefaultProperties(self):
         raise NotImplementedError

@@ -22,7 +22,6 @@ import xml.etree.cElementTree as XML
 
 
 class Period(ValueMixin):
-
     def __init__(self, start=None, end=None, duration=None):
 
         self.mStart = start if start is not None else DateTime()
@@ -42,13 +41,20 @@ class Period(ValueMixin):
 
     def duplicate(self):
         if self.mUseDuration:
-            other = Period(start=self.mStart.duplicate(), duration=self.mDuration.duplicate())
+            other = Period(
+                start=self.mStart.duplicate(), duration=self.mDuration.duplicate()
+            )
         else:
             other = Period(start=self.mStart.duplicate(), end=self.mEnd.duplicate())
         return other
 
     def __hash__(self):
-        return hash((self.mStart, self.getEnd(),))
+        return hash(
+            (
+                self.mStart,
+                self.getEnd(),
+            )
+        )
 
     def __repr__(self):
         return "Period %s" % (self.getText(),)
@@ -63,8 +69,11 @@ class Period(ValueMixin):
         return self.mStart > comp
 
     def __lt__(self, comp):
-        return self.mStart < comp.mStart  \
-            or (self.mStart == comp.mStart) and self.getEnd() < comp.getEnd()
+        return (
+            self.mStart < comp.mStart
+            or (self.mStart == comp.mStart)
+            and self.getEnd() < comp.getEnd()
+        )
 
     @classmethod
     def parseText(cls, data):
@@ -74,13 +83,13 @@ class Period(ValueMixin):
 
     def parse(self, data, fullISO=False):
         try:
-            splits = data.split('/', 1)
+            splits = data.split("/", 1)
             if len(splits) == 2:
                 start = splits[0]
                 end = splits[1]
 
                 self.mStart.parse(start, fullISO)
-                if end[0] == 'P':
+                if end[0] == "P":
                     self.mDuration = Duration.parseText(end)
                     self.mUseDuration = True
                     self.mEnd = None
@@ -105,14 +114,20 @@ class Period(ValueMixin):
             pass
 
     def writeXML(self, node, namespace):
-        start = XML.SubElement(node, xmlutils.makeTag(namespace, xmldefinitions.period_start))
+        start = XML.SubElement(
+            node, xmlutils.makeTag(namespace, xmldefinitions.period_start)
+        )
         start.text = self.mStart.getXMLText()
 
         if self.mUseDuration:
-            duration = XML.SubElement(node, xmlutils.makeTag(namespace, xmldefinitions.period_duration))
+            duration = XML.SubElement(
+                node, xmlutils.makeTag(namespace, xmldefinitions.period_duration)
+            )
             duration.text = self.mDuration.getText()
         else:
-            end = XML.SubElement(node, xmlutils.makeTag(namespace, xmldefinitions.period_end))
+            end = XML.SubElement(
+                node, xmlutils.makeTag(namespace, xmldefinitions.period_end)
+            )
             end.text = self.mEnd.getXMLText()
 
     def parseJSON(self, jobject):
@@ -126,7 +141,9 @@ class Period(ValueMixin):
         """
         jCal encodes this value as an array with two components.
         """
-        value = [self.mStart.getXMLText(), ]
+        value = [
+            self.mStart.getXMLText(),
+        ]
         if self.mUseDuration:
             value.append(self.mDuration.getText())
         else:

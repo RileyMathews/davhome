@@ -30,7 +30,6 @@ import StringIO
 
 
 class Verifier(object):
-
     def verify(self, manager, uri, response, respdata, args):  # @UnusedVariable
 
         # Must have status 200
@@ -54,7 +53,9 @@ class Verifier(object):
         except ExpatError:
             return False, "           Could not parse proper XML response\n"
 
-        for calendar in tree.findall("./{urn:ietf:params:xml:ns:caldav}response/{urn:ietf:params:xml:ns:caldav}calendar-data"):
+        for calendar in tree.findall(
+            "./{urn:ietf:params:xml:ns:caldav}response/{urn:ietf:params:xml:ns:caldav}calendar-data"
+        ):
             # Parse data as calendar object
             try:
                 calendar = Calendar.parseText(calendar.text)
@@ -66,7 +67,9 @@ class Verifier(object):
                 # Only one component
                 comps = calendar.getComponents("VFREEBUSY")
                 if len(comps) != 1:
-                    raise ValueError("Wrong number or unexpected components in calendar")
+                    raise ValueError(
+                        "Wrong number or unexpected components in calendar"
+                    )
 
                 # Must be VFREEBUSY
                 fb = comps[0]
@@ -103,9 +106,9 @@ class Verifier(object):
 
                 # Set sizes must match
                 if (
-                    (len(busy) != len(busyp)) or
-                    (len(unavailable) != len(unavailablep)) or
-                    (len(tentative) != len(tentativep))
+                    (len(busy) != len(busyp))
+                    or (len(unavailable) != len(unavailablep))
+                    or (len(tentative) != len(tentativep))
                 ):
                     raise ValueError("Period list sizes do not match.")
 
@@ -143,6 +146,9 @@ class Verifier(object):
                 return False, "        Response data is not calendar data: %s" % (e,)
 
         if len(users):
-            return False, "           Could not find attendee/calendar data in XML response\n"
+            return (
+                False,
+                "           Could not find attendee/calendar data in XML response\n",
+            )
 
         return True, ""

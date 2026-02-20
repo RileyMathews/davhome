@@ -15,6 +15,7 @@
 ##
 
 from difflib import unified_diff
+
 try:
     # pycalendar is optional
     from pycalendar.icalendar.calendar import Calendar
@@ -30,8 +31,9 @@ Verifier that checks the response body for a semantic match to data in a file.
 
 
 class Verifier(object):
-
-    def verify(self, manager, uri, response, respdata, args, is_json=False):  # @UnusedVariable
+    def verify(
+        self, manager, uri, response, respdata, args, is_json=False
+    ):  # @UnusedVariable
         # Get arguments
         files = args.get("filepath", [])
         if manager.data_dir:
@@ -98,16 +100,23 @@ class Verifier(object):
 
             if component.getType() == "VEVENT":
                 if component.hasEnd():
-                    component.editTimingStartDuration(component.getStart(), component.getEnd() - component.getStart())
+                    component.editTimingStartDuration(
+                        component.getStart(), component.getEnd() - component.getStart()
+                    )
 
             allProps = []
             for properties in component.getProperties().itervalues():
                 allProps.extend(properties)
             for property in allProps:
                 # Always reset DTSTAMP on these properties
-                if property.getName() in ("ATTENDEE", "X-CALENDARSERVER-ATTENDEE-COMMENT"):
+                if property.getName() in (
+                    "ATTENDEE",
+                    "X-CALENDARSERVER-ATTENDEE-COMMENT",
+                ):
                     if property.hasParameter("X-CALENDARSERVER-DTSTAMP"):
-                        property.replaceParameter(Parameter("X-CALENDARSERVER-DTSTAMP", "20080101T000000Z"))
+                        property.replaceParameter(
+                            Parameter("X-CALENDARSERVER-DTSTAMP", "20080101T000000Z")
+                        )
 
                 for filter in filters:
                     if ":" in filter:
@@ -118,7 +127,10 @@ class Verifier(object):
                     else:
                         if "=" in filter:
                             filter_name, filter_value = filter.split("=")
-                            if property.getName() == filter_name and property.getValue().getValue() == filter_value:
+                            if (
+                                property.getName() == filter_name
+                                and property.getValue().getValue() == filter_value
+                            ):
                                 component.removeProperty(property)
                         else:
                             if property.getName() == filter:
@@ -128,6 +140,7 @@ class Verifier(object):
             """
             Make sure that the same set of overridden components appears in both calendar objects.
             """
+
             def _getRids(calendar):
                 """
                 Get all the recurrence ids of the specified calendar.
@@ -172,8 +185,12 @@ class Verifier(object):
 
             reconcileRecurrenceOverrides(resp_calendar, data_calendar)
 
-            respdata = resp_calendar.getText(includeTimezones=Calendar.NO_TIMEZONES, format=format)
-            data = data_calendar.getText(includeTimezones=Calendar.NO_TIMEZONES, format=format)
+            respdata = resp_calendar.getText(
+                includeTimezones=Calendar.NO_TIMEZONES, format=format
+            )
+            data = data_calendar.getText(
+                includeTimezones=Calendar.NO_TIMEZONES, format=format
+            )
 
             result = resp_calendar == data_calendar
             if not result:
@@ -184,7 +201,16 @@ class Verifier(object):
             if result:
                 return True, ""
             else:
-                error_diff = "\n".join([line for line in unified_diff(data.split("\n"), respdata.split("\n"))])
-                return False, "        Response data does not exactly match file data%s" % (error_diff,)
+                error_diff = "\n".join(
+                    [
+                        line
+                        for line in unified_diff(data.split("\n"), respdata.split("\n"))
+                    ]
+                )
+                return (
+                    False,
+                    "        Response data does not exactly match file data%s"
+                    % (error_diff,),
+                )
         except Exception, e:
             return False, "        Response data is not calendar data: %s" % (e,)

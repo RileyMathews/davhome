@@ -26,10 +26,7 @@ import uuid
 
 
 class ComponentRecur(Component):
-
-    propertyCardinality_STATUS_Fix = (
-        definitions.cICalProperty_STATUS,
-    )
+    propertyCardinality_STATUS_Fix = (definitions.cICalProperty_STATUS,)
 
     @staticmethod
     def mapKey(uid, rid=None):
@@ -48,7 +45,7 @@ class ComponentRecur(Component):
             return e1.self.mStart < e2.self.mStart
         elif e1.self.mStart.isDateOnly():
             return True
-        elif (e2.self.mStart.isDateOnly()):
+        elif e2.self.mStart.isDateOnly():
             return False
         elif e1.self.mStart == e2.self.mStart:
             if e1.self.mEnd == e2.self.mEnd:
@@ -64,8 +61,10 @@ class ComponentRecur(Component):
     def sort_by_dtstart(e1, e2):
         if e1.self.mStart == e2.self.mStart:
             if (
-                e1.self.mStart.isDateOnly() and e2.self.mStart.isDateOnly() or
-                not e1.self.mStart.isDateOnly() and not e2.self.mStart.isDateOnly()
+                e1.self.mStart.isDateOnly()
+                and e2.self.mStart.isDateOnly()
+                or not e1.self.mStart.isDateOnly()
+                and not e2.self.mStart.isDateOnly()
             ):
                 return False
             else:
@@ -92,9 +91,7 @@ class ComponentRecur(Component):
         self.mRecurrences = None
 
         # This is a special check we do only for STATUS due to a calendarserver bug
-        self.cardinalityChecks += (
-            self.check_cardinality_STATUS_Fix,
-        )
+        self.cardinalityChecks += (self.check_cardinality_STATUS_Fix,)
 
     def duplicate(self, parent=None):
         other = super(ComponentRecur, self).duplicate(parent=parent)
@@ -106,7 +103,7 @@ class ComponentRecur(Component):
 
         other.mSummary = self.mSummary
 
-        if (self.mStamp is not None):
+        if self.mStamp is not None:
             other.mStamp = self.mStamp.duplicate()
         other.mHasStamp = self.mHasStamp
 
@@ -271,19 +268,31 @@ class ComponentRecur(Component):
             self.mSummary = temp
 
         # Get RECURRENCE-ID
-        self.mHasRecurrenceID = (self.countProperty(definitions.cICalProperty_RECURRENCE_ID) != 0)
+        self.mHasRecurrenceID = (
+            self.countProperty(definitions.cICalProperty_RECURRENCE_ID) != 0
+        )
         if self.mHasRecurrenceID:
-            self.mRecurrenceID = self.loadValueDateTime(definitions.cICalProperty_RECURRENCE_ID)
+            self.mRecurrenceID = self.loadValueDateTime(
+                definitions.cICalProperty_RECURRENCE_ID
+            )
 
         # Update the map key
         if self.mHasRecurrenceID:
             self.mMapKey = self.mapKey(self.mUID, self.mRecurrenceID.getText())
 
             # Also get the RANGE parameter
-            attrs = self.findFirstProperty(definitions.cICalProperty_RECURRENCE_ID).getParameters()
+            attrs = self.findFirstProperty(
+                definitions.cICalProperty_RECURRENCE_ID
+            ).getParameters()
             if definitions.cICalParameter_RANGE in attrs:
-                self.mAdjustFuture = (attrs[definitions.cICalParameter_RANGE][0].getFirstValue() == definitions.cICalParameter_RANGE_THISANDFUTURE)
-                self.mAdjustPrior = (attrs[definitions.cICalParameter_RANGE][0].getFirstValue() == definitions.cICalParameter_RANGE_THISANDPRIOR)
+                self.mAdjustFuture = (
+                    attrs[definitions.cICalParameter_RANGE][0].getFirstValue()
+                    == definitions.cICalParameter_RANGE_THISANDFUTURE
+                )
+                self.mAdjustPrior = (
+                    attrs[definitions.cICalParameter_RANGE][0].getFirstValue()
+                    == definitions.cICalParameter_RANGE_THISANDPRIOR
+                )
             else:
                 self.mAdjustFuture = False
                 self.mAdjustPrior = False
@@ -317,7 +326,11 @@ class ComponentRecur(Component):
                         if doFix:
                             rrule.getUntil().setDateOnly(self.mStart.isDateOnly())
                             if not self.mStart.isDateOnly():
-                                rrule.getUntil().setHHMMSS(dtutc.getHours(), dtutc.getMinutes(), dtutc.getSeconds())
+                                rrule.getUntil().setHHMMSS(
+                                    dtutc.getHours(),
+                                    dtutc.getMinutes(),
+                                    dtutc.getSeconds(),
+                                )
                                 rrule.getUntil().setTimezone(Timezone(utc=True))
                             self.mRecurrences.changed()
                             fixed.append(logProblem)
@@ -337,9 +350,16 @@ class ComponentRecur(Component):
                 if doFix:
                     # Check that one of them is STATUS:CANCELLED
                     for prop in self.getProperties(propname):
-                        if prop.getTextValue().getValue().upper() == definitions.cICalProperty_STATUS_CANCELLED:
+                        if (
+                            prop.getTextValue().getValue().upper()
+                            == definitions.cICalProperty_STATUS_CANCELLED
+                        ):
                             self.removeProperties(propname)
-                            self.addProperty(Property(propname, definitions.cICalProperty_STATUS_CANCELLED))
+                            self.addProperty(
+                                Property(
+                                    propname, definitions.cICalProperty_STATUS_CANCELLED
+                                )
+                            )
                             fixed.append(logProblem)
                             break
                     else:
@@ -351,25 +371,32 @@ class ComponentRecur(Component):
         # May need to create items
         self.mRecurrences = None
         if (
-            (self.countProperty(definitions.cICalProperty_RRULE) != 0) or
-            (self.countProperty(definitions.cICalProperty_RDATE) != 0) or
-            (self.countProperty(definitions.cICalProperty_EXRULE) != 0) or
-            (self.countProperty(definitions.cICalProperty_EXDATE) != 0)
+            (self.countProperty(definitions.cICalProperty_RRULE) != 0)
+            or (self.countProperty(definitions.cICalProperty_RDATE) != 0)
+            or (self.countProperty(definitions.cICalProperty_EXRULE) != 0)
+            or (self.countProperty(definitions.cICalProperty_EXDATE) != 0)
         ):
-
             self.mRecurrences = RecurrenceSet()
 
             # Get RRULEs
-            self.loadValueRRULE(definitions.cICalProperty_RRULE, self.mRecurrences, True)
+            self.loadValueRRULE(
+                definitions.cICalProperty_RRULE, self.mRecurrences, True
+            )
 
             # Get RDATEs
-            self.loadValueRDATE(definitions.cICalProperty_RDATE, self.mRecurrences, True)
+            self.loadValueRDATE(
+                definitions.cICalProperty_RDATE, self.mRecurrences, True
+            )
 
             # Get EXRULEs
-            self.loadValueRRULE(definitions.cICalProperty_EXRULE, self.mRecurrences, False)
+            self.loadValueRRULE(
+                definitions.cICalProperty_EXRULE, self.mRecurrences, False
+            )
 
             # Get EXDATEs
-            self.loadValueRDATE(definitions.cICalProperty_EXDATE, self.mRecurrences, False)
+            self.loadValueRDATE(
+                definitions.cICalProperty_EXDATE, self.mRecurrences, False
+            )
 
     def FixStartEnd(self):
         # End is always greater than start if start exists
@@ -391,7 +418,11 @@ class ComponentRecur(Component):
 
     def expandPeriod(self, period, results):
         # Check for recurrence and True master
-        if ((self.mRecurrences is not None) and self.mRecurrences.hasRecurrence() and not self.isRecurrenceInstance()):
+        if (
+            (self.mRecurrences is not None)
+            and self.mRecurrences.hasRecurrence()
+            and not self.isRecurrenceInstance()
+        ):
             # Expand recurrences within the range
             items = []
             self.mRecurrences.expand(self.mStart, period, items)
@@ -401,7 +432,9 @@ class ComponentRecur(Component):
             if cal is not None:
                 # Remove recurrence instances from the list of items
                 recurs = []
-                cal.getRecurrenceInstancesIds(definitions.cICalComponent_VEVENT, self.getUID(), recurs)
+                cal.getRecurrenceInstancesIds(
+                    definitions.cICalComponent_VEVENT, self.getUID(), recurs
+                )
                 recurs.sort()
                 if len(recurs) != 0:
                     temp = []
@@ -410,7 +443,9 @@ class ComponentRecur(Component):
 
                     # Now get actual instances
                     instances = []
-                    cal.getRecurrenceInstancesItems(definitions.cICalComponent_VEVENT, self.getUID(), instances)
+                    cal.getRecurrenceInstancesItems(
+                        definitions.cICalComponent_VEVENT, self.getUID(), instances
+                    )
 
                     # Get list of each ones with RANGE
                     prior = []
@@ -433,7 +468,6 @@ class ComponentRecur(Component):
 
                         # Add each expanded item
                         for iter1 in items:
-
                             # Now step through each using the slave item
                             # instead of the master as appropriate
                             slave = None
@@ -469,7 +503,7 @@ class ComponentRecur(Component):
 
     def withinPeriod(self, period):
         # Check for recurrence
-        if ((self.mRecurrences is not None) and self.mRecurrences.hasRecurrence()):
+        if (self.mRecurrences is not None) and self.mRecurrences.hasRecurrence():
             items = []
             self.mRecurrences.expand(self.mStart, period, items)
             return len(items) != 0
@@ -575,7 +609,11 @@ class ComponentRecur(Component):
         self.addProperty(prop)
 
         # If its an all day event and the duration is one day, ignore it
-        if (not start.isDateOnly() or (duration.getWeeks() != 0) or (duration.getDays() > 1)):
+        if (
+            not start.isDateOnly()
+            or (duration.getWeeks() != 0)
+            or (duration.getDays() > 1)
+        ):
             prop = Property(definitions.cICalProperty_DURATION, duration)
             self.addProperty(prop)
 
@@ -655,18 +693,20 @@ class ComponentRecur(Component):
             # If this component does not have its own end/duration property,
             # the determine
             # the end from the master duration
-            if (
-                not self.hasProperty(definitions.cICalProperty_DTEND) and
-                not self.hasProperty(definitions.cICalProperty_DURATION)
-            ):
+            if not self.hasProperty(
+                definitions.cICalProperty_DTEND
+            ) and not self.hasProperty(definitions.cICalProperty_DURATION):
                 # End is based on original events settings
-                self.mEnd = self.mStart + (self.mMaster.getEnd() - self.mMaster.getStart())
+                self.mEnd = self.mStart + (
+                    self.mMaster.getEnd() - self.mMaster.getStart()
+                )
 
             # If this instance has a duration, but no start of its own, then we
             # need to readjust the end
             # to account for the start being changed to the recurrence id
-            elif (self.hasProperty(definitions.cICalProperty_DURATION) and
-                  not self.hasProperty(definitions.cICalProperty_DTSTART)):
+            elif self.hasProperty(
+                definitions.cICalProperty_DURATION
+            ) and not self.hasProperty(definitions.cICalProperty_DTSTART):
                 temp = self.loadValueDuration(definitions.cICalProperty_DURATION)
                 self.mEnd = self.mStart + temp
 

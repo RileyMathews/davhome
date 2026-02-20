@@ -27,7 +27,6 @@ import unittest
 
 
 class TestCalendar(unittest.TestCase):
-
     data = (
         """BEGIN:VCALENDAR
 VERSION:2.0
@@ -43,7 +42,6 @@ SUMMARY:New Year's Day
 END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
-
         """BEGIN:VCALENDAR
 VERSION:2.0
 CALSCALE:GREGORIAN
@@ -81,7 +79,6 @@ END:VALARM
 END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
-
         """BEGIN:VCALENDAR
 VERSION:2.0
 PRODID:-//mulberrymail.com//Mulberry v4.0//EN
@@ -95,7 +92,6 @@ RRULE:FREQ=YEARLY
 END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
-
         """BEGIN:VCALENDAR
 VERSION:2.0
 CALSCALE:GREGORIAN
@@ -110,7 +106,6 @@ SUMMARY:New Year's Day
 END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
-
         """BEGIN:VCALENDAR
 VERSION:2.0
 CALSCALE:GREGORIAN
@@ -125,7 +120,6 @@ SUMMARY:New Year's Day
 END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
-
         """BEGIN:VCALENDAR
 VERSION:2.0
 CALSCALE:GREGORIAN
@@ -173,7 +167,6 @@ END:AVAILABLE
 END:VAVAILABILITY
 END:VCALENDAR
 """.replace("\n", "\r\n"),
-
         """BEGIN:VCALENDAR
 VERSION:2.0
 CALSCALE:GREGORIAN
@@ -186,7 +179,6 @@ SUMMARY:event 1
 END:VTODO
 END:VCALENDAR
 """.replace("\n", "\r\n"),
-
         """BEGIN:VCALENDAR
 VERSION:2.0
 CALSCALE:GREGORIAN
@@ -204,7 +196,6 @@ UID:1234
 END:X-COMPONENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
-
         """BEGIN:VCALENDAR
 VERSION:2.0
 CALSCALE:GREGORIAN
@@ -244,7 +235,6 @@ END:VALARM
 END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
-
         """BEGIN:VCALENDAR
 VERSION:2.0
 CALSCALE:GREGORIAN
@@ -261,7 +251,6 @@ X-Test:Some\, text.
 END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
-
         """BEGIN:VCALENDAR
 VERSION:2.0
 CALSCALE:GREGORIAN
@@ -278,7 +267,6 @@ X-Test:Some\, text.
 END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
-
     )
     data2 = (
         (
@@ -296,7 +284,6 @@ END:VEVENT
 X-TEST:Testing
 END:VCALENDAR
 """.replace("\n", "\r\n"),
-
             """BEGIN:VCALENDAR
 VERSION:2.0
 PRODID:-//mulberrymail.com//Mulberry v4.0//EN
@@ -329,7 +316,9 @@ END:VCALENDAR
             self.assertEqual(
                 test1,
                 test2,
-                "\n".join(difflib.unified_diff(str(test1).splitlines(), test2.splitlines()))
+                "\n".join(
+                    difflib.unified_diff(str(test1).splitlines(), test2.splitlines())
+                ),
             )
 
         for item in self.data:
@@ -361,7 +350,15 @@ END:VCALENDAR
             cal2 = Calendar()
             cal2.parse(StringIO.StringIO(caldata))
 
-            self.assertEqual(cal1, cal2, "%s\n\n%s" % (cal1, cal2,))
+            self.assertEqual(
+                cal1,
+                cal2,
+                "%s\n\n%s"
+                % (
+                    cal1,
+                    cal2,
+                ),
+            )
 
         def _doNonEquality(caldata):
             cal1 = Calendar()
@@ -473,13 +470,11 @@ RRULE:FREQ=YEARLY;UNTIL=20031231;BYMONTH=1
 SUMMARY:New Year's Day
 END:VEVENT
 """.replace("\n", "\r\n"),
-
             """BEGIN:VCARD
 PRODID:-//mulberrymail.com//Mulberry v4.0//EN
 VERSION:2.0
 END:VCARD
 """.replace("\n", "\r\n"),
-
             """BOGUS
 BEGIN:VCALENDAR
 VERSION:2.0
@@ -495,7 +490,6 @@ SUMMARY:New Year's Day
 END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
-
             """BOGUS
 
 BEGIN:VCALENDAR
@@ -512,7 +506,6 @@ SUMMARY:New Year's Day
 END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
-
             """BEGIN:VCALENDAR
 VERSION:2.0
 CALSCALE:GREGORIAN
@@ -528,7 +521,6 @@ END:VEVENT
 END:VCALENDAR
 BOGUS
 """.replace("\n", "\r\n"),
-
             """BEGIN:VCALENDAR
 VERSION:2.0
 CALSCALE:GREGORIAN
@@ -545,7 +537,6 @@ END:VCALENDAR
 
 BOGUS
 """.replace("\n", "\r\n"),
-
         )
 
         for item in data:
@@ -569,7 +560,6 @@ SUMMARY:New Year's Day
 END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
-
             """
 
 BEGIN:VCALENDAR
@@ -586,7 +576,6 @@ SUMMARY:New Year's Day
 END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
-
             """BEGIN:VCALENDAR
 VERSION:2.0
 CALSCALE:GREGORIAN
@@ -603,7 +592,6 @@ END:VCALENDAR
 
 
 """.replace("\n", "\r\n"),
-
             """BEGIN:VCALENDAR
 VERSION:2.0
 CALSCALE:GREGORIAN
@@ -619,7 +607,6 @@ SUMMARY:New Year's Day
 END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
-
             """BEGIN:VCALENDAR
 VERSION:2.0
 CALSCALE:GREGORIAN
@@ -797,9 +784,7 @@ SUMMARY:New Year's Day
 END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
-                (
-                    DateTime(2011, 6, 1),
-                ),
+                (DateTime(2011, 6, 1),),
             ),
             (
                 "Recurring with override partial match",
@@ -825,9 +810,7 @@ SUMMARY:New Year's Day
 END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
-                (
-                    DateTime(2011, 6, 1, 13, 0, 0),
-                ),
+                (DateTime(2011, 6, 1, 13, 0, 0),),
             ),
         )
 
@@ -839,10 +822,14 @@ END:VCALENDAR
                     start=DateTime(2011, 6, 1),
                     end=DateTime(2011, 7, 1),
                 ),
-                instances
+                instances,
             )
             instances = tuple([instance.getInstanceStart() for instance in instances])
-            self.assertEqual(instances, result, "Failed in %s: got %s, expected %s" % (title, instances, result))
+            self.assertEqual(
+                instances,
+                result,
+                "Failed in %s: got %s, expected %s" % (title, instances, result),
+            )
 
     def testMasterComponent(self):
 
@@ -1039,7 +1026,11 @@ END:VCALENDAR
             master = calendar.masterComponent()
             if master is None:
                 master = ""
-            self.assertEqual(str(master), result, "Failed in %s: got %s, expected %s" % (title, master, result))
+            self.assertEqual(
+                str(master),
+                result,
+                "Failed in %s: got %s, expected %s" % (title, master, result),
+            )
 
     def testDeriveComponent(self):
 
@@ -1227,4 +1218,8 @@ END:VCALENDAR
             master = calendar.deriveComponent(rid)
             if master is None:
                 master = ""
-            self.assertEqual(str(master), result, "Failed in %s: got %s, expected %s" % (title, master, result))
+            self.assertEqual(
+                str(master),
+                result,
+                "Failed in %s: got %s, expected %s" % (title, master, result),
+            )

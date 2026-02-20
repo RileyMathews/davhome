@@ -19,7 +19,6 @@ import unittest
 
 
 class TestCalendar(unittest.TestCase):
-
     def testDuplicateWithRecurrenceChange(self):
 
         data = (

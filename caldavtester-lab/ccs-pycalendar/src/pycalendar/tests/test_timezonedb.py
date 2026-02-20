@@ -335,14 +335,15 @@ END:VCALENDAR
 
 
 class TestTimezoneDB(TestPyCalendar):
-
     def setUp(self):
         super(TestTimezoneDB, self).setUp()
 
         # Standard components explicitly added
         for vtz in StandardTZs:
             cal = Calendar()
-            TimezoneDatabase.getTimezoneDatabase()._addStandardTimezone(cal.parseComponent(StringIO(vtz)))
+            TimezoneDatabase.getTimezoneDatabase()._addStandardTimezone(
+                cal.parseComponent(StringIO(vtz))
+            )
 
         # Just parsing will add as non-standard
         for vtz in NonStandardTZs:
@@ -401,11 +402,14 @@ class TestTimezoneDB(TestPyCalendar):
         )
 
         for tzid, result in data:
-            self.assertEqual(TimezoneDatabase.isStandardTimezone(tzid), result, "Failed {}".format(tzid))
+            self.assertEqual(
+                TimezoneDatabase.isStandardTimezone(tzid),
+                result,
+                "Failed {}".format(tzid),
+            )
 
 
 class TestTimezoneDBCache(TestPyCalendar):
-
     def setUp(self):
         super(TestTimezoneDBCache, self).setUp()
 
@@ -441,14 +445,35 @@ class TestTimezoneDBCache(TestPyCalendar):
         # Do twice to excersise the cache
         for _ in range(2):
             for tzid, result in data:
-                self.assertEqual(TimezoneDatabase.isStandardTimezone(tzid), result, "Failed {}".format(tzid))
+                self.assertEqual(
+                    TimezoneDatabase.isStandardTimezone(tzid),
+                    result,
+                    "Failed {}".format(tzid),
+                )
 
-        self.assertTrue("America/New_York" in TimezoneDatabase.getTimezoneDatabase().stdtzcache)
-        self.assertTrue("America/Los_Angeles" in TimezoneDatabase.getTimezoneDatabase().stdtzcache)
-        self.assertFalse("America/Cupertino" in TimezoneDatabase.getTimezoneDatabase().stdtzcache)
-        self.assertFalse("America/FooBar" in TimezoneDatabase.getTimezoneDatabase().stdtzcache)
+        self.assertTrue(
+            "America/New_York" in TimezoneDatabase.getTimezoneDatabase().stdtzcache
+        )
+        self.assertTrue(
+            "America/Los_Angeles" in TimezoneDatabase.getTimezoneDatabase().stdtzcache
+        )
+        self.assertFalse(
+            "America/Cupertino" in TimezoneDatabase.getTimezoneDatabase().stdtzcache
+        )
+        self.assertFalse(
+            "America/FooBar" in TimezoneDatabase.getTimezoneDatabase().stdtzcache
+        )
 
-        self.assertFalse("America/New_York" in TimezoneDatabase.getTimezoneDatabase().notstdtzcache)
-        self.assertFalse("America/Los_Angeles" in TimezoneDatabase.getTimezoneDatabase().notstdtzcache)
-        self.assertTrue("America/Cupertino" in TimezoneDatabase.getTimezoneDatabase().notstdtzcache)
-        self.assertTrue("America/FooBar" in TimezoneDatabase.getTimezoneDatabase().notstdtzcache)
+        self.assertFalse(
+            "America/New_York" in TimezoneDatabase.getTimezoneDatabase().notstdtzcache
+        )
+        self.assertFalse(
+            "America/Los_Angeles"
+            in TimezoneDatabase.getTimezoneDatabase().notstdtzcache
+        )
+        self.assertTrue(
+            "America/Cupertino" in TimezoneDatabase.getTimezoneDatabase().notstdtzcache
+        )
+        self.assertTrue(
+            "America/FooBar" in TimezoneDatabase.getTimezoneDatabase().notstdtzcache
+        )

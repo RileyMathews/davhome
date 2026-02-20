@@ -21,7 +21,6 @@ import unittest
 
 
 class TestCalendar(unittest.TestCase):
-
     data = (
         """BEGIN:VCALENDAR
 VERSION:2.0
@@ -62,7 +61,6 @@ END:VEVENT
 END:VPOLL
 END:VCALENDAR
 """,
-
         """BEGIN:VCALENDAR
 VERSION:2.0
 CALSCALE:GREGORIAN
@@ -90,7 +88,6 @@ END:VVOTER
 END:VPOLL
 END:VCALENDAR
 """,
-
     )
 
     def testRoundtrip(self):
@@ -108,7 +105,9 @@ END:VCALENDAR
             self.assertEqual(
                 test1,
                 test2,
-                "\n".join(difflib.unified_diff(str(test1).splitlines(), test2.splitlines()))
+                "\n".join(
+                    difflib.unified_diff(str(test1).splitlines(), test2.splitlines())
+                ),
             )
 
         for item in self.data:

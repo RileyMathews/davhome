@@ -18,20 +18,19 @@ from pycalendar.icalendar import definitions
 from pycalendar.validation import partial, PropertyValueChecks
 
 ICALENDAR_VALUE_CHECKS = {
-    definitions.cICalProperty_CALSCALE: partial(PropertyValueChecks.stringValue, "GREGORIAN"),
+    definitions.cICalProperty_CALSCALE: partial(
+        PropertyValueChecks.stringValue, "GREGORIAN"
+    ),
     definitions.cICalProperty_VERSION: partial(PropertyValueChecks.stringValue, "2.0"),
-
-    definitions.cICalProperty_PERCENT_COMPLETE: partial(PropertyValueChecks.numericRange, 0, 100),
+    definitions.cICalProperty_PERCENT_COMPLETE: partial(
+        PropertyValueChecks.numericRange, 0, 100
+    ),
     definitions.cICalProperty_PRIORITY: partial(PropertyValueChecks.numericRange, 0, 9),
-
     definitions.cICalProperty_COMPLETED: PropertyValueChecks.alwaysUTC,
-
     definitions.cICalProperty_REPEAT: PropertyValueChecks.positiveIntegerOrZero,
-
     definitions.cICalProperty_CREATED: PropertyValueChecks.alwaysUTC,
     definitions.cICalProperty_DTSTAMP: PropertyValueChecks.alwaysUTC,
     definitions.cICalProperty_LAST_MODIFIED: PropertyValueChecks.alwaysUTC,
     definitions.cICalProperty_SEQUENCE: PropertyValueChecks.positiveIntegerOrZero,
-
     definitions.cICalProperty_ACKNOWLEDGED: PropertyValueChecks.alwaysUTC,
 }

@@ -22,13 +22,13 @@ import unittest
 
 
 class TestDateTime(unittest.TestCase):
-
     def _patch(self, obj, attr, value):
         oldvalue = getattr(obj, attr)
         setattr(obj, attr, value)
 
         def _restore():
             setattr(obj, attr, oldvalue)
+
         self.addCleanup(_restore)
 
     def testDuplicateASUTC(self):
@@ -45,7 +45,7 @@ class TestDateTime(unittest.TestCase):
             (
                 DateTime(2011, 1, 1),
                 DateTime(2011, 1, 1),
-            )
+            ),
         )
 
         for item, result in items:
@@ -102,7 +102,9 @@ class TestDateTime(unittest.TestCase):
 
     def testBadParse(self):
 
-        self._patch(ParserContext, "INVALID_DATETIME_LEADINGSPACE", ParserContext.PARSER_RAISE)
+        self._patch(
+            ParserContext, "INVALID_DATETIME_LEADINGSPACE", ParserContext.PARSER_RAISE
+        )
 
         data1 = (
             "2011",
@@ -138,7 +140,9 @@ class TestDateTime(unittest.TestCase):
 
     def testBadParseFixed(self):
 
-        self._patch(ParserContext, "INVALID_DATETIME_LEADINGSPACE", ParserContext.PARSER_ALLOW)
+        self._patch(
+            ParserContext, "INVALID_DATETIME_LEADINGSPACE", ParserContext.PARSER_ALLOW
+        )
 
         data = (
             ("   10102", "00010102"),

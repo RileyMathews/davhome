@@ -23,7 +23,6 @@ from pycalendar.parser import ParserContext
 
 
 class URIValue(PlainTextValue):
-
     def getType(self):
         return URIValue.VALUETYPE_URI
 
@@ -42,7 +41,7 @@ class URIValue(PlainTextValue):
         Handle a client bug where it sometimes includes a \n in the value and we need
         to make sure that gets encoded rather than included literally which would break syntax.
         """
-        if '\n' in self.mValue:
+        if "\n" in self.mValue:
             try:
                 # No encoding required
                 os.write(self.mValue.replace("\n", "\\n"))
@@ -50,5 +49,6 @@ class URIValue(PlainTextValue):
                 pass
         else:
             super(URIValue, self).generate(os)
+
 
 Value.registerType(Value.VALUETYPE_URI, URIValue, xmldefinitions.value_uri)

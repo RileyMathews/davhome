@@ -21,7 +21,6 @@ from pycalendar.icalendar.validation import ICALENDAR_VALUE_CHECKS
 
 
 class VAvailability(Component):
-
     propertyCardinality_1 = (
         definitions.cICalProperty_DTSTAMP,
         definitions.cICalProperty_UID,
@@ -70,7 +69,9 @@ class VAvailability(Component):
         fixed, unfixed = super(VAvailability, self).validate(doFix)
 
         # Extra constraint: only one of DTEND or DURATION
-        if self.hasProperty(definitions.cICalProperty_DTEND) and self.hasProperty(definitions.cICalProperty_DURATION):
+        if self.hasProperty(definitions.cICalProperty_DTEND) and self.hasProperty(
+            definitions.cICalProperty_DURATION
+        ):
             # Fix by removing the DTEND
             logProblem = "[%s] Properties must not both be present: %s, %s" % (
                 self.getType(),
@@ -112,5 +113,6 @@ class VAvailability(Component):
         super(VAvailability, self).getTimezones(tzids)
         for available in self.getComponents(definitions.cICalComponent_AVAILABLE):
             available.getTimezones(tzids)
+
 
 Component.registerComponent(definitions.cICalComponent_VAVAILABILITY, VAvailability)

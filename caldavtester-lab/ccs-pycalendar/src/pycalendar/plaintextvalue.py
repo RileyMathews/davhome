@@ -20,8 +20,7 @@ from pycalendar.value import Value
 
 
 class PlainTextValue(Value):
-
-    def __init__(self, value=''):
+    def __init__(self, value=""):
         self.mValue = value
 
     def duplicate(self):

@@ -21,11 +21,11 @@ from pycalendar.valueutils import WrapperValue
 
 
 class RecurrenceValue(WrapperValue, Value):
-
     _wrappedClass = Recurrence
     _wrappedType = Value.VALUETYPE_RECUR
 
     def writeXML(self, node, namespace):
         self.mValue.writeXML(node, namespace)
+
 
 Value.registerType(Value.VALUETYPE_RECUR, RecurrenceValue, xmldefinitions.value_recur)

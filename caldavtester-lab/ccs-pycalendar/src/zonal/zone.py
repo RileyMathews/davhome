@@ -47,10 +47,7 @@ class Zone(object):
         return self.generate()
 
     def __eq__(self, other):
-        return other and (
-            self.name == other.name and
-            self.rules == other.rules
-        )
+        return other and (self.name == other.name and self.rules == other.rules)
 
     def __ne__(self, other):
         return not self.__eq__(other)
@@ -137,7 +134,14 @@ class Zone(object):
         last_stdoffset = start_stdoffset
         first = True
         for zonerule in self.rules:
-            last_offset, last_stdoffset = zonerule.expand(rules, transitions, lastUntilDateUTC, last_offset, last_stdoffset, maxYear)
+            last_offset, last_stdoffset = zonerule.expand(
+                rules,
+                transitions,
+                lastUntilDateUTC,
+                last_offset,
+                last_stdoffset,
+                maxYear,
+            )
             lastUntilDate = zonerule.getUntilDate()
             lastUntilDateUTC = lastUntilDate.getUTC(last_offset, last_stdoffset)
 
@@ -162,9 +166,23 @@ class Zone(object):
                     results.append((dt, last_transition[1], to_offset, zonerule, rule))
                 elif dt <= last_transition[0]:
                     if len(results):
-                        results[-1] = ((results[-1][0], results[-1][1], to_offset, zonerule, None))
+                        results[-1] = (
+                            results[-1][0],
+                            results[-1][1],
+                            to_offset,
+                            zonerule,
+                            None,
+                        )
                     else:
-                        results.append((last_transition[0], last_transition[1], last_transition[2], zonerule, None))
+                        results.append(
+                            (
+                                last_transition[0],
+                                last_transition[1],
+                                last_transition[2],
+                                zonerule,
+                                None,
+                            )
+                        )
             last_transition = (dt, to_offset, last_transition[2], rule)
 
         return results
@@ -200,10 +218,16 @@ class Zone(object):
             for tzrule in ruleorder:
                 if tzrule:
                     # Accumulate tzrule portions with the same offset pairs
-                    lastOffsetPair = (rulemap[tzrule][0][1], rulemap[tzrule][0][2],)
+                    lastOffsetPair = (
+                        rulemap[tzrule][0][1],
+                        rulemap[tzrule][0][2],
+                    )
                     startIndex = 0
                     for index in xrange(len(rulemap[tzrule])):
-                        offsetPair = (rulemap[tzrule][index][1], rulemap[tzrule][index][2],)
+                        offsetPair = (
+                            rulemap[tzrule][index][1],
+                            rulemap[tzrule][index][2],
+                        )
                         if offsetPair != lastOffsetPair:
                             tzrule.vtimezone(
                                 vtz,
@@ -214,7 +238,10 @@ class Zone(object):
                                 rulemap[tzrule][startIndex][2],
                                 index - startIndex,
                             )
-                            lastOffsetPair = (rulemap[tzrule][index][1], rulemap[tzrule][index][2],)
+                            lastOffsetPair = (
+                                rulemap[tzrule][index][1],
+                                rulemap[tzrule][index][2],
+                            )
                             startIndex = index
 
                     tzrule.vtimezone(
@@ -239,14 +266,19 @@ class Zone(object):
             rulemap.clear()
 
         for dt, offsetfrom, offsetto, zonerule, tzrule in transitions:
-
             # Check for change of rule - we ignore LMT's
             if zonerule.format != "LMT":
                 if lastZoneRule and lastZoneRule != zonerule:
                     _generateRuleData()
                 if tzrule not in ruleorder:
                     ruleorder.append(tzrule)
-                rulemap.setdefault(tzrule, []).append((dt, offsetfrom, offsetto,))
+                rulemap.setdefault(tzrule, []).append(
+                    (
+                        dt,
+                        offsetfrom,
+                        offsetto,
+                    )
+                )
             lastZoneRule = zonerule
 
         # Do left overs
@@ -310,10 +342,10 @@ class ZoneRule(object):
 
     def __eq__(self, other):
         return other and (
-            self.gmtoff == other.gmtoff and
-            self.rule == other.rule and
-            self.format == other.format and
-            self.until == other.until
+            self.gmtoff == other.gmtoff
+            and self.rule == other.rule
+            and self.format == other.format
+            and self.until == other.until
         )
 
     def __ne__(self, other):
@@ -332,7 +364,7 @@ class ZoneRule(object):
         self.rule = splits[3 - offset]
         self.format = splits[4 - offset]
         if len(splits) >= 6 - offset:
-            self.until = " ".join(splits[5 - offset:])
+            self.until = " ".join(splits[5 - offset :])
 
     def generate(self):
         """
@@ -399,7 +431,14 @@ class ZoneRule(object):
                             if len(splits) > 2:
                                 seconds = int(splits[2])
 
-            dt = DateTime(year=year, month=month, day=day, hours=hours, minutes=minutes, seconds=seconds)
+            dt = DateTime(
+                year=year,
+                month=month,
+                day=day,
+                hours=hours,
+                minutes=minutes,
+                seconds=seconds,
+            )
             self._cached_until = utils.DateTime(dt, mode)
         return self._cached_until
 
@@ -420,7 +459,14 @@ class ZoneRule(object):
     def expand(self, rules, results, lastUntilUTC, lastOffset, lastStdOffset, maxYear):
 
         # Expand the rule
-        assert self.isNumericOffset() or self.rule in rules, "No rule '%s' found in cache. %s for %s" % (self.rule, self, self.zone,)
+        assert self.isNumericOffset() or self.rule in rules, (
+            "No rule '%s' found in cache. %s for %s"
+            % (
+                self.rule,
+                self,
+                self.zone,
+            )
+        )
         if self.isNumericOffset():
             return self.expand_norule(results, lastUntilUTC, maxYear)
         else:
@@ -520,7 +566,8 @@ class ZoneRule(object):
         comp.finalise()
         vtz.addComponent(comp)
 
-if __name__ == '__main__':
+
+if __name__ == "__main__":
     rulesdef = """Rule\tUS\t1918\t1919\t-\tMar\tlastSun\t2:00\t1:00\tD
 Rule\tUS\t1918\t1919\t-\tOct\tlastSun\t2:00\t0\tS
 Rule\tUS\t1942\tonly\t-\tFeb\t9\t2:00\t1:00\tW # War

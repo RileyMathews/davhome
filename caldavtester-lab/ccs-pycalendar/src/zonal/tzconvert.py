@@ -34,13 +34,10 @@ import zone
 Classes to parse a tzdata files and generate VTIMEZONE data.
 """
 
-__all__ = (
-    "tzconvert",
-)
+__all__ = ("tzconvert",)
 
 
 class tzconvert(object):
-
     def __init__(self, verbose=False):
         self.rules = {}
         self.zones = {}
@@ -71,7 +68,13 @@ class tzconvert(object):
                             self.parseLink(line)
                             break
                         elif len(line.strip()) != 0:
-                            assert False, "Could not parse line %d from tzconvert file: '%s'" % (ctr, line,)
+                            assert False, (
+                                "Could not parse line %d from tzconvert file: '%s'"
+                                % (
+                                    ctr,
+                                    line,
+                                )
+                            )
                         else:
                             break
         except:
@@ -117,7 +120,9 @@ class tzconvert(object):
             with open(aliases) as xmlfile:
                 xmlroot = XML.ElementTree(file=xmlfile).getroot()
         except (IOError, XMLParseError):
-            raise ValueError("Unable to open or read windows alias file: {}".format(aliases))
+            raise ValueError(
+                "Unable to open or read windows alias file: {}".format(aliases)
+            )
 
         # Extract the mappings
         try:
@@ -126,7 +131,11 @@ class tzconvert(object):
                     if elem.get("other") not in self.links:
                         self.links[elem.get("other")] = elem.get("type")
                     else:
-                        print("Ignoring duplicate Windows alias: {}".format(elem.get("other")))
+                        print(
+                            "Ignoring duplicate Windows alias: {}".format(
+                                elem.get("other")
+                            )
+                        )
         except (ValueError, KeyError):
             raise ValueError("Unable to parse windows alias file: {}".format(aliases))
 
@@ -136,7 +145,14 @@ class tzconvert(object):
         """
         zone = self.zones[zonename]
         expanded = zone.expand(self.rules, minYear, maxYear)
-        return [(item[0], item[1], item[2],) for item in expanded]
+        return [
+            (
+                item[0],
+                item[1],
+                item[2],
+            )
+            for item in expanded
+        ]
 
     def vtimezones(self, minYear, maxYear=2018, filterzones=None):
         """
@@ -152,7 +168,15 @@ class tzconvert(object):
 
         return cal.getText()
 
-    def generateZoneinfoFiles(self, outputdir, minYear, maxYear=2018, links=True, windowsAliases=None, filterzones=None):
+    def generateZoneinfoFiles(
+        self,
+        outputdir,
+        minYear,
+        maxYear=2018,
+        links=True,
+        windowsAliases=None,
+        filterzones=None,
+    ):
 
         # Empty current directory
         try:
@@ -186,11 +210,16 @@ class tzconvert(object):
 
             link_list = []
             for linkTo, linkFrom in sorted(self.links.iteritems(), key=lambda x: x[0]):
-
                 # Check for existing output file
                 fromPath = os.path.join(outputdir, linkFrom + ".ics")
                 if not os.path.exists(fromPath):
-                    print("Missing link from: %s to %s" % (linkFrom, linkTo,))
+                    print(
+                        "Missing link from: %s to %s"
+                        % (
+                            linkFrom,
+                            linkTo,
+                        )
+                    )
                     continue
 
                 with open(fromPath) as f:
@@ -205,7 +234,13 @@ class tzconvert(object):
                 if self.verbose:
                     print("Write link: %s" % (linkTo,))
 
-                link_list.append("%s\t%s" % (linkTo, linkFrom,))
+                link_list.append(
+                    "%s\t%s"
+                    % (
+                        linkTo,
+                        linkFrom,
+                    )
+                )
 
             # Generate link mapping file
             linkPath = os.path.join(outputdir, "links.txt")
@@ -240,8 +275,7 @@ Description:
         sys.exit(0)
 
 
-if __name__ == '__main__':
-
+if __name__ == "__main__":
     # Set the PRODID value used in generated iCalendar data
     prodid = "-//mulberrymail.com//Zonal//EN"
     rootdir = "../../temp"
@@ -249,7 +283,9 @@ if __name__ == '__main__':
     endYear = 2018
     windowsAliases = None
 
-    options, args = getopt.getopt(sys.argv[1:], "h", ["prodid=", "root=", "start=", "end=", "windows="])
+    options, args = getopt.getopt(
+        sys.argv[1:], "h", ["prodid=", "root=", "start=", "end=", "windows="]
+    )
 
     for option, value in options:
         if option == "-h":
@@ -314,5 +350,5 @@ if __name__ == '__main__':
             # "America/Montevideo",
             # "Europe/Paris",
             # "Africa/Cairo",
-        )
+        ),
     )

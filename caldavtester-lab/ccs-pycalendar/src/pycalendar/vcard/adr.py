@@ -25,18 +25,20 @@ class Adr(ValueMixin):
     mValue is a tuple of seven str or tuples of str
     """
 
-    (
-        POBOX,
-        EXTENDED,
-        STREET,
-        LOCALITY,
-        REGION,
-        POSTALCODE,
-        COUNTRY,
-        MAXITEMS
-    ) = range(8)
+    (POBOX, EXTENDED, STREET, LOCALITY, REGION, POSTALCODE, COUNTRY, MAXITEMS) = range(
+        8
+    )
 
-    def __init__(self, pobox="", extended="", street="", locality="", region="", postalcode="", country=""):
+    def __init__(
+        self,
+        pobox="",
+        extended="",
+        street="",
+        locality="",
+        region="",
+        postalcode="",
+        country="",
+    ):
         self.mValue = (pobox, extended, street, locality, region, postalcode, country)
 
     def duplicate(self):

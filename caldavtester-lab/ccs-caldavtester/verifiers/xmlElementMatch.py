@@ -31,7 +31,6 @@ import StringIO
 
 
 class Verifier(object):
-
     def verify(self, manager, uri, response, respdata, args):  # @UnusedVariable
         # Get arguments
         parent = args.get("parent", [])
@@ -53,17 +52,21 @@ class Verifier(object):
             return False, "        Response data is not xml data: %s" % (e,)
 
         def _splitPathTests(path):
-            if '[' in path:
-                return path.split('[', 1)
+            if "[" in path:
+                return path.split("[", 1)
             else:
                 return path, None
 
         if parent:
             nodes = self.nodeForPath(tree.getroot(), parent[0])
             if len(nodes) == 0:
-                return False, "        Response data is missing parent node: %s" % (parent[0],)
+                return False, "        Response data is missing parent node: %s" % (
+                    parent[0],
+                )
             elif len(nodes) > 1:
-                return False, "        Response data has too many parent nodes: %s" % (parent[0],)
+                return False, "        Response data has too many parent nodes: %s" % (
+                    parent[0],
+                )
             root = nodes[0]
         else:
             root = tree.getroot()
@@ -71,7 +74,6 @@ class Verifier(object):
         result = True
         resulttxt = ""
         for path in exists:
-
             matched, txt = self.matchNode(root, path)
             result &= matched
             resulttxt += txt
@@ -85,14 +87,14 @@ class Verifier(object):
         return result, resulttxt
 
     def nodeForPath(self, root, path):
-        if '[' in path:
-            actual_path, tests = path.split('[', 1)
+        if "[" in path:
+            actual_path, tests = path.split("[", 1)
         else:
             actual_path = path
             tests = None
 
         # Handle absolute root element
-        if actual_path[0] == '/':
+        if actual_path[0] == "/":
             actual_path = actual_path[1:]
         r = re.search("(\{[^\}]+\}[^/]+)(.*)", actual_path)
         if r.group(2):
@@ -112,7 +114,7 @@ class Verifier(object):
         results = []
 
         if tests:
-            tests = [item[:-1] for item in tests.split('[')]
+            tests = [item[:-1] for item in tests.split("[")]
             for test in tests:
                 for node in nodes:
                     testresult = self.testNode(node, path, test)
@@ -126,33 +128,48 @@ class Verifier(object):
     @classmethod
     def testNode(cls, node, node_path, test):
         result = None
-        if test[0] == '@':
-            if '=' in test:
-                attr, value = test[1:].split('=')
+        if test[0] == "@":
+            if "=" in test:
+                attr, value = test[1:].split("=")
                 value = value[1:-1]
             else:
                 attr = test[1:]
                 value = None
             if attr not in node.keys():
-                result = "        Missing attribute returned in XML for %s\n" % (node_path,)
+                result = "        Missing attribute returned in XML for %s\n" % (
+                    node_path,
+                )
             if value is not None and node.get(attr) != value:
-                result = "        Incorrect attribute value returned in XML for %s\n" % (node_path,)
-        elif test[0] == '=':
+                result = (
+                    "        Incorrect attribute value returned in XML for %s\n"
+                    % (node_path,)
+                )
+        elif test[0] == "=":
             if node.text != test[1:]:
-                result = "        Incorrect value returned in XML for %s\n" % (node_path,)
-        elif test[0] == '!':
+                result = "        Incorrect value returned in XML for %s\n" % (
+                    node_path,
+                )
+        elif test[0] == "!":
             if node.text == test[1:]:
-                result = "        Incorrect value returned in XML for %s\n" % (node_path,)
-        elif test[0] == '*':
+                result = "        Incorrect value returned in XML for %s\n" % (
+                    node_path,
+                )
+        elif test[0] == "*":
             if node.text is None or node.text.find(test[1:]) == -1:
-                result = "        Incorrect value returned in XML for %s\n" % (node_path,)
-        elif test[0] == '$':
+                result = "        Incorrect value returned in XML for %s\n" % (
+                    node_path,
+                )
+        elif test[0] == "$":
             if node.text is None or node.text.find(test[1:]) != -1:
-                result = "        Incorrect value returned in XML for %s\n" % (node_path,)
-        elif test[0] == '+':
+                result = "        Incorrect value returned in XML for %s\n" % (
+                    node_path,
+                )
+        elif test[0] == "+":
             if node.text is None or not node.text.startswith(test[1:]):
-                result = "        Incorrect value returned in XML for %s\n" % (node_path,)
-        elif test[0] == '^':
+                result = "        Incorrect value returned in XML for %s\n" % (
+                    node_path,
+                )
+        elif test[0] == "^":
             if "=" in test:
                 element, value = test[1:].split("=", 1)
             else:
@@ -163,27 +180,35 @@ class Verifier(object):
                     break
             else:
                 result = "        Missing child returned in XML for %s\n" % (node_path,)
-        elif test[0] == '|':
+        elif test[0] == "|":
             if len(test) == 2 and test[1] == "|":
                 if node.text is None and len(node.getchildren()) == 0:
-                    result = "        Empty element returned in XML for %s\n" % (node_path,)
+                    result = "        Empty element returned in XML for %s\n" % (
+                        node_path,
+                    )
             else:
                 if node.text is not None or len(node.getchildren()) != 0:
-                    result = "        Non-empty element returned in XML for %s\n" % (node_path,)
+                    result = "        Non-empty element returned in XML for %s\n" % (
+                        node_path,
+                    )
 
         # Try to parse as iCalendar
-        elif test == 'icalendar':
+        elif test == "icalendar":
             try:
                 Calendar.parseText(node.text)
             except:
-                result = "        Incorrect value returned in iCalendar for %s\n" % (node_path,)
+                result = "        Incorrect value returned in iCalendar for %s\n" % (
+                    node_path,
+                )
 
         # Try to parse as JSON
-        elif test == 'json':
+        elif test == "json":
             try:
                 json.loads(node.text)
             except:
-                result = "        Incorrect value returned in XML for %s\n" % (node_path,)
+                result = "        Incorrect value returned in XML for %s\n" % (
+                    node_path,
+                )
         return result
 
     @classmethod
@@ -195,8 +220,8 @@ class Verifier(object):
         resulttxt = ""
 
         # Find the first test in the xpath
-        if '[' in xpath:
-            actual_xpath, tests = xpath.split('[', 1)
+        if "[" in xpath:
+            actual_xpath, tests = xpath.split("[", 1)
         else:
             actual_xpath = xpath
             tests = None
@@ -231,19 +256,21 @@ class Verifier(object):
             # Split the tests into tests plus additional path
             pos = tests.find("]/")
             if pos != -1:
-                node_tests = tests[:pos + 1]
-                next_path = tests[pos + 1:]
+                node_tests = tests[: pos + 1]
+                next_path = tests[pos + 1 :]
             else:
                 node_tests = tests
                 next_path = None
 
-            node_tests = [item[:-1] for item in node_tests.split('[')]
+            node_tests = [item[:-1] for item in node_tests.split("[")]
             for test in node_tests:
                 for node in nodes:
                     testresult = cls.testNode(node, title, test)
                     if testresult is None:
                         if next_path:
-                            next_result, testresult = cls.matchNode(node, next_path[1:], parent_map, title)
+                            next_result, testresult = cls.matchNode(
+                                node, next_path[1:], parent_map, title
+                            )
                             if next_result:
                                 break
                         else:
@@ -258,7 +285,7 @@ class Verifier(object):
 
 
 # Tests
-if __name__ == '__main__':
+if __name__ == "__main__":
     xmldata = """
 <D:test xmlns:D="DAV:">
     <D:a>A</D:a>
@@ -276,4 +303,6 @@ if __name__ == '__main__':
     node = ElementTree(file=StringIO.StringIO(xmldata)).getroot()
 
     assert Verifier.matchNode(node, "/{DAV:}test/{DAV:}b/{DAV:}c[=C]/../{DAV:}d[=D]")[0]
-    assert not Verifier.matchNode(node, "/{DAV:}test/{DAV:}b/{DAV:}c[=C]/../{DAV:}d[=E]")[0]
+    assert not Verifier.matchNode(
+        node, "/{DAV:}test/{DAV:}b/{DAV:}c[=C]/../{DAV:}d[=E]"
+    )[0]

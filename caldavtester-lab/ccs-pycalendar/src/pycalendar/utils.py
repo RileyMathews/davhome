@@ -106,15 +106,15 @@ def writeTextValue(os, value):
                 # Write escape
                 os.write("\\")
                 c = value[end_pos]
-                if c == '\r':
+                if c == "\r":
                     os.write("r")
-                elif c == '\n':
+                elif c == "\n":
                     os.write("n")
-                elif c == ';':
+                elif c == ";":
                     os.write(";")
-                elif c == '\\':
+                elif c == "\\":
                     os.write("\\")
-                elif c == ',':
+                elif c == ",":
                     os.write(",")
 
                 # Bump past escapee and look for next segment
@@ -149,26 +149,32 @@ def decodeTextValue(value):
 
             # Unescape
             c = value[end_pos]
-            if c == 'r':
-                os.write('\r')
-            elif c == 'n':
-                os.write('\n')
-            elif c == 'N':
-                os.write('\n')
-            elif c == '':
-                os.write('')
-            elif c == '\\':
-                os.write('\\')
-            elif c == ',':
-                os.write(',')
-            elif c == ';':
-                os.write(';')
-            elif c == ':':
+            if c == "r":
+                os.write("\r")
+            elif c == "n":
+                os.write("\n")
+            elif c == "N":
+                os.write("\n")
+            elif c == "":
+                os.write("")
+            elif c == "\\":
+                os.write("\\")
+            elif c == ",":
+                os.write(",")
+            elif c == ";":
+                os.write(";")
+            elif c == ":":
                 # ":" escape normally invalid
-                if ParserContext.INVALID_COLON_ESCAPE_SEQUENCE == ParserContext.PARSER_RAISE:
+                if (
+                    ParserContext.INVALID_COLON_ESCAPE_SEQUENCE
+                    == ParserContext.PARSER_RAISE
+                ):
                     raise ValueError("TextValue: '\\:' not allowed")
-                elif ParserContext.INVALID_COLON_ESCAPE_SEQUENCE == ParserContext.PARSER_FIX:
-                    os.write(':')
+                elif (
+                    ParserContext.INVALID_COLON_ESCAPE_SEQUENCE
+                    == ParserContext.PARSER_FIX
+                ):
+                    os.write(":")
 
             # Other escaped chars normally not allowed
             elif ParserContext.INVALID_ESCAPE_SEQUENCES == ParserContext.PARSER_RAISE:
@@ -200,23 +206,23 @@ def encodeParameterValue(value):
     # Test for encoded characters first as encoding is expensive and it is better to
     # avoid doing it if it is not required (which is the common case)
     encode = False
-    for c in "\r\n\"^":
+    for c in '\r\n"^':
         if c in value:
             encode = True
 
     if encode:
         encoded = []
-        last = ''
+        last = ""
         for c in value:
-            if c in "\r\n\"^":
-                if c == '\r':
+            if c in '\r\n"^':
+                if c == "\r":
                     encoded.append("^n")
-                elif c == '\n':
-                    if last != '\r':
+                elif c == "\n":
+                    if last != "\r":
                         encoded.append("^n")
                 elif c == '"':
                     encoded.append("^'")
-                elif c == '^':
+                elif c == "^":
                     encoded.append("^^")
             else:
                 encoded.append(c)
@@ -236,39 +242,39 @@ def decodeParameterValue(value):
     # avoid doing it if it is not required (which is the common case)
     if value is not None and "^" in value:
         decoded = []
-        last = ''
+        last = ""
         for c in value:
-            if last == '^':
-                if c == 'n':
-                    decoded.append('\n')
-                elif c == '\'':
+            if last == "^":
+                if c == "n":
+                    decoded.append("\n")
+                elif c == "'":
                     decoded.append('"')
-                elif c == '^':
-                    decoded.append('^')
-                    c = ''
+                elif c == "^":
+                    decoded.append("^")
+                    c = ""
                 else:
-                    decoded.append('^')
+                    decoded.append("^")
                     decoded.append(c)
-            elif c != '^':
+            elif c != "^":
                 decoded.append(c)
             last = c
-        if last == '^':
-            decoded.append('^')
+        if last == "^":
+            decoded.append("^")
         return "".join(decoded)
     else:
         return value
 
 
 # vCard text list parsing/generation
-def parseTextList(data, sep=';', always_list=False):
+def parseTextList(data, sep=";", always_list=False):
     """
     Each element of the list has to be separately un-escaped
     """
     results = []
     item = []
-    pre_s = ''
+    pre_s = ""
     for s in data:
-        if s == sep and pre_s != '\\':
+        if s == sep and pre_s != "\\":
             results.append(decodeTextValue("".join(item)))
             item = []
         else:
@@ -277,10 +283,14 @@ def parseTextList(data, sep=';', always_list=False):
 
     results.append(decodeTextValue("".join(item)))
 
-    return tuple(results) if len(results) > 1 or always_list else (results[0] if len(results) else "")
+    return (
+        tuple(results)
+        if len(results) > 1 or always_list
+        else (results[0] if len(results) else "")
+    )
 
 
-def generateTextList(os, data, sep=';'):
+def generateTextList(os, data, sep=";"):
     """
     Each element of the list must be separately escaped
     """
@@ -297,10 +307,9 @@ def generateTextList(os, data, sep=';'):
 def parseDoubleNestedList(data, maxsize):
     results = []
     items = [""]
-    pre_s = ''
+    pre_s = ""
     for s in data:
-        if s == ';' and pre_s != '\\':
-
+        if s == ";" and pre_s != "\\":
             if len(items) > 1:
                 results.append(tuple([decodeTextValue(item) for item in items]))
             elif len(items) == 1:
@@ -309,7 +318,7 @@ def parseDoubleNestedList(data, maxsize):
                 results.append("")
 
             items = [""]
-        elif s == ',' and pre_s != '\\':
+        elif s == "," and pre_s != "\\":
             items.append("")
         else:
             items[-1] += s
@@ -336,6 +345,7 @@ def parseDoubleNestedList(data, maxsize):
 
 def generateDoubleNestedList(os, data):
     try:
+
         def _writeElement(item):
             if isinstance(item, basestring):
                 writeTextValue(os, item)
@@ -354,6 +364,7 @@ def generateDoubleNestedList(os, data):
     except:
         pass
 
+
 # Date/time calcs
 days_in_month = (0, 31, 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)
 days_in_month_leap = (0, 31, 29, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31)
@@ -367,6 +378,7 @@ def daysInMonth(month, year):
     else:
         return days_in_month[month]
 
+
 days_upto_month = (0, 0, 31, 59, 90, 120, 151, 181, 212, 243, 273, 304, 334)
 days_upto_month_leap = (0, 0, 31, 60, 91, 121, 152, 182, 213, 244, 274, 305, 335)
 
@@ -379,6 +391,7 @@ def daysUptoMonth(month, year):
     else:
         return days_upto_month[month]
 
+
 cachedLeapYears = {}
 
 
@@ -388,11 +401,12 @@ def isLeapYear(year):
         return cachedLeapYears[year]
     except KeyError:
         if year <= 1752:
-            result = (year % 4 == 0)
+            result = year % 4 == 0
         else:
             result = ((year % 4 == 0) and (year % 100 != 0)) or (year % 400 == 0)
         cachedLeapYears[year] = result
         return result
+
 
 cachedLeapDaysSince1970 = {}
 
@@ -470,12 +484,16 @@ def getMonthTable(month, year, weekstart, table, today_index):
         table[row][col] = packDate(temp.getYear(), temp.getMonth(), day)
 
         # Check on today
-        if (temp.getYear() == today.getYear()) and (temp.getMonth() == today.getMonth()) and (day == today.getDay()):
+        if (
+            (temp.getYear() == today.getYear())
+            and (temp.getMonth() == today.getMonth())
+            and (day == today.getDay())
+        ):
             today_index = [row, col]
 
         # Bump column (modulo 7)
         col += 1
-        if (col > 6):
+        if col > 6:
             col = 0
 
     # Add next month to remainder
@@ -486,7 +504,11 @@ def getMonthTable(month, year, weekstart, table, today_index):
             table[row][col] = packDate(temp.getYear(), temp.getMonth(), -day)
 
             # Check on today
-            if (temp.getYear() == today.getYear()) and (temp.getMonth() == today.getMonth()) and (day == today.getDay()):
+            if (
+                (temp.getYear() == today.getYear())
+                and (temp.getMonth() == today.getMonth())
+                and (day == today.getDay())
+            ):
                 today_index = [row, col]
 
             day += 1
@@ -494,14 +516,18 @@ def getMonthTable(month, year, weekstart, table, today_index):
 
     # Add previous month to start
     temp.offsetMonth(-2)
-    if (initial_col != 0):
+    if initial_col != 0:
         day = daysInMonth(temp.getMonth(), temp.getYear())
         back_col = initial_col - 1
-        while(back_col >= 0):
+        while back_col >= 0:
             table[row][back_col] = packDate(temp.getYear(), temp.getMonth(), -day)
 
             # Check on today
-            if (temp.getYear() == today.getYear()) and (temp.getMonth() == today.getMonth()) and (day == today.getDay()):
+            if (
+                (temp.getYear() == today.getYear())
+                and (temp.getMonth() == today.getMonth())
+                and (day == today.getDay())
+            ):
                 today_index = [0, back_col]
 
             back_col -= 1

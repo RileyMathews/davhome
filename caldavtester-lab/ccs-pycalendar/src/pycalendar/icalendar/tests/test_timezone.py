@@ -21,7 +21,6 @@ import unittest
 
 
 class TestCalendar(unittest.TestCase):
-
     def testOffsets(self):
 
         data = (
@@ -204,7 +203,7 @@ END:VCALENDAR
                     (DateTime(2014, 11, 2, 0, 0, 0), True, -4),
                     (DateTime(2014, 11, 2, 3, 0, 0), True, -4),
                     (DateTime(2014, 11, 2, 8, 0, 0), True, -5),
-                )
+                ),
             ),
             (
                 """BEGIN:VCALENDAR
@@ -229,30 +228,61 @@ END:VCALENDAR
                     (DateTime(1942, 2, 10), False, -8),
                     (DateTime(2011, 1, 1), False, -8),
                     (DateTime(2011, 4, 1), False, -8),
-                )
+                ),
             ),
         )
 
         for tzdata, offsets in data:
-
             cal = Calendar.parseText(tzdata.replace("\n", "\r\n"))
             tz = cal.getComponents()[0]
 
             for dt, relative_to_utc, offset in offsets:
                 tzoffset = tz.getTimezoneOffsetSeconds(dt, relative_to_utc)
-                self.assertEqual(tzoffset, offset * 60 * 60, "Failed to match offset for %s at %s with caching" % (tz.getID(), dt,))
+                self.assertEqual(
+                    tzoffset,
+                    offset * 60 * 60,
+                    "Failed to match offset for %s at %s with caching"
+                    % (
+                        tz.getID(),
+                        dt,
+                    ),
+                )
             for dt, relative_to_utc, offset in reversed(offsets):
                 tzoffset = tz.getTimezoneOffsetSeconds(dt, relative_to_utc)
-                self.assertEqual(tzoffset, offset * 60 * 60, "Failed to match offset for %s at %s with caching, reversed" % (tz.getID(), dt,))
+                self.assertEqual(
+                    tzoffset,
+                    offset * 60 * 60,
+                    "Failed to match offset for %s at %s with caching, reversed"
+                    % (
+                        tz.getID(),
+                        dt,
+                    ),
+                )
 
             for dt, relative_to_utc, offset in offsets:
                 tz.mCachedExpandAllMax = None
                 tzoffset = tz.getTimezoneOffsetSeconds(dt, relative_to_utc)
-                self.assertEqual(tzoffset, offset * 60 * 60, "Failed to match offset for %s at %s without caching" % (tz.getID(), dt,))
+                self.assertEqual(
+                    tzoffset,
+                    offset * 60 * 60,
+                    "Failed to match offset for %s at %s without caching"
+                    % (
+                        tz.getID(),
+                        dt,
+                    ),
+                )
             for dt, relative_to_utc, offset in reversed(offsets):
                 tz.mCachedExpandAllMax = None
                 tzoffset = tz.getTimezoneOffsetSeconds(dt, relative_to_utc)
-                self.assertEqual(tzoffset, offset * 60 * 60, "Failed to match offset for %s at %s without caching, reversed" % (tz.getID(), dt,))
+                self.assertEqual(
+                    tzoffset,
+                    offset * 60 * 60,
+                    "Failed to match offset for %s at %s without caching, reversed"
+                    % (
+                        tz.getID(),
+                        dt,
+                    ),
+                )
 
     def testConversions(self):
 
@@ -550,7 +580,6 @@ END:VCALENDAR
         Calendar.parseText(tzdata.replace("\n", "\r\n"))
 
         for dtfrom, dtto in data:
-
             self.assertEqual(dtfrom, dtto)
 
             newdtfrom = dtfrom.duplicate()

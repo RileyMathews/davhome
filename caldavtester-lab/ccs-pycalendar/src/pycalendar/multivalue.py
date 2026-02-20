@@ -18,7 +18,6 @@ from pycalendar.value import Value
 
 
 class MultiValue(Value):
-
     def __init__(self, type):
 
         self.mType = type
@@ -92,5 +91,6 @@ class MultiValue(Value):
     def writeJSONValue(self, jobject):
         for iter in self.mValues:
             iter.writeJSONValue(jobject)
+
 
 Value.registerType(Value.VALUETYPE_MULTIVALUE, MultiValue, None)

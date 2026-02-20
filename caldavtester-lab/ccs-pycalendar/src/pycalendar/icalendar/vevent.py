@@ -23,7 +23,6 @@ from pycalendar.icalendar.validation import ICALENDAR_VALUE_CHECKS
 
 
 class VEvent(ComponentRecur):
-
     propertyCardinality_1 = (
         definitions.cICalProperty_DTSTAMP,
         definitions.cICalProperty_UID,
@@ -102,14 +101,21 @@ class VEvent(ComponentRecur):
         fixed, unfixed = super(VEvent, self).validate(doFix)
 
         # Extra constraint: if METHOD not present, DTSTART must be
-        if self.mParentComponent and not self.mParentComponent.hasProperty(definitions.cICalProperty_METHOD):
+        if self.mParentComponent and not self.mParentComponent.hasProperty(
+            definitions.cICalProperty_METHOD
+        ):
             if not self.hasProperty(definitions.cICalProperty_DTSTART):
                 # Cannot fix a missing required property
-                logProblem = "[%s] Missing required property: %s" % (self.getType(), definitions.cICalProperty_DTSTART,)
+                logProblem = "[%s] Missing required property: %s" % (
+                    self.getType(),
+                    definitions.cICalProperty_DTSTART,
+                )
                 unfixed.append(logProblem)
 
         # Extra constraint: only one of DTEND or DURATION
-        if self.hasProperty(definitions.cICalProperty_DTEND) and self.hasProperty(definitions.cICalProperty_DURATION):
+        if self.hasProperty(definitions.cICalProperty_DTEND) and self.hasProperty(
+            definitions.cICalProperty_DURATION
+        ):
             # Fix by removing the DTEND
             logProblem = "[%s] Properties must not both be present: %s, %s" % (
                 self.getType(),
@@ -159,5 +165,6 @@ class VEvent(ComponentRecur):
             definitions.cICalProperty_DURATION,
             definitions.cICalProperty_DTEND,
         )
+
 
 Component.registerComponent(definitions.cICalComponent_VEVENT, VEvent)

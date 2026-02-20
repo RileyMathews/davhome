@@ -24,7 +24,6 @@ import json
 
 
 class TestRecurrence(unittest.TestCase):
-
     items = (
         "FREQ=DAILY",
         "FREQ=YEARLY;COUNT=400",
@@ -32,7 +31,6 @@ class TestRecurrence(unittest.TestCase):
         "FREQ=MONTHLY;UNTIL=20110102T090000",
         "FREQ=MONTHLY;UNTIL=20110102T100000Z",
         "FREQ=MONTHLY;COUNT=3;BYDAY=TU,WE,TH;BYSETPOS=-1",
-
         # These are from RFC5545 examples
         "FREQ=YEARLY;INTERVAL=2;BYMINUTE=30;BYHOUR=8,9;BYDAY=SU;BYMONTH=1",
         "FREQ=YEARLY;UNTIL=19730429T070000Z;BYDAY=-1SU;BYMONTH=4",
@@ -61,7 +59,9 @@ class TestRecurrence(unittest.TestCase):
         for item in TestRecurrence.items:
             recur = Recurrence()
             recur.parse(item)
-            self.assertEqual(recur.getText(), item, "Failed to parse and re-generate '%s'" % (item,))
+            self.assertEqual(
+                recur.getText(), item, "Failed to parse and re-generate '%s'" % (item,)
+            )
 
     def testParseInvalid(self):
 
@@ -121,7 +121,11 @@ class TestRecurrence(unittest.TestCase):
         end = DateTime(2014, 2, 1, 0, 0, 0, tzid=Timezone(utc=True))
         items = []
         range = Period(start, end)
-        recur.expand(DateTime(2014, 1, 1, 12, 0, 0, tzid=Timezone(tzid="America/New_York")), range, items)
+        recur.expand(
+            DateTime(2014, 1, 1, 12, 0, 0, tzid=Timezone(tzid="America/New_York")),
+            range,
+            items,
+        )
         self.assertEqual(
             items,
             [
@@ -130,7 +134,6 @@ class TestRecurrence(unittest.TestCase):
                 DateTime(2014, 1, 15, 12, 0, 0, tzid=Timezone(tzid="America/New_York")),
                 DateTime(2014, 1, 22, 12, 0, 0, tzid=Timezone(tzid="America/New_York")),
                 DateTime(2014, 1, 29, 12, 0, 0, tzid=Timezone(tzid="America/New_York")),
-
             ],
         )
 
@@ -138,7 +141,11 @@ class TestRecurrence(unittest.TestCase):
         end = DateTime(2014, 3, 1, 0, 0, 0, tzid=Timezone(utc=True))
         items = []
         range = Period(start, end)
-        recur.expand(DateTime(2014, 1, 1, 12, 0, 0, tzid=Timezone(tzid="America/New_York")), range, items)
+        recur.expand(
+            DateTime(2014, 1, 1, 12, 0, 0, tzid=Timezone(tzid="America/New_York")),
+            range,
+            items,
+        )
         self.assertEqual(
             items,
             [
@@ -162,7 +169,11 @@ class TestRecurrence(unittest.TestCase):
         end = DateTime(2015, 1, 1, 0, 0, 0, tzid=Timezone(utc=True))
         items = []
         range = Period(start, end)
-        recur.expand(DateTime(2014, 1, 1, 12, 0, 0, tzid=Timezone(tzid="America/New_York")), range, items)
+        recur.expand(
+            DateTime(2014, 1, 1, 12, 0, 0, tzid=Timezone(tzid="America/New_York")),
+            range,
+            items,
+        )
         self.assertEqual(
             items,
             [
@@ -188,7 +199,6 @@ class TestRecurrence(unittest.TestCase):
             examples = json.loads(f.read())
 
         for ctr, i in enumerate(examples):
-
             recur = Recurrence()
             recur.parse(i["rule"])
             start = DateTime.parseText(i["start"])
@@ -199,9 +209,7 @@ class TestRecurrence(unittest.TestCase):
             range = Period(start, end)
             recur.expand(start, range, items)
             self.assertEqual(
-                items,
-                results,
-                msg="Failed rule: #{} {}".format(ctr + 1, i["rule"])
+                items, results, msg="Failed rule: #{} {}".format(ctr + 1, i["rule"])
             )
 
     def testClearOnChange(self):

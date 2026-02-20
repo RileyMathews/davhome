@@ -15,6 +15,7 @@
 ##
 
 from difflib import unified_diff
+
 try:
     # pycalendar is optional
     from pycalendar.vcard.card import Card
@@ -28,8 +29,9 @@ Verifier that checks the response body for a semantic match to data in a file.
 
 
 class Verifier(object):
-
-    def verify(self, manager, uri, response, respdata, args, is_json=False):  # @UnusedVariable
+    def verify(
+        self, manager, uri, response, respdata, args, is_json=False
+    ):  # @UnusedVariable
         # Get arguments
         files = args.get("filepath", [])
         if manager.data_dir:
@@ -85,7 +87,10 @@ class Verifier(object):
                     else:
                         if "=" in filter:
                             filter_name, filter_value = filter.split("=")
-                            if property.getName() == filter_name and property.getValue().getValue() == filter_value:
+                            if (
+                                property.getName() == filter_name
+                                and property.getValue().getValue() == filter_value
+                            ):
                                 component.removeProperty(property)
                         else:
                             if property.getName() == filter:
@@ -107,7 +112,16 @@ class Verifier(object):
             if result:
                 return True, ""
             else:
-                error_diff = "\n".join([line for line in unified_diff(data.split("\n"), respdata.split("\n"))])
-                return False, "        Response data does not exactly match file data%s" % (error_diff,)
+                error_diff = "\n".join(
+                    [
+                        line
+                        for line in unified_diff(data.split("\n"), respdata.split("\n"))
+                    ]
+                )
+                return (
+                    False,
+                    "        Response data does not exactly match file data%s"
+                    % (error_diff,),
+                )
         except Exception, e:
             return False, "        Response data is not address data: %s" % (e,)

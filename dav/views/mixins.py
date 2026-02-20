@@ -4,24 +4,6 @@ from collections.abc import Sequence
 
 from django.http import HttpResponse
 
-from dav.common import _require_dav_user
-
-
-class DavAuthMixin:
-    require_dav_auth = True
-
-    def authenticate_dav_request(self, request):
-        if request.method == "OPTIONS":
-            return None
-
-        if not self.require_dav_auth:
-            return None
-
-        user, auth_response = _require_dav_user(request)
-        if user is not None:
-            request.user = user
-        return auth_response
-
 
 class DavHeaderMixin:
     def apply_dav_headers(self, response):

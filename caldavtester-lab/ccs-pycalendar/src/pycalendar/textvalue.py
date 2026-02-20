@@ -22,7 +22,6 @@ from pycalendar.value import Value
 
 
 class TextValue(PlainTextValue):
-
     def getType(self):
         return Value.VALUETYPE_TEXT
 
@@ -37,5 +36,6 @@ class TextValue(PlainTextValue):
             utils.writeTextValue(os, self.mValue)
         except:
             pass
+
 
 Value.registerType(Value.VALUETYPE_TEXT, TextValue, xmldefinitions.value_text)

@@ -16,7 +16,6 @@
 
 
 class OutputFilter(object):
-
     def __init__(self, type):
         self.mType = type
         self.mAllSubComponents = False
@@ -46,8 +45,11 @@ class OutputFilter(object):
 
     # Test to see if sub-component type can be written out
     def testSubComponent(self, oftype):
-        return self.mAllSubComponents or (self.mSubComponents is not None) \
+        return (
+            self.mAllSubComponents
+            or (self.mSubComponents is not None)
             and oftype in self.mSubComponents
+        )
 
     def hasSubComponentFilters(self):
         return self.mSubComponents is not None

@@ -22,8 +22,8 @@ from pycalendar.vcard.adr import Adr
 
 
 class AdrValue(WrapperValue, Value):
-
     _wrappedClass = Adr
     _wrappedType = Value.VALUETYPE_ADR
+
 
 Value.registerType(Value.VALUETYPE_ADR, AdrValue, None)

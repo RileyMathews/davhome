@@ -21,7 +21,6 @@ from pycalendar.value import Value
 
 
 class IntegerValue(Value):
-
     def __init__(self, value=None):
         self.mValue = value if value is not None else 0
 
@@ -56,5 +55,6 @@ class IntegerValue(Value):
 
     def setValue(self, value):
         self.mValue = value
+
 
 Value.registerType(Value.VALUETYPE_INTEGER, IntegerValue, xmldefinitions.value_integer)

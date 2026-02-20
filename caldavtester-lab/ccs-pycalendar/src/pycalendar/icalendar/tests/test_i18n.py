@@ -22,7 +22,6 @@ import unittest
 
 
 class TestCalendar(unittest.TestCase):
-
     def testAddCN(self):
 
         data = (
@@ -41,9 +40,7 @@ SUMMARY:New Year's Day
 END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
-
             "まだ",
-
             """BEGIN:VCALENDAR
 VERSION:2.0
 CALSCALE:GREGORIAN
@@ -59,7 +56,6 @@ SUMMARY:New Year's Day
 END:VEVENT
 END:VCALENDAR
 """.replace("\n", "\r\n"),
-
         )
 
         cal1 = Calendar()

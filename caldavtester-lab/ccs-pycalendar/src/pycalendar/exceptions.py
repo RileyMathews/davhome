@@ -16,7 +16,6 @@
 
 
 class ErrorBase(Exception):
-
     def __init__(self, reason, data=""):
         self.mReason = reason
         self.mData = data
@@ -42,7 +41,6 @@ class ValidationError(ErrorBase):
 
 
 class NoTimezoneInDatabase(Exception):
-
     def __init__(self, dbpath, tzid):
         self.mTZDBpath = dbpath
         self.mTZID = tzid

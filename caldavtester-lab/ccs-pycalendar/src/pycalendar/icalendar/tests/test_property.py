@@ -23,7 +23,6 @@ import unittest
 
 
 class TestProperty(unittest.TestCase):
-
     test_data = (
         # Different value types
         "ATTACH;VALUE=BINARY:VGVzdA==",
@@ -50,12 +49,10 @@ class TestProperty(unittest.TestCase):
         "X-Test:Some:, text.",
         "X-APPLE-STRUCTURED-LOCATION;VALUE=URI:geo:123.123,123.123",
         "X-CALENDARSERVER-PRIVATE-COMMENT:This\\ntest\\nis\\, here.\\n",
-
         # Various parameters
-        "DTSTART;TZID=\"Somewhere, else\":20060226T120000",
+        'DTSTART;TZID="Somewhere, else":20060226T120000',
         "ATTENDEE;PARTSTAT=ACCEPTED;ROLE=CHAIR:mailto:jdoe@example.com",
-        "X-APPLE-STRUCTURED-LOCATION;VALUE=URI;X-APPLE-ABUID=ab\\://Work;X-TITLE=\"10\\n XX S. XXX Dr.\\nSuite XXX\\nXX XX XXXXX\\nUnited States\":\"geo:11.111111,-11.111111\"",
-
+        'X-APPLE-STRUCTURED-LOCATION;VALUE=URI;X-APPLE-ABUID=ab\\://Work;X-TITLE="10\\n XX S. XXX Dr.\\nSuite XXX\\nXX XX XXXXX\\nUnited States":"geo:11.111111,-11.111111"',
         # Parameter escaping
         "ATTENDEE;CN=My ^'Test^' Name;ROLE=CHAIR:mailto:jdoe@example.com",
     )
@@ -65,7 +62,15 @@ class TestProperty(unittest.TestCase):
         for data in TestProperty.test_data:
             prop = Property.parseText(data)
             propstr = str(prop).replace("\r\n ", "")
-            self.assertEqual(propstr[:-2], data, "Failed parse/generate: %s to %s" % (data, propstr,))
+            self.assertEqual(
+                propstr[:-2],
+                data,
+                "Failed parse/generate: %s to %s"
+                % (
+                    data,
+                    propstr,
+                ),
+            )
 
     def testEquality(self):
 
@@ -110,11 +115,31 @@ class TestProperty(unittest.TestCase):
     def testDefaultValueCreate(self):
 
         test_data = (
-            ("ATTENDEE", "mailto:attendee@example.com", "ATTENDEE:mailto:attendee@example.com\r\n"),
-            ("ATTENDEE", u"mailto:attendee@example.com", "ATTENDEE:mailto:attendee@example.com\r\n"),
-            ("attendee", "mailto:attendee@example.com", "attendee:mailto:attendee@example.com\r\n"),
-            ("ORGANIZER", "mailto:organizer@example.com", "ORGANIZER:mailto:organizer@example.com\r\n"),
-            ("ORGANizer", "mailto:organizer@example.com", "ORGANizer:mailto:organizer@example.com\r\n"),
+            (
+                "ATTENDEE",
+                "mailto:attendee@example.com",
+                "ATTENDEE:mailto:attendee@example.com\r\n",
+            ),
+            (
+                "ATTENDEE",
+                "mailto:attendee@example.com",
+                "ATTENDEE:mailto:attendee@example.com\r\n",
+            ),
+            (
+                "attendee",
+                "mailto:attendee@example.com",
+                "attendee:mailto:attendee@example.com\r\n",
+            ),
+            (
+                "ORGANIZER",
+                "mailto:organizer@example.com",
+                "ORGANIZER:mailto:organizer@example.com\r\n",
+            ),
+            (
+                "ORGANizer",
+                "mailto:organizer@example.com",
+                "ORGANizer:mailto:organizer@example.com\r\n",
+            ),
             ("URL", "http://example.com/tz1", "URL:http://example.com/tz1\r\n"),
             ("TZURL", "http://example.com/tz2", "TZURL:http://example.com/tz2\r\n"),
         )
@@ -158,17 +183,19 @@ class TestProperty(unittest.TestCase):
     def testParameterEncodingDecoding(self):
 
         prop = Property("X-FOO", "Test")
-        prop.addParameter(Parameter("X-BAR", "\"Check\""))
+        prop.addParameter(Parameter("X-BAR", '"Check"'))
         self.assertEqual(str(prop), "X-FOO;X-BAR=^'Check^':Test\r\n")
 
         prop.addParameter(Parameter("X-BAR2", "Check\nThis\tOut\n"))
-        self.assertEqual(str(prop), "X-FOO;X-BAR=^'Check^';X-BAR2=Check^nThis\tOut^n:Test\r\n")
+        self.assertEqual(
+            str(prop), "X-FOO;X-BAR=^'Check^';X-BAR2=Check^nThis\tOut^n:Test\r\n"
+        )
 
         data = "X-FOO;X-BAR=^'Check^':Test"
         prop = Property.parseText(data)
-        self.assertEqual(prop.getParameterValue("X-BAR"), "\"Check\"")
+        self.assertEqual(prop.getParameterValue("X-BAR"), '"Check"')
 
         data = "X-FOO;X-BAR=^'Check^';X-BAR2=Check^nThis\tOut^n:Test"
         prop = Property.parseText(data)
-        self.assertEqual(prop.getParameterValue("X-BAR"), "\"Check\"")
+        self.assertEqual(prop.getParameterValue("X-BAR"), '"Check"')
         self.assertEqual(prop.getParameterValue("X-BAR2"), "Check\nThis\tOut\n")

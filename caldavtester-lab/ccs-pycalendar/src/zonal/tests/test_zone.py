@@ -21,7 +21,6 @@ from pycalendar.icalendar.calendar import Calendar
 
 
 class TestZone(unittest.TestCase):
-
     def test_parse(self):
         zonedef = """Zone America/New_York\t-4:56:02\t-\tLMT\t1883 Nov 18 12:03:58
 \t\t\t-5:00\tUS\tE%sT\t1920

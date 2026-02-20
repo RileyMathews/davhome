@@ -20,15 +20,18 @@ from pycalendar.exceptions import InvalidData
 from pycalendar.parser import ParserContext
 from pycalendar.utils import readFoldedLine
 from pycalendar.vcard import definitions
-from pycalendar.vcard.definitions import VCARD, Property_VERSION, \
-    Property_PRODID, Property_UID
+from pycalendar.vcard.definitions import (
+    VCARD,
+    Property_VERSION,
+    Property_PRODID,
+    Property_UID,
+)
 from pycalendar.vcard.property import Property
 from pycalendar.vcard.validation import VCARD_VALUE_CHECKS
 import json
 
 
 class Card(ContainerBase):
-
     sContainerDescriptor = "vCard"
     sComponentType = None
     sPropertyType = Property
@@ -48,9 +51,7 @@ class Card(ContainerBase):
         definitions.Property_UID,
     )
 
-    propertyCardinality_1_More = (
-        definitions.Property_FN,
-    )
+    propertyCardinality_1_More = (definitions.Property_FN,)
 
     propertyValueChecks = VCARD_VALUE_CHECKS
 
@@ -94,10 +95,8 @@ class Card(ContainerBase):
         lines = [None, None]
 
         while readFoldedLine(ins, lines):
-
             line = lines[0]
             if state == LOOK_FOR_VCARD:
-
                 # Look for start
                 if line == card.getBeginDelimiter():
                     # Next state
@@ -114,10 +113,8 @@ class Card(ContainerBase):
                     raise InvalidData("vCard data not recognized", line)
 
             elif state == GET_PROPERTY:
-
                 # Look for end of object
                 if line == card.getEndDelimiter():
-
                     # Finalise the current calendar
                     card.finalise()
 
@@ -139,7 +136,6 @@ class Card(ContainerBase):
 
                 # Must be a property
                 else:
-
                     # Parse parameter/value for top-level calendar item
                     prop = Property.parseText(line)
 
@@ -175,9 +171,8 @@ class Card(ContainerBase):
 
     def validProperty(self, prop):
         if prop.getName() == definitions.Property_VERSION:
-
             tvalue = prop.getValue()
-            if ((tvalue is None) or (tvalue.getValue() != "3.0")):
+            if (tvalue is None) or (tvalue.getValue() != "3.0"):
                 return False
 
         return True
