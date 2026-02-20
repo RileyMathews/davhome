@@ -172,9 +172,7 @@ def principals_users_collection_view(request):
     return _collection_view(request, "/dav/principals/users/", "users")
 
 
-@csrf_exempt
-def principal_users_view(request, username):
-    return principal_view(request, username)
+principal_users_view = principal_view
 
 
 def _collection_view(request, href, display_name):
@@ -321,6 +319,4 @@ def calendar_home_uid_view(request, guid):
     return calendar_home_view(request, username)
 
 
-@csrf_exempt
-def calendar_home_users_view(request, username):
-    return calendar_home_view(request, username)
+calendar_home_users_view = calendar_home_view

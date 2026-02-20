@@ -20,7 +20,7 @@ from .xml import NS_CALDAV, NS_DAV, multistatus_document, parse_propfind_request
 from .view_helpers.sync_tokens import (
     _build_sync_token,
     _parse_sync_token_for_calendar as _parse_sync_token_for_calendar_impl,
-    _sync_token_revision_from_parts as _sync_token_revision_from_parts_impl,
+    _sync_token_revision_from_parts,
 )
 
 
@@ -92,10 +92,6 @@ def _latest_sync_revision(calendar):
 
 def _sync_token_for_calendar(calendar):
     return _build_sync_token(calendar.id, _latest_sync_revision(calendar))
-
-
-def _sync_token_revision_from_parts(parts, expected_calendar_id):
-    return _sync_token_revision_from_parts_impl(parts, expected_calendar_id)
 
 
 def _parse_sync_token_for_calendar(token, calendar):

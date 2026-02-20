@@ -46,7 +46,6 @@ from .view_helpers.calendar_mutation_payloads import (
     _mkcalendar_props_from_payload,
 )
 from .view_helpers.copy_move import (
-    _remap_uid_for_copied_object as _remap_uid_for_copied_object_impl,
     copy_or_move_calendar_object,
 )
 from .view_helpers.ical import _dedupe_duplicate_alarms
@@ -54,33 +53,6 @@ from .view_helpers.parsing import _parse_xml_body
 from .view_helpers.identity import _principal_href_for_user
 from .view_helpers.identity import _dav_username_for_guid
 from .xml import NS_CALDAV, NS_DAV, multistatus_document, qname, response_with_props
-
-
-def _copy_or_move_calendar_object(
-    writable,
-    request,
-    username,
-    slug,
-    filename,
-    next_revision,
-    is_move,
-):
-    return copy_or_move_calendar_object(
-        writable=writable,
-        request=request,
-        username=username,
-        slug=slug,
-        filename=filename,
-        next_revision=next_revision,
-        is_move=is_move,
-        collection_exists=_collection_exists,
-        create_calendar_change=_create_calendar_change,
-        dav_common_headers=_dav_common_headers,
-    )
-
-
-def _remap_uid_for_copied_object(uid, target_filename):
-    return _remap_uid_for_copied_object_impl(uid, target_filename)
 
 
 @csrf_exempt
@@ -300,9 +272,7 @@ def calendar_collection_uid_view(request, guid, slug):
     return calendar_collection_view(request, username, slug)
 
 
-@csrf_exempt
-def calendar_collection_users_view(request, username, slug):
-    return calendar_collection_view(request, username, slug)
+calendar_collection_users_view = calendar_collection_view
 
 
 @csrf_exempt
@@ -368,14 +338,17 @@ def calendar_object_view(request, username, slug, filename):
             parent_path, _leaf = core_paths.split_filename_path(filename)
 
             if request.method in ("COPY", "MOVE"):
-                return _copy_or_move_calendar_object(
-                    writable,
-                    request,
-                    username,
-                    slug,
-                    filename,
-                    next_revision,
+                return copy_or_move_calendar_object(
+                    writable=writable,
+                    request=request,
+                    username=username,
+                    slug=slug,
+                    filename=filename,
+                    next_revision=next_revision,
                     is_move=request.method == "MOVE",
+                    collection_exists=_collection_exists,
+                    create_calendar_change=_create_calendar_change,
+                    dav_common_headers=_dav_common_headers,
                 )
 
             if request.method == "PROPPATCH":
@@ -686,6 +659,4 @@ def calendar_object_uid_view(request, guid, slug, filename):
     return calendar_object_view(request, username, slug, filename)
 
 
-@csrf_exempt
-def calendar_object_users_view(request, username, slug, filename):
-    return calendar_object_view(request, username, slug, filename)
+calendar_object_users_view = calendar_object_view

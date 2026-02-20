@@ -37,12 +37,11 @@ from .view_helpers.report_paths import _object_href_for_style
 from .view_helpers.report_paths import _object_href_for_style_data
 from .view_helpers.report_paths import _report_href_style
 from .view_helpers.identity import _principal_href_for_user
-from .view_helpers.sync_tokens import _build_sync_token
+from .view_helpers.sync_tokens import _build_sync_token, _parse_sync_token_for_calendar
 from .views_common import _caldav_error_response
 from .views_common import _dav_common_headers
 from .views_common import _etag_for_object
 from .views_common import _latest_sync_revision
-from .views_common import _parse_sync_token_for_calendar
 from .views_common import _sync_token_for_calendar
 from .views_common import _valid_sync_token_error_response
 from .views_common import _xml_response
@@ -244,12 +243,9 @@ def _render_freebusy_report(calendars, root):
             tentative.extend(t)
             unavailable.extend(u)
 
-    def merge_intervals(intervals):
-        return core_freebusy.merge_intervals(intervals)
-
-    busy = merge_intervals(busy)
-    tentative = merge_intervals(tentative)
-    unavailable = merge_intervals(unavailable)
+    busy = core_freebusy.merge_intervals(busy)
+    tentative = core_freebusy.merge_intervals(tentative)
+    unavailable = core_freebusy.merge_intervals(unavailable)
 
     lines = _build_freebusy_response_lines(
         window_start,
@@ -557,6 +553,7 @@ def _handle_report(calendars, request, allow_sync_collection=True):
             token_revision, token_error = _parse_sync_token_for_calendar(
                 sync_token_value,
                 calendar,
+                _valid_sync_token_error_response,
             )
             if token_error is not None:
                 logger.info(

@@ -19,7 +19,7 @@ from django.contrib import admin
 from django.urls import include, path
 
 from accounts.views import home
-from dav.views import dav_root, well_known_caldav
+from dav.views_collections import dav_root, well_known_caldav
 
 urlpatterns = [
     path("", home, name="home"),
