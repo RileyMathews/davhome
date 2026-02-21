@@ -4,6 +4,45 @@ from datetime import timedelta
 from dav.xml import NS_CALDAV, qname
 
 
+_VEVENT = "VEVENT"
+_VTODO = "VTODO"
+_VALARM = "VALARM"
+
+
+def _is_vtodo_recurrence(component_upper):
+    return "BEGIN:VTODO" in component_upper and "RRULE:" in component_upper
+
+
+def _synthetic_vevent_from_due_vtodo(component_text):
+    synthetic = component_text.replace("BEGIN:VTODO", "BEGIN:VEVENT").replace(
+        "END:VTODO", "END:VEVENT"
+    )
+    return re.sub(
+        r"^DUE(;[^:]*)?:",
+        r"DTSTART\1:",
+        synthetic,
+        flags=re.MULTILINE,
+    )
+
+
+def _component_kind_for_recurrence(component_upper):
+    if "BEGIN:VTODO" in component_upper:
+        return _VTODO
+    return _VEVENT
+
+
+def _calculate_event_end(component_text, event_start, due, duration, first_ical_line):
+    if due is not None:
+        return due
+    if duration is not None and event_start is not None:
+        return event_start + duration
+
+    dtstart_line = first_ical_line(component_text, "DTSTART") or ""
+    if ";VALUE=DATE:" in dtstart_line.upper():
+        return event_start + timedelta(days=1)
+    return event_start
+
+
 def matches_time_range(
     component_text,
     time_range,
@@ -21,23 +60,14 @@ def matches_time_range(
         return False
 
     component_upper = component_text.upper()
-    if "BEGIN:VTODO" in component_upper and "RRULE:" in component_upper:
+    if _is_vtodo_recurrence(component_upper):
         if "DTSTART" not in component_upper and "DUE" in component_upper:
-            synthetic = component_text.replace("BEGIN:VTODO", "BEGIN:VEVENT").replace(
-                "END:VTODO", "END:VEVENT"
-            )
-            synthetic = re.sub(
-                r"^DUE(;[^:]*)?:",
-                r"DTSTART\1:",
-                synthetic,
-                flags=re.MULTILINE,
-            )
-            return matches_time_range_recurrence(synthetic, start, end, "VEVENT")
+            synthetic = _synthetic_vevent_from_due_vtodo(component_text)
+            return matches_time_range_recurrence(synthetic, start, end, _VEVENT)
 
     if "RRULE:" in component_upper or "RECURRENCE-ID" in component_upper:
-        if "BEGIN:VTODO" in component_upper:
-            return matches_time_range_recurrence(component_text, start, end, "VTODO")
-        return matches_time_range_recurrence(component_text, start, end, "VEVENT")
+        component_kind = _component_kind_for_recurrence(component_upper)
+        return matches_time_range_recurrence(component_text, start, end, component_kind)
 
     event_start = parse_line_datetime_with_tz(
         first_ical_line(component_text, "DTSTART")
@@ -53,15 +83,13 @@ def matches_time_range(
     if event_start is None:
         return True
     if event_end is None:
-        dtstart_line = first_ical_line(component_text, "DTSTART") or ""
-        if due is not None:
-            event_end = due
-        elif duration is not None and event_start is not None:
-            event_end = event_start + duration
-        elif ";VALUE=DATE:" in dtstart_line.upper():
-            event_end = event_start + timedelta(days=1)
-        else:
-            event_end = event_start
+        event_end = _calculate_event_end(
+            component_text,
+            event_start,
+            due,
+            duration,
+            first_ical_line,
+        )
 
     if start is not None and event_end <= start:
         return False
@@ -108,9 +136,9 @@ def matches_comp_filter(
     ):
         return matches_time_range(context_text, time_range)
 
-    if name == "VEVENT":
+    if name == _VEVENT:
         asks_no_alarm = any(
-            (child.get("name") or "").upper() == "VALARM"
+            (child.get("name") or "").upper() == _VALARM
             and child.find(qname(NS_CALDAV, "is-not-defined")) is not None
             for child in child_comp_filters
         )
@@ -124,7 +152,7 @@ def matches_comp_filter(
             )
             return "BEGIN:VALARM" not in master.upper()
 
-    if name == "VALARM" and time_range is not None:
+    if name == _VALARM and time_range is not None:
         return alarm_matches_time_range(context_text, time_range)
 
     candidate_results = []
@@ -139,8 +167,8 @@ def matches_comp_filter(
             matches_comp_filter(
                 context_text
                 if (
-                    name == "VEVENT"
-                    and (child_comp_filter.get("name") or "").upper() == "VALARM"
+                    name == _VEVENT
+                    and (child_comp_filter.get("name") or "").upper() == _VALARM
                     and child_comp_filter.find(qname(NS_CALDAV, "time-range"))
                     is not None
                 )

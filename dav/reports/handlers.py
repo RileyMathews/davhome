@@ -56,6 +56,11 @@ logger = logging.getLogger("dav.audit")
 _ACTIVE_REPORT_TZINFO = None
 
 
+def _set_active_report_tzinfo(tzinfo):
+    global _ACTIVE_REPORT_TZINFO
+    _ACTIVE_REPORT_TZINFO = tzinfo
+
+
 def _tzinfo_from_report(root):
     timezone_elem = root.find(qname(NS_CALDAV, "timezone"))
     timezone_id_elem = root.find(qname(NS_CALDAV, "timezone-id"))
@@ -463,136 +468,134 @@ def _sync_collection_response(
 
 
 def _handle_report(calendars, request, allow_sync_collection=True):
-    global _ACTIVE_REPORT_TZINFO
     parsed_report = parse_report_request(request.body)
     if parsed_report is None:
         return HttpResponse(status=400)
     root = parsed_report.root
 
     _tzinfo, tz_error = _tzinfo_from_report(root)
-    _ACTIVE_REPORT_TZINFO = _tzinfo
+    _set_active_report_tzinfo(_tzinfo)
     if tz_error is not None:
-        _ACTIVE_REPORT_TZINFO = None
+        _set_active_report_tzinfo(None)
         return tz_error
 
-    time_range_error = core_report.validate_time_range_payloads(
-        root,
-        core_time.parse_ical_datetime,
-    )
-    if time_range_error is not None:
-        _ACTIVE_REPORT_TZINFO = None
-        return HttpResponse(status=400)
-
-    range_bounds_error = core_report.validate_comp_filter_range_bounds(
-        root,
-        core_time.parse_ical_datetime,
-        timezone.now().year,
-    )
-    if range_bounds_error is not None:
-        _ACTIVE_REPORT_TZINFO = None
-        return _caldav_error_response(range_bounds_error)
-
-    context = core_report_dispatch.build_report_execution_context(
-        parsed_report=parsed_report,
-        calendars=calendars,
-        request_path=request.path,
-        classify_report_kind=core_report.classify_report_kind,
-    )
-
-    def handle_multiget(exec_context):
-        responses = _responses_for_multiget(
-            exec_context.calendars,
-            exec_context.requested_props,
-            exec_context.parsed_report.hrefs,
-            exec_context.calendar_data_request,
+    try:
+        time_range_error = core_report.validate_time_range_payloads(
+            root,
+            core_time.parse_ical_datetime,
         )
-        return _xml_response(207, multistatus_document(responses))
-
-    def handle_query(exec_context):
-        responses = _responses_for_calendar_query(
-            exec_context.calendars,
-            exec_context.requested_props,
-            exec_context.parsed_report.query_filter,
-            exec_context.request_path,
-            exec_context.calendar_data_request,
-        )
-        return _xml_response(207, multistatus_document(responses))
-
-    def handle_freebusy(exec_context):
-        return _render_freebusy_report(exec_context.calendars, exec_context.root)
-
-    def handle_sync_collection(exec_context):
-        sync_request = core_report.parse_sync_collection_request(
-            exec_context.root,
-            _sync_collection_limit,
-        )
-        requested_limit = sync_request.requested_limit
-
-        if not allow_sync_collection:
-            return HttpResponse(status=501)
-
-        sync_level = sync_request.sync_level
-        if sync_level and sync_level != "1":
+        if time_range_error is not None:
             return HttpResponse(status=400)
 
-        if len(exec_context.calendars) != 1:
-            return HttpResponse(status=501)
-
-        sync_token_value = sync_request.sync_token
-        calendar = exec_context.calendars[0]
-        logger.info(
-            "dav_sync_collection_request path=%s calendar_id=%s owner=%s slug=%s sync_level=%r token_present=%s sync_token=%r requested_limit=%r",
-            exec_context.request_path,
-            calendar.id,
-            calendar.owner.username,
-            calendar.slug,
-            sync_level,
-            bool(sync_token_value),
-            sync_token_value or None,
-            requested_limit,
+        range_bounds_error = core_report.validate_comp_filter_range_bounds(
+            root,
+            core_time.parse_ical_datetime,
+            timezone.now().year,
         )
-        token_revision = None
-        if sync_token_value:
-            token_revision, token_error = _parse_sync_token_for_calendar(
-                sync_token_value,
-                calendar,
-                _valid_sync_token_error_response,
+        if range_bounds_error is not None:
+            return _caldav_error_response(range_bounds_error)
+
+        context = core_report_dispatch.build_report_execution_context(
+            parsed_report=parsed_report,
+            calendars=calendars,
+            request_path=request.path,
+            classify_report_kind=core_report.classify_report_kind,
+        )
+
+        def handle_multiget(exec_context):
+            responses = _responses_for_multiget(
+                exec_context.calendars,
+                exec_context.requested_props,
+                exec_context.parsed_report.hrefs,
+                exec_context.calendar_data_request,
             )
-            if token_error is not None:
-                logger.info(
-                    "dav_sync_collection_token_rejected path=%s calendar_id=%s sync_token=%r",
-                    exec_context.request_path,
-                    calendar.id,
-                    sync_token_value,
-                )
-                return token_error
+            return _xml_response(207, multistatus_document(responses))
+
+        def handle_query(exec_context):
+            responses = _responses_for_calendar_query(
+                exec_context.calendars,
+                exec_context.requested_props,
+                exec_context.parsed_report.query_filter,
+                exec_context.request_path,
+                exec_context.calendar_data_request,
+            )
+            return _xml_response(207, multistatus_document(responses))
+
+        def handle_freebusy(exec_context):
+            return _render_freebusy_report(exec_context.calendars, exec_context.root)
+
+        def handle_sync_collection(exec_context):
+            sync_request = core_report.parse_sync_collection_request(
+                exec_context.root,
+                _sync_collection_limit,
+            )
+            requested_limit = sync_request.requested_limit
+
+            if not allow_sync_collection:
+                return HttpResponse(status=501)
+
+            sync_level = sync_request.sync_level
+            if sync_level and sync_level != "1":
+                return HttpResponse(status=400)
+
+            if len(exec_context.calendars) != 1:
+                return HttpResponse(status=501)
+
+            sync_token_value = sync_request.sync_token
+            calendar = exec_context.calendars[0]
             logger.info(
-                "dav_sync_collection_token_parsed path=%s calendar_id=%s token_revision=%s",
+                "dav_sync_collection_request path=%s calendar_id=%s owner=%s slug=%s sync_level=%r token_present=%s sync_token=%r requested_limit=%r",
                 exec_context.request_path,
                 calendar.id,
+                calendar.owner.username,
+                calendar.slug,
+                sync_level,
+                bool(sync_token_value),
+                sync_token_value or None,
+                requested_limit,
+            )
+            token_revision = None
+            if sync_token_value:
+                token_revision, token_error = _parse_sync_token_for_calendar(
+                    sync_token_value,
+                    calendar,
+                    _valid_sync_token_error_response,
+                )
+                if token_error is not None:
+                    logger.info(
+                        "dav_sync_collection_token_rejected path=%s calendar_id=%s sync_token=%r",
+                        exec_context.request_path,
+                        calendar.id,
+                        sync_token_value,
+                    )
+                    return token_error
+                logger.info(
+                    "dav_sync_collection_token_parsed path=%s calendar_id=%s token_revision=%s",
+                    exec_context.request_path,
+                    calendar.id,
+                    token_revision,
+                )
+
+            return _sync_collection_response(
+                calendar,
+                exec_context.request_path,
+                exec_context.requested_props,
+                exec_context.calendar_data_request,
                 token_revision,
+                requested_limit,
             )
 
-        return _sync_collection_response(
-            calendar,
-            exec_context.request_path,
-            exec_context.requested_props,
-            exec_context.calendar_data_request,
-            token_revision,
-            requested_limit,
+        return core_report_dispatch.dispatch_report(
+            context=context,
+            report_kind_multiget=core_report.REPORT_KIND_MULTIGET,
+            report_kind_query=core_report.REPORT_KIND_QUERY,
+            report_kind_freebusy=core_report.REPORT_KIND_FREEBUSY,
+            report_kind_sync_collection=core_report.REPORT_KIND_SYNC_COLLECTION,
+            handle_multiget=handle_multiget,
+            handle_query=handle_query,
+            handle_freebusy=handle_freebusy,
+            handle_sync_collection=handle_sync_collection,
+            handle_unknown=lambda _exec_context: _report_unknown_type(),
         )
-
-    response = core_report_dispatch.dispatch_report(
-        context=context,
-        report_kind_multiget=core_report.REPORT_KIND_MULTIGET,
-        report_kind_query=core_report.REPORT_KIND_QUERY,
-        report_kind_freebusy=core_report.REPORT_KIND_FREEBUSY,
-        report_kind_sync_collection=core_report.REPORT_KIND_SYNC_COLLECTION,
-        handle_multiget=handle_multiget,
-        handle_query=handle_query,
-        handle_freebusy=handle_freebusy,
-        handle_sync_collection=handle_sync_collection,
-        handle_unknown=lambda _exec_context: _report_unknown_type(),
-    )
-    _ACTIVE_REPORT_TZINFO = None
-    return response
+    finally:
+        _set_active_report_tzinfo(None)
