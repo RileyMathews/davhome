@@ -326,3 +326,196 @@ class DavCoreRecurrenceTests(SimpleTestCase):
                     {"start": "20260220T095000Z", "end": "20260220T110000Z"},
                 )
             )
+
+    def test_additional_parse_and_simple_recurrence_paths(self):
+        wrapped = "BEGIN:VCALENDAR\nVERSION:2.0\nEND:VCALENDAR\n"
+        self.assertEqual(core_recurrence.calendar_for_component_text(wrapped), wrapped)
+        self.assertIsNone(core_recurrence.parse_rrule_count("RRULE:FREQ=DAILY"))
+
+        self.assertIsNone(
+            core_recurrence.parse_line_datetime_with_tz("DTSTART:20261340")
+        )
+        self.assertIsNone(
+            core_recurrence.parse_line_datetime_with_tz("DTSTART:20261340T101112Z")
+        )
+        self.assertIsNone(
+            core_recurrence.parse_line_datetime_with_tz("DTSTART:20261340T101112")
+        )
+
+        self.assertFalse(
+            core_recurrence.line_matches_time_range(
+                "DTSTART:20260220T110000Z",
+                {"start": "20260220T100000Z", "end": "20260220T110000Z"},
+            )
+        )
+
+        self.assertIsNone(
+            core_recurrence.simple_recurrence_instances(
+                "BEGIN:VJOURNAL\nUID:no-event\nEND:VJOURNAL\n"
+            )
+        )
+
+        without_base = (
+            "BEGIN:VEVENT\nUID:no-base\nRRULE:FREQ=DAILY;COUNT=2\nEND:VEVENT\n"
+        )
+        self.assertIsNone(core_recurrence.simple_recurrence_instances(without_base))
+
+        without_rrule = (
+            "BEGIN:VEVENT\nUID:no-rrule\nDTSTART:20260220T100000Z\nEND:VEVENT\n"
+        )
+        self.assertIsNone(core_recurrence.simple_recurrence_instances(without_rrule))
+
+    def test_simple_recurrence_due_exdate_override_paths(self):
+        text = (
+            "BEGIN:VEVENT\n"
+            "UID:due-series\n"
+            "DUE:20260220T100000Z\n"
+            "RRULE:FREQ=DAILY;COUNT=3\n"
+            "DTEND:20260220T103000Z\n"
+            "EXDATE\n"
+            "EXDATE:bad\n"
+            "EXDATE:20260221T100000\n"
+            "END:VEVENT\n"
+            "BEGIN:VEVENT\n"
+            "UID:due-series\n"
+            "RECURRENCE-ID:bad\n"
+            "DTSTART:20260220T120000Z\n"
+            "END:VEVENT\n"
+            "BEGIN:VEVENT\n"
+            "UID:due-series\n"
+            "RECURRENCE-ID:20260222T100000Z\n"
+            "DUE:20260222T120000Z\n"
+            "END:VEVENT\n"
+            "BEGIN:VEVENT\n"
+            "UID:due-series\n"
+            "RECURRENCE-ID:20260221T100000Z\n"
+            "END:VEVENT\n"
+        )
+        instances = core_recurrence.simple_recurrence_instances(text)
+        self.assertIsNotNone(instances)
+        assert instances is not None
+        # naive EXDATE should be interpreted in UTC and excluded
+        self.assertEqual(len(instances), 2)
+        self.assertEqual(
+            instances[0][0], datetime(2026, 2, 20, 10, 0, tzinfo=timezone.utc)
+        )
+        self.assertEqual(
+            instances[0][1], datetime(2026, 2, 20, 10, 30, tzinfo=timezone.utc)
+        )
+        self.assertEqual(
+            instances[1][0], datetime(2026, 2, 22, 12, 0, tzinfo=timezone.utc)
+        )
+
+    def test_recurrence_and_alarm_additional_fallback_branches(self):
+        class _Alarm:
+            name = "VALARM"
+
+            def __init__(self, trigger, related="START", repeat=0, duration=None):
+                self._trigger = trigger
+                self._related = related
+                self._repeat = repeat
+                self._duration = duration
+
+            def decoded(self, key, default=None):
+                if key == "TRIGGER":
+                    return self._trigger
+                if key == "DURATION":
+                    return self._duration
+                return default
+
+            def get(self, key, default=None):
+                if key == "TRIGGER":
+                    return type("Param", (), {"params": {"RELATED": self._related}})()
+                if key == "REPEAT":
+                    return self._repeat
+                return default
+
+        class _Comp:
+            name = "VEVENT"
+
+            def __init__(self, dtstart, alarms):
+                self._dtstart = dtstart
+                self.subcomponents = alarms
+
+            def decoded(self, key, default=None):
+                if key == "DTSTART":
+                    return self._dtstart
+                if key == "DTEND":
+                    return None
+                if key == "DUE":
+                    return None
+                return default
+
+        class _Cal:
+            def __init__(self, components):
+                self._components = components
+
+            def walk(self):
+                return self._components
+
+        class _Query:
+            def __init__(self, occurrences):
+                self.keep_recurrence_attributes = False
+                self._occurrences = occurrences
+
+            def between(self, _start, _end):
+                return self._occurrences
+
+        self.assertFalse(
+            core_recurrence.matches_time_range_recurrence(
+                "BEGIN:VEVENT\nUID:edge\nDTSTART:20260220T100000Z\nRRULE:FREQ=DAILY;COUNT=1\nEND:VEVENT\n",
+                None,
+                datetime(2026, 2, 20, 10, 0, tzinfo=timezone.utc),
+                "VEVENT",
+            )
+        )
+
+        # Empty occurrences should fall back to calendar.walk().
+        comp = _Comp(
+            datetime(2026, 2, 20, 10, 0, tzinfo=timezone.utc),
+            [
+                _Alarm(
+                    timedelta(minutes=-10),
+                    related="END",
+                    repeat=2,
+                    duration=timedelta(minutes=5),
+                )
+            ],
+        )
+        with (
+            patch.object(
+                core_recurrence, "simple_recurrence_instances", return_value=None
+            ),
+            patch.object(
+                core_recurrence.icalendar.Calendar,
+                "from_ical",
+                return_value=_Cal([comp]),
+            ),
+            patch.object(core_recurrence, "recurring_of", return_value=_Query([])),
+        ):
+            self.assertTrue(
+                core_recurrence.alarm_matches_time_range(
+                    "BEGIN:VEVENT\nUID:edge\nEND:VEVENT\n",
+                    {"start": "20260220T095000Z", "end": "20260220T110500Z"},
+                )
+            )
+
+        # THISANDFUTURE override without alarm sets a cutoff that excludes later alarms.
+        cutoff_text = "BEGIN:VEVENT\nUID:edge\nRECURRENCE-ID;RANGE=THISANDFUTURE:20260220T100000Z\nEND:VEVENT\n"
+        with (
+            patch.object(
+                core_recurrence, "simple_recurrence_instances", return_value=None
+            ),
+            patch.object(
+                core_recurrence.icalendar.Calendar,
+                "from_ical",
+                return_value=_Cal([comp]),
+            ),
+            patch.object(core_recurrence, "recurring_of", return_value=_Query([comp])),
+        ):
+            self.assertFalse(
+                core_recurrence.alarm_matches_time_range(
+                    cutoff_text,
+                    {"start": "20260220T090000Z", "end": "20260220T120000Z"},
+                )
+            )
