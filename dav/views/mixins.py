@@ -8,15 +8,13 @@ from collections.abc import Sequence
 from django.http import HttpResponse
 
 
-class DavHeaderMixin:
+class DavOptionsMixin:
+    allowed_methods: Sequence[str] | None = None
+
     def apply_dav_headers(self, response):
         from dav.common import _dav_common_headers
 
         return _dav_common_headers(response)
-
-
-class DavOptionsMixin:
-    allowed_methods: Sequence[str] | None = None
 
     def get_allowed_methods(self) -> list[str]:
         if self.allowed_methods is not None:
@@ -31,7 +29,7 @@ class DavOptionsMixin:
     def options(self, request, *args, **kwargs):
         response = HttpResponse(status=204)
         response["Allow"] = ", ".join(self.get_allowed_methods())
-        return response
+        return self.apply_dav_headers(response)
 
 
 class GuidToUsernameDispatchMixin:

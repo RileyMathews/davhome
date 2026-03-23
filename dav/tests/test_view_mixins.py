@@ -1,10 +1,10 @@
 from django.http import HttpResponse
 from django.test import SimpleTestCase
 
-from dav.views.mixins import DavHeaderMixin, DavOptionsMixin
+from dav.views.mixins import DavOptionsMixin
 
 
-class _HeaderView(DavHeaderMixin):
+class _HeaderView(DavOptionsMixin):
     pass
 
 

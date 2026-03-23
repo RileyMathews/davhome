@@ -96,11 +96,6 @@ class PrincipalsCollectionView(DavView):
     display_name = "principals"
     allowed_methods = _PRINCIPAL_ALLOWED_METHODS
 
-    def options(self, request, *args, **kwargs):
-        response = HttpResponse(status=204)
-        response["Allow"] = ", ".join(_PRINCIPAL_ALLOWED_METHODS)
-        return _dav_common_headers(response)
-
     def get(self, request, *args, **kwargs):
         user = cast(User, request.user)
 

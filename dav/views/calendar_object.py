@@ -120,11 +120,6 @@ class CalendarObjectView(DavView):
             return None, HttpResponse(status=403)
         return cast(Calendar, writable), None
 
-    def options(self, request, *args, **kwargs):
-        response = HttpResponse(status=204)
-        response["Allow"] = ", ".join(_CALENDAR_OBJECT_ALLOWED_METHODS)
-        return _dav_common_headers(response)
-
     def _get_object(self, user, username, slug, filename):
         normalized_filename = filename
         if filename.endswith("/"):
