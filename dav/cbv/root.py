@@ -5,14 +5,10 @@ from dav.views import (
     CalendarHomeView,
     CalendarObjectUidView,
     CalendarObjectView,
-    CalendarsCollectionView,
-    CalendarsUidsCollectionView,
-    CalendarsUsersCollectionView,
     DavRootView,
     PrincipalUidView,
     PrincipalView,
     PrincipalsCollectionView,
-    PrincipalsUsersCollectionView,
 )
 
 __all__ = [
@@ -22,12 +18,8 @@ __all__ = [
     "CalendarHomeView",
     "CalendarObjectUidView",
     "CalendarObjectView",
-    "CalendarsCollectionView",
-    "CalendarsUidsCollectionView",
-    "CalendarsUsersCollectionView",
     "DavRootView",
     "PrincipalUidView",
     "PrincipalView",
     "PrincipalsCollectionView",
-    "PrincipalsUsersCollectionView",
 ]

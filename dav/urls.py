@@ -7,14 +7,10 @@ from dav.views import (
     CalendarHomeView,
     CalendarObjectUidView,
     CalendarObjectView,
-    CalendarsCollectionView,
-    CalendarsUidsCollectionView,
-    CalendarsUsersCollectionView,
     DavRootView,
     PrincipalUidView,
     PrincipalView,
     PrincipalsCollectionView,
-    PrincipalsUsersCollectionView,
 )
 
 app_name = "dav"
@@ -29,12 +25,18 @@ urlpatterns = [
     path("principals/", PrincipalsCollectionView.as_view(), name="principals"),
     path(
         "principals/users",
-        PrincipalsUsersCollectionView.as_view(),
+        PrincipalsCollectionView.as_view(
+            href="/dav/principals/users/",
+            display_name="users",
+        ),
         name="principals-users-no-slash",
     ),
     path(
         "principals/users/",
-        PrincipalsUsersCollectionView.as_view(),
+        PrincipalsCollectionView.as_view(
+            href="/dav/principals/users/",
+            display_name="users",
+        ),
         name="principals-users",
     ),
     path(
@@ -65,33 +67,58 @@ urlpatterns = [
     path("principals/<str:username>/", PrincipalView.as_view(), name="principal"),
     path(
         "calendars",
-        CalendarsCollectionView.as_view(),
+        PrincipalsCollectionView.as_view(
+            href="/dav/calendars/",
+            display_name="calendars",
+        ),
         name="calendars-no-slash",
     ),
-    path("calendars/", CalendarsCollectionView.as_view(), name="calendars"),
+    path(
+        "calendars/",
+        PrincipalsCollectionView.as_view(
+            href="/dav/calendars/",
+            display_name="calendars",
+        ),
+        name="calendars",
+    ),
     path(
         "calendars//",
-        CalendarsCollectionView.as_view(),
+        PrincipalsCollectionView.as_view(
+            href="/dav/calendars/",
+            display_name="calendars",
+        ),
         name="calendars-double-slash",
     ),
     path(
         "calendars/__uids__",
-        CalendarsUidsCollectionView.as_view(),
+        PrincipalsCollectionView.as_view(
+            href="/dav/calendars/__uids__/",
+            display_name="uid calendars",
+        ),
         name="calendars-uids-no-slash",
     ),
     path(
         "calendars/__uids__/",
-        CalendarsUidsCollectionView.as_view(),
+        PrincipalsCollectionView.as_view(
+            href="/dav/calendars/__uids__/",
+            display_name="uid calendars",
+        ),
         name="calendars-uids",
     ),
     path(
         "calendars/users",
-        CalendarsUsersCollectionView.as_view(),
+        PrincipalsCollectionView.as_view(
+            href="/dav/calendars/users/",
+            display_name="user calendars",
+        ),
         name="calendars-users-no-slash",
     ),
     path(
         "calendars/users/",
-        CalendarsUsersCollectionView.as_view(),
+        PrincipalsCollectionView.as_view(
+            href="/dav/calendars/users/",
+            display_name="user calendars",
+        ),
         name="calendars-users",
     ),
     path(
