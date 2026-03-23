@@ -26,7 +26,7 @@ from dav.shell.http import (
     write_precondition_from_request,
 )
 from dav.shell.repository import list_calendar_object_data_for_calendars
-from dav.views.helpers.identity import _dav_username_for_guid
+from dav.views.mixins import GuidToUsernameDispatchMixin
 from dav.xml import NS_CALDAV, NS_DAV, qname
 
 
@@ -202,7 +202,7 @@ class DavDispatchAndShellTests(SimpleTestCase):
         )
         self.assertEqual(response.status_code, 409)
 
-        self.assertIsNone(_dav_username_for_guid("not-a-guid"))
+        self.assertIsNone(GuidToUsernameDispatchMixin().guid_to_username("not-a-guid"))
 
     def test_middleware_helpers_and_basic_auth(self):
         req = RequestFactory().get("/dav/", HTTP_X_FORWARDED_FOR="1.1.1.1, 2.2.2.2")
