@@ -16,10 +16,18 @@ Including another URLconf
 """
 
 from django.contrib import admin
+from django.shortcuts import redirect
 from django.urls import include, path
+from django.views.decorators.csrf import csrf_exempt
 
 from accounts.views import home
-from dav import entrypoints
+from dav.views import DavRootView
+
+
+@csrf_exempt
+def well_known_caldav(request):
+    return redirect("/dav/", permanent=False)
+
 
 urlpatterns = [
     path("", home, name="home"),
@@ -27,11 +35,11 @@ urlpatterns = [
     path("calendars/", include("calendars.urls")),
     path(
         ".well-known/caldav",
-        entrypoints.well_known_caldav,
+        well_known_caldav,
         name="well-known-caldav",
     ),
-    path(".well-known/caldav/", entrypoints.well_known_caldav),
-    path("dav", entrypoints.dav_root, name="dav-root-no-slash"),
+    path(".well-known/caldav/", well_known_caldav),
+    path("dav", DavRootView.as_view(), name="dav-root-no-slash"),
     path("dav/", include("dav.urls")),
     path("admin/", admin.site.urls),
 ]

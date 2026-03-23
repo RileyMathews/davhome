@@ -4,7 +4,7 @@ from django.contrib.auth.models import User
 from django.test import TestCase
 
 from calendars.models import Calendar
-from dav.view_helpers.copy_move import copy_or_move_calendar_object
+from dav.views.helpers.copy_move import copy_or_move_calendar_object
 
 
 class CopyMoveFlowTests(TestCase):

@@ -8,6 +8,7 @@ from xml.etree import ElementTree as ET
 
 from django.contrib.auth.models import User
 from django.test import SimpleTestCase, TestCase
+from django.urls import resolve
 from django.utils import timezone
 
 from calendars.models import (
@@ -16,7 +17,12 @@ from calendars.models import (
     CalendarObjectChange,
     CalendarShare,
 )
-from dav import entrypoints
+from dav.views import (
+    CalendarCollectionView,
+    CalendarHomeView,
+    CalendarObjectView,
+    PrincipalView,
+)
 from dav.core import calendar_data as core_calendar_data
 from dav.core import filters as core_filters
 from dav.core import freebusy as core_freebusy
@@ -25,33 +31,33 @@ from dav.core import payloads as core_payloads
 from dav.core import query as core_query
 from dav.core import recurrence as core_recurrence
 from dav.core import time as core_time
-from dav.view_helpers.calendar_mutation_payloads import (
+from dav.views.helpers.calendar_mutation_payloads import (
     _calendar_collection_proppatch_plan,
 )
-from dav.view_helpers.copy_move import _remap_uid_for_copied_object
-from dav.view_helpers.freebusy import _build_freebusy_response_lines
-from dav.view_helpers.ical import _dedupe_duplicate_alarms
-from dav.view_helpers.identity import (
+from dav.views.helpers.copy_move import _remap_uid_for_copied_object
+from dav.views.helpers.freebusy import _build_freebusy_response_lines
+from dav.views.helpers.ical import _dedupe_duplicate_alarms
+from dav.views.helpers.identity import (
     _calendar_home_href_for_user,
     _dav_guid_for_username,
     _dav_username_for_guid,
     _principal_href_for_user,
 )
-from dav.view_helpers.parsing import _calendar_default_tzinfo, _parse_xml_body
-from dav.view_helpers.recurrence_serialization import (
+from dav.views.helpers.parsing import _calendar_default_tzinfo, _parse_xml_body
+from dav.views.helpers.recurrence_serialization import (
     _append_date_or_datetime_line,
     _resolved_recurrence_text,
     _uid_drop_recurrence_map,
 )
-from dav.view_helpers.report_paths import _all_object_hrefs, _report_href_style
-from dav.view_helpers import sync_tokens as sync_token_helpers
-from dav.view_helpers.sync_tokens import _build_sync_token
+from dav.views.helpers.report_paths import _all_object_hrefs, _report_href_style
+from dav.views.helpers import sync_tokens as sync_token_helpers
+from dav.views.helpers.sync_tokens import _build_sync_token
 from dav.common import (
     _parse_sync_token_for_calendar,
     _remote_ip,
     _sync_token_revision_from_parts,
 )
-from dav.report_handlers import (
+from dav.reports.handlers import (
     _sync_collection_limit,
     _sync_collection_multistatus_document,
     _tzinfo_from_report,
@@ -2326,22 +2332,32 @@ class DavPureFunctionTests(SimpleTestCase):
         )
         self.assertIsNone(rec_text)
 
-    def test_users_alias_bindings_and_sync_token_helper_re_export(self):
+    def test_users_alias_routes_resolve_to_the_same_view_classes(self):
         self.assertIs(
-            entrypoints.principal_users_view,
-            entrypoints.principal_view,
+            resolve("/dav/principals/users/alice/").func.view_class, PrincipalView
+        )
+        self.assertIs(resolve("/dav/principals/alice/").func.view_class, PrincipalView)
+        self.assertIs(
+            resolve("/dav/calendars/users/alice/").func.view_class, CalendarHomeView
         )
         self.assertIs(
-            entrypoints.calendar_home_users_view,
-            entrypoints.calendar_home_view,
+            resolve("/dav/calendars/alice/").func.view_class, CalendarHomeView
         )
         self.assertIs(
-            entrypoints.calendar_collection_users_view,
-            entrypoints.calendar_collection_view,
+            resolve("/dav/calendars/users/alice/work/").func.view_class,
+            CalendarCollectionView,
         )
         self.assertIs(
-            entrypoints.calendar_object_users_view,
-            entrypoints.calendar_object_view,
+            resolve("/dav/calendars/alice/work/").func.view_class,
+            CalendarCollectionView,
+        )
+        self.assertIs(
+            resolve("/dav/calendars/users/alice/work/event.ics").func.view_class,
+            CalendarObjectView,
+        )
+        self.assertIs(
+            resolve("/dav/calendars/alice/work/event.ics").func.view_class,
+            CalendarObjectView,
         )
         self.assertIs(
             _sync_token_revision_from_parts,

@@ -2,7 +2,7 @@ from datetime import datetime, timezone
 
 from django.test import SimpleTestCase
 
-from dav.view_helpers import freebusy as view_freebusy
+import dav.views.helpers.freebusy as view_freebusy
 
 
 class ViewHelpersFreebusyTests(SimpleTestCase):

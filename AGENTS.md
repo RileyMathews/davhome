@@ -63,3 +63,18 @@ Do not treat partial test runs as completion verification when `just full-verify
   - To tune suite/test-level coverage inside a module, adjust feature flags in
     `serverinfo.xml`.
 
+# Refactor goals
+We want to try to refactor this app as we continue working on it to match the future architecture vision.
+We want views to be very clear to follow and have minimal indirection. An ideal view function would follow this pattern
+
+1. validate inputs
+2. return validation errors if needed
+3. query a database model directly
+4. serialize model(s) to response shape
+
+The serialization should be built into the model system with functions like `to_xml` or similar.
+Share these serialization functions on a base model when it would be helpful.
+
+The goal here is to maximize for clarity. Currently logic is scattered among lots of util/helper files.
+A human should be able to pull up any view function and immediatley get a clear picture of its high level
+flow. Then digging into functions and model methods it calls should slowly add context if needed.

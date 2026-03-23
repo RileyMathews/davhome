@@ -3,7 +3,7 @@ from xml.etree import ElementTree as ET
 from django.test import SimpleTestCase
 
 from calendars.models import Calendar
-from dav.view_helpers import calendar_mutation_payloads as mutation_payloads
+from dav.views.helpers import calendar_mutation_payloads as mutation_payloads
 from dav.xml import NS_APPLE_ICAL, NS_CALDAV, NS_DAV, qname
 
 
