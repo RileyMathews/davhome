@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+# pyright: reportAttributeAccessIssue=false
+
 from collections.abc import Sequence
 
 from django.http import HttpResponse
@@ -29,3 +31,24 @@ class DavOptionsMixin:
         response = HttpResponse(status=204)
         response["Allow"] = ", ".join(self.get_allowed_methods())
         return response
+
+
+class GuidToUsernameDispatchMixin:
+    def guid_to_username(self, guid: str) -> str | None:
+        from dav.views.helpers.identity import _dav_username_for_guid
+
+        return _dav_username_for_guid(guid)
+
+    def dispatch(self, request, *args, **kwargs):
+        guid = kwargs.get("guid")
+        if not isinstance(guid, str):
+            return HttpResponse(status=404)
+
+        username = self.guid_to_username(guid)
+        if username is None:
+            return HttpResponse(status=404)
+
+        kwargs = dict(kwargs)
+        kwargs.pop("guid", None)
+        kwargs["username"] = username
+        return getattr(super(), "dispatch")(request, *args, **kwargs)
