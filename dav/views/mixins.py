@@ -29,11 +29,9 @@ class DavOptionsMixin:
         return methods
 
     def options(self, request, *args, **kwargs):
-        from dav.common import _dav_common_headers
-
         response = HttpResponse(status=204)
         response["Allow"] = ", ".join(self.get_allowed_methods())
-        return _dav_common_headers(response)
+        return DavHeaderMixin.apply_dav_headers(self, response)
 
 
 class GuidToUsernameDispatchMixin:
