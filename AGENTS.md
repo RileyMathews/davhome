@@ -78,3 +78,5 @@ Share these serialization functions on a base model when it would be helpful.
 The goal here is to maximize for clarity. Currently logic is scattered among lots of util/helper files.
 A human should be able to pull up any view function and immediatley get a clear picture of its high level
 flow. Then digging into functions and model methods it calls should slowly add context if needed.
+
+In any cases where implementation might be ambiguous follow django best practices.
