@@ -19,7 +19,6 @@ from .base import DavView
 from dav.core import paths as core_paths
 from dav.core import payloads as core_payloads
 from dav.core import propmap as core_propmap
-from dav.core import props as core_props
 from dav.core import write_ops as core_write_ops
 from dav.resolver import (
     get_calendar_for_user,
@@ -151,8 +150,11 @@ class PrincipalView(DavView):
             _principal_href_for_user,
             _calendar_home_href_for_user,
         )
-        ok, missing = core_props.select_props(principal_map, requested)
         responses = [
-            response_with_props(f"/dav/principals/{principal.username}/", ok, missing)
+            self.selected_props_response(
+                f"/dav/principals/{principal.username}/",
+                principal_map,
+                requested,
+            )
         ]
         return _xml_response(207, multistatus_document(responses))

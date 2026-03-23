@@ -6,6 +6,7 @@ import re
 from collections.abc import Sequence
 
 from django.http import HttpResponse
+from django.utils.http import http_date
 
 
 class DavHeaderMixin:
@@ -13,6 +14,26 @@ class DavHeaderMixin:
         from dav.common import _dav_common_headers
 
         return _dav_common_headers(response)
+
+    def apply_resource_state_headers(self, response, etag: str, timestamp: float):
+        response["ETag"] = etag
+        response["Last-Modified"] = http_date(timestamp)
+        return response
+
+    def not_modified_response(
+        self,
+        request,
+        *,
+        etag: str,
+        timestamp: float,
+        conditional_not_modified,
+    ):
+        if not conditional_not_modified(request, etag, timestamp):
+            return None
+
+        response = HttpResponse(status=304)
+        self.apply_resource_state_headers(response, etag, timestamp)
+        return self.apply_dav_headers(response)
 
 
 class DavOptionsMixin:
@@ -32,6 +53,15 @@ class DavOptionsMixin:
         response = HttpResponse(status=204)
         response["Allow"] = ", ".join(self.get_allowed_methods())
         return response
+
+
+class DavPropfindResponseMixin:
+    def selected_props_response(self, href: str, prop_map, requested):
+        from dav.core import props as core_props
+        from dav.xml import response_with_props
+
+        ok, missing = core_props.select_props(prop_map, requested)
+        return response_with_props(href, ok, missing)
 
 
 class GuidToUsernameDispatchMixin:

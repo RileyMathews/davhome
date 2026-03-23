@@ -20,7 +20,6 @@ from .base import DavView
 from dav.core import paths as core_paths
 from dav.core import payloads as core_payloads
 from dav.core import propmap as core_propmap
-from dav.core import props as core_props
 from dav.core import write_ops as core_write_ops
 from dav.resolver import (
     get_calendar_for_user,
@@ -129,8 +128,7 @@ class DavRootView(DavView):
             return HttpResponse(status=400)
 
         requested = parsed["requested"] if parsed["mode"] == "prop" else None
-        root_ok, root_missing = core_props.select_props(prop_map, requested)
-        responses = [response_with_props("/dav/", root_ok, root_missing)]
+        responses = [self.selected_props_response("/dav/", prop_map, requested)]
 
         if depth == "1":
             principal_href = _principal_href_for_user(user)
@@ -142,12 +140,8 @@ class DavRootView(DavView):
                 _principal_href_for_user,
                 _calendar_home_href_for_user,
             )
-            principal_ok, principal_missing = core_props.select_props(
-                principal_map,
-                requested,
-            )
             responses.append(
-                response_with_props(principal_href, principal_ok, principal_missing)
+                self.selected_props_response(principal_href, principal_map, requested)
             )
 
             home_map = core_propmap.build_calendar_home_prop_map(
@@ -155,7 +149,8 @@ class DavRootView(DavView):
                 user,
                 _principal_href_for_user,
             )
-            home_ok, home_missing = core_props.select_props(home_map, requested)
-            responses.append(response_with_props(home_href, home_ok, home_missing))
+            responses.append(
+                self.selected_props_response(home_href, home_map, requested)
+            )
 
         return _xml_response(207, multistatus_document(responses))

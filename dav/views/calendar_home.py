@@ -11,7 +11,6 @@ from django.contrib.auth.models import User
 from django.db import IntegrityError, transaction
 from django.http import HttpResponse
 from django.utils import timezone
-from django.utils.http import http_date
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 
@@ -19,7 +18,6 @@ from .base import DavView
 from dav.core import paths as core_paths
 from dav.core import payloads as core_payloads
 from dav.core import propmap as core_propmap
-from dav.core import props as core_props
 from dav.core import write_ops as core_write_ops
 from dav.resolver import (
     get_calendar_for_user,
@@ -119,19 +117,21 @@ class CalendarHomeView(DavView):
             cast(User, owner),
             cast(User, user),
         )
-        if _conditional_not_modified(request, home_etag, home_timestamp):
-            response = HttpResponse(status=304)
-            response["ETag"] = home_etag
-            response["Last-Modified"] = http_date(home_timestamp)
-            return _dav_common_headers(response)
+        not_modified = self.not_modified_response(
+            request,
+            etag=home_etag,
+            timestamp=home_timestamp,
+            conditional_not_modified=_conditional_not_modified,
+        )
+        if not_modified is not None:
+            return not_modified
 
         response = HttpResponse(
             b"Calendar home",
             content_type="text/plain; charset=utf-8",
         )
-        response["ETag"] = home_etag
-        response["Last-Modified"] = http_date(home_timestamp)
-        return _dav_common_headers(response)
+        self.apply_resource_state_headers(response, home_etag, home_timestamp)
+        return self.apply_dav_headers(response)
 
     def head(self, request, username, *args, **kwargs):
         user, owner, error_response = self._resolve_home(username)
@@ -142,16 +142,18 @@ class CalendarHomeView(DavView):
             cast(User, owner),
             cast(User, user),
         )
-        if _conditional_not_modified(request, home_etag, home_timestamp):
-            response = HttpResponse(status=304)
-            response["ETag"] = home_etag
-            response["Last-Modified"] = http_date(home_timestamp)
-            return _dav_common_headers(response)
+        not_modified = self.not_modified_response(
+            request,
+            etag=home_etag,
+            timestamp=home_timestamp,
+            conditional_not_modified=_conditional_not_modified,
+        )
+        if not_modified is not None:
+            return not_modified
 
         response = HttpResponse(status=200)
-        response["ETag"] = home_etag
-        response["Last-Modified"] = http_date(home_timestamp)
-        return _dav_common_headers(response)
+        self.apply_resource_state_headers(response, home_etag, home_timestamp)
+        return self.apply_dav_headers(response)
 
     def report(self, request, username, *args, **kwargs):
         user, owner, error_response = self._resolve_home(username)
@@ -183,12 +185,11 @@ class CalendarHomeView(DavView):
             user,
             _principal_href_for_user,
         )
-        home_ok, home_missing = core_props.select_props(home_map, requested)
         responses = [
-            response_with_props(
+            self.selected_props_response(
                 f"/dav/calendars/{owner.username}/",
-                home_ok,
-                home_missing,
+                home_map,
+                requested,
             )
         ]
 
@@ -200,8 +201,7 @@ class CalendarHomeView(DavView):
                     _principal_href_for_user,
                     _sync_token_for_calendar,
                 )
-                cal_ok, cal_missing = core_props.select_props(cal_map, requested)
                 href = f"/dav/calendars/{owner.username}/{calendar.slug}/"
-                responses.append(response_with_props(href, cal_ok, cal_missing))
+                responses.append(self.selected_props_response(href, cal_map, requested))
 
         return _xml_response(207, multistatus_document(responses))

@@ -19,7 +19,6 @@ from .base import DavView
 from dav.core import paths as core_paths
 from dav.core import payloads as core_payloads
 from dav.core import propmap as core_propmap
-from dav.core import props as core_props
 from dav.core import write_ops as core_write_ops
 from dav.resolver import (
     get_calendar_for_user,
@@ -132,8 +131,9 @@ class PrincipalsCollectionView(DavView):
         )
 
         requested = parsed["requested"] if parsed["mode"] == "prop" else None
-        ok, missing = core_props.select_props(resolved_map, requested)
         return _xml_response(
             207,
-            multistatus_document([response_with_props(self.href, ok, missing)]),
+            multistatus_document(
+                [self.selected_props_response(self.href, resolved_map, requested)]
+            ),
         )

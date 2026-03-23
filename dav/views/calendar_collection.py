@@ -11,7 +11,6 @@ from django.contrib.auth.models import User
 from django.db import IntegrityError, transaction
 from django.http import HttpResponse
 from django.utils import timezone
-from django.utils.http import http_date
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 
@@ -19,7 +18,6 @@ from .base import DavView
 from dav.core import paths as core_paths
 from dav.core import payloads as core_payloads
 from dav.core import propmap as core_propmap
-from dav.core import props as core_props
 from dav.core import write_ops as core_write_ops
 from dav.resolver import (
     get_calendar_for_user,
@@ -276,19 +274,21 @@ class CalendarCollectionView(DavView):
         calendar = cast(Calendar, calendar)
         calendar_etag = _etag_for_calendar(calendar)
         calendar_timestamp = calendar.updated_at.timestamp()
-        if _conditional_not_modified(request, calendar_etag, calendar_timestamp):
-            response = HttpResponse(status=304)
-            response["ETag"] = calendar_etag
-            response["Last-Modified"] = http_date(calendar_timestamp)
-            return _dav_common_headers(response)
+        not_modified = self.not_modified_response(
+            request,
+            etag=calendar_etag,
+            timestamp=calendar_timestamp,
+            conditional_not_modified=_conditional_not_modified,
+        )
+        if not_modified is not None:
+            return not_modified
 
         response = HttpResponse(
             f"Calendar {calendar.name}".encode("utf-8"),
             content_type="text/plain; charset=utf-8",
         )
-        response["ETag"] = calendar_etag
-        response["Last-Modified"] = http_date(calendar_timestamp)
-        return _dav_common_headers(response)
+        self.apply_resource_state_headers(response, calendar_etag, calendar_timestamp)
+        return self.apply_dav_headers(response)
 
     def head(self, request, *args, **kwargs):
         username = kwargs.get("username")
@@ -303,16 +303,18 @@ class CalendarCollectionView(DavView):
         calendar = cast(Calendar, calendar)
         calendar_etag = _etag_for_calendar(calendar)
         calendar_timestamp = calendar.updated_at.timestamp()
-        if _conditional_not_modified(request, calendar_etag, calendar_timestamp):
-            response = HttpResponse(status=304)
-            response["ETag"] = calendar_etag
-            response["Last-Modified"] = http_date(calendar_timestamp)
-            return _dav_common_headers(response)
+        not_modified = self.not_modified_response(
+            request,
+            etag=calendar_etag,
+            timestamp=calendar_timestamp,
+            conditional_not_modified=_conditional_not_modified,
+        )
+        if not_modified is not None:
+            return not_modified
 
         response = HttpResponse(status=200)
-        response["ETag"] = calendar_etag
-        response["Last-Modified"] = http_date(calendar_timestamp)
-        return _dav_common_headers(response)
+        self.apply_resource_state_headers(response, calendar_etag, calendar_timestamp)
+        return self.apply_dav_headers(response)
 
     def report(self, request, *args, **kwargs):
         username = kwargs.get("username")
@@ -346,11 +348,14 @@ class CalendarCollectionView(DavView):
 
         propfind_etag = _etag_for_calendar(calendar)
         propfind_timestamp = calendar.updated_at.timestamp()
-        if _conditional_not_modified(request, propfind_etag, propfind_timestamp):
-            response = HttpResponse(status=304)
-            response["ETag"] = propfind_etag
-            response["Last-Modified"] = http_date(propfind_timestamp)
-            return _dav_common_headers(response)
+        not_modified = self.not_modified_response(
+            request,
+            etag=propfind_etag,
+            timestamp=propfind_timestamp,
+            conditional_not_modified=_conditional_not_modified,
+        )
+        if not_modified is not None:
+            return not_modified
 
         parsed, parse_error = _parse_propfind_payload(request)
         if parse_error is not None:
@@ -366,27 +371,20 @@ class CalendarCollectionView(DavView):
             _principal_href_for_user,
             _sync_token_for_calendar,
         )
-        cal_ok, cal_missing = core_props.select_props(cal_map, requested)
         responses = [
-            response_with_props(
+            self.selected_props_response(
                 f"/dav/calendars/{username}/{calendar.slug}/",
-                cal_ok,
-                cal_missing,
+                cal_map,
+                requested,
             )
         ]
 
         if depth == "1":
             for obj in calendar.calendar_objects.all():
                 obj_map = _build_prop_map_for_object(obj)
-                obj_ok, obj_missing = core_props.select_props(obj_map, requested)
                 href = f"/dav/calendars/{username}/{calendar.slug}/{obj.filename}"
-                responses.append(response_with_props(href, obj_ok, obj_missing))
+                responses.append(self.selected_props_response(href, obj_map, requested))
 
-        return _xml_response(
-            207,
-            multistatus_document(responses),
-            {
-                "ETag": propfind_etag,
-                "Last-Modified": http_date(propfind_timestamp),
-            },
-        )
+        headers = {}
+        self.apply_resource_state_headers(headers, propfind_etag, propfind_timestamp)
+        return _xml_response(207, multistatus_document(responses), headers)

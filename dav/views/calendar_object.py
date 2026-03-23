@@ -19,7 +19,6 @@ from .base import DavView
 from dav.core import paths as core_paths
 from dav.core import payloads as core_payloads
 from dav.core import propmap as core_propmap
-from dav.core import props as core_props
 from dav.core import write_ops as core_write_ops
 from dav.resolver import (
     get_calendar_for_user,
@@ -199,11 +198,12 @@ class CalendarObjectView(DavView):
 
         requested = parsed["requested"] if parsed["mode"] == "prop" else None
         obj_map = _build_prop_map_for_object(obj)
-        ok, missing = core_props.select_props(obj_map, requested)
         href = f"/dav/calendars/{username}/{slug}/{filename}"
         return _xml_response(
             207,
-            multistatus_document([response_with_props(href, ok, missing)]),
+            multistatus_document(
+                [self.selected_props_response(href, obj_map, requested)]
+            ),
         )
 
     def delete(self, request, username, slug, filename, *args, **kwargs):
