@@ -5,11 +5,11 @@ from django.views import View
 from django.views.decorators.csrf import csrf_exempt
 from django.http import HttpResponse
 
-from .mixins import DavHeaderMixin, DavOptionsMixin
+from .mixins import DavOptionsMixin
 
 
 @method_decorator(csrf_exempt, name="dispatch")
-class DavView(DavHeaderMixin, DavOptionsMixin, View):
+class DavView(DavOptionsMixin, View):
     http_method_names = [
         "get",
         "post",
