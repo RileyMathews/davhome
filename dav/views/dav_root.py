@@ -36,7 +36,6 @@ from dav.views.helpers.copy_move import copy_or_move_calendar_object
 from dav.views.helpers.ical import _dedupe_duplicate_alarms
 from dav.views.helpers.identity import (
     _calendar_home_href_for_user,
-    _dav_username_for_guid,
     _principal_href_for_user,
 )
 from dav.views.helpers.parsing import _parse_xml_body

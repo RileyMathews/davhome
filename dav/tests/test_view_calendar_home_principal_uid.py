@@ -9,6 +9,7 @@ from dav.views.calendar_home import CalendarHomeView
 from dav.views.calendar_home_uid import CalendarHomeUidView
 from dav.views.calendar_collection_uid import CalendarCollectionUidView
 from dav.views.calendar_object_uid import CalendarObjectUidView
+from dav.views.mixins import GuidToUsernameDispatchMixin
 from dav.views.principal import PrincipalView
 from dav.views.principal_uid import PrincipalUidView
 
@@ -196,6 +197,16 @@ class CalendarHomeAndPrincipalViewTests(TestCase):
         request = self.factory.get("/dav/")
         request.user = self.owner
 
+        mixin = GuidToUsernameDispatchMixin()
+        self.assertEqual(
+            mixin.guid_to_username("10000000-0000-0000-0000-000000000001"),
+            "user01",
+        )
+        self.assertIsNone(
+            mixin.guid_to_username("10000000-0000-0000-0000-000000000000")
+        )
+        self.assertIsNone(mixin.guid_to_username("not-a-guid"))
+
         for cls in (
             CalendarHomeUidView,
             CalendarCollectionUidView,
@@ -206,15 +217,18 @@ class CalendarHomeAndPrincipalViewTests(TestCase):
             not_str = view.dispatch(request, guid=123)
             self.assertEqual(not_str.status_code, 404)
 
-            with patch(f"{cls.__module__}._dav_username_for_guid", return_value=None):
+            with patch.object(
+                GuidToUsernameDispatchMixin, "guid_to_username", return_value=None
+            ):
                 missing = view.dispatch(request, guid="bad-guid")
             self.assertEqual(missing.status_code, 404)
 
     def test_uid_dispatch_routes_to_username_handlers(self):
         home_request = self.factory.get("/dav/")
         home_request.user = self.owner
-        with patch(
-            "dav.views.calendar_home_uid._dav_username_for_guid",
+        with patch.object(
+            GuidToUsernameDispatchMixin,
+            "guid_to_username",
             return_value=self.owner.username,
         ):
             response = CalendarHomeUidView.as_view()(home_request, guid="good")
@@ -222,8 +236,9 @@ class CalendarHomeAndPrincipalViewTests(TestCase):
 
         principal_request = self.factory.get("/dav/")
         principal_request.user = self.owner
-        with patch(
-            "dav.views.principal_uid._dav_username_for_guid",
+        with patch.object(
+            GuidToUsernameDispatchMixin,
+            "guid_to_username",
             return_value=self.owner.username,
         ):
             response = PrincipalUidView.as_view()(principal_request, guid="good")
@@ -231,8 +246,9 @@ class CalendarHomeAndPrincipalViewTests(TestCase):
 
         object_request = self.factory.get("/dav/")
         object_request.user = self.owner
-        with patch(
-            "dav.views.calendar_object_uid._dav_username_for_guid",
+        with patch.object(
+            GuidToUsernameDispatchMixin,
+            "guid_to_username",
             return_value=self.owner.username,
         ):
             response = CalendarObjectUidView.as_view()(

@@ -5,24 +5,27 @@ from django.test import SimpleTestCase
 
 import dav.views.helpers.identity as identity
 import dav.views.helpers.sync_tokens as sync_tokens
+from dav.views.mixins import GuidToUsernameDispatchMixin
 
 
 class ViewHelpersIdentitySyncTokenTests(SimpleTestCase):
     def test_identity_helpers(self):
+        mixin = GuidToUsernameDispatchMixin()
+
         self.assertEqual(
             identity._dav_guid_for_username("user01"),
             "10000000-0000-0000-0000-000000000001",
         )
         self.assertIsNone(identity._dav_guid_for_username("alice"))
         self.assertEqual(
-            identity._dav_username_for_guid("10000000-0000-0000-0000-000000000001"),
+            mixin.guid_to_username("10000000-0000-0000-0000-000000000001"),
             "user01",
         )
         self.assertIsNone(
-            identity._dav_username_for_guid("10000000-0000-0000-0000-000000000000")
+            mixin.guid_to_username("10000000-0000-0000-0000-000000000000")
         )
         self.assertIsNone(
-            identity._dav_username_for_guid("10000000-0000-0000-0000-000000000100")
+            mixin.guid_to_username("10000000-0000-0000-0000-000000000100")
         )
 
         user_guid = SimpleNamespace(username="user01")

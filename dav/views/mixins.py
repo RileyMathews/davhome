@@ -2,6 +2,7 @@ from __future__ import annotations
 
 # pyright: reportAttributeAccessIssue=false
 
+import re
 from collections.abc import Sequence
 
 from django.http import HttpResponse
@@ -35,9 +36,13 @@ class DavOptionsMixin:
 
 class GuidToUsernameDispatchMixin:
     def guid_to_username(self, guid: str) -> str | None:
-        from dav.views.helpers.identity import _dav_username_for_guid
-
-        return _dav_username_for_guid(guid)
+        match = re.fullmatch(r"10000000-0000-0000-0000-000000000(\d{3})", guid)
+        if match is None:
+            return None
+        index = int(match.group(1))
+        if index < 1 or index > 99:
+            return None
+        return f"user{index:02d}"
 
     def dispatch(self, request, *args, **kwargs):
         guid = kwargs.get("guid")

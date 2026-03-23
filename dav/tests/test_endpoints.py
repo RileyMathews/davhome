@@ -40,9 +40,9 @@ from dav.views.helpers.ical import _dedupe_duplicate_alarms
 from dav.views.helpers.identity import (
     _calendar_home_href_for_user,
     _dav_guid_for_username,
-    _dav_username_for_guid,
     _principal_href_for_user,
 )
+from dav.views.mixins import GuidToUsernameDispatchMixin
 from dav.views.helpers.parsing import _calendar_default_tzinfo, _parse_xml_body
 from dav.views.helpers.recurrence_serialization import (
     _append_date_or_datetime_line,
@@ -2133,17 +2133,19 @@ class DavPureFunctionTests(SimpleTestCase):
         self.assertEqual(output_ical.count("BEGIN:VALARM"), 1)
 
     def test_guid_and_href_helpers(self):
+        mixin = GuidToUsernameDispatchMixin()
+
         self.assertEqual(
             _dav_guid_for_username("user01"),
             "10000000-0000-0000-0000-000000000001",
         )
         self.assertIsNone(_dav_guid_for_username("owner"))
         self.assertEqual(
-            _dav_username_for_guid("10000000-0000-0000-0000-000000000099"),
+            mixin.guid_to_username("10000000-0000-0000-0000-000000000099"),
             "user99",
         )
         self.assertIsNone(
-            _dav_username_for_guid("10000000-0000-0000-0000-000000000100")
+            mixin.guid_to_username("10000000-0000-0000-0000-000000000100")
         )
 
         user01 = SimpleNamespace(username="user01")
