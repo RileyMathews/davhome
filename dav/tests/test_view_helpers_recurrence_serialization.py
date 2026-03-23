@@ -2,7 +2,7 @@ from datetime import date, datetime, timedelta, timezone
 
 from django.test import SimpleTestCase
 
-from dav.view_helpers import recurrence_serialization as rs
+from dav.views.helpers import recurrence_serialization as rs
 
 
 class _Comp:

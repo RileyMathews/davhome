@@ -1,6 +1,6 @@
 from django.urls import path
 
-from . import entrypoints
+from dav.views import entrypoints
 
 app_name = "dav"
 

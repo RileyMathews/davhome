@@ -3,7 +3,8 @@ from uuid import uuid4
 
 from django.test import SimpleTestCase
 
-from dav.view_helpers import identity, sync_tokens
+import dav.views.helpers.identity as identity
+import dav.views.helpers.sync_tokens as sync_tokens
 
 
 class ViewHelpersIdentitySyncTokenTests(SimpleTestCase):

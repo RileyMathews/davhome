@@ -6,8 +6,8 @@ from xml.etree import ElementTree as ET
 from django.http import HttpResponse
 from django.test import SimpleTestCase
 
-from dav import entrypoints  # noqa: F401
-from dav import report_handlers
+import dav.reports.handlers as report_handlers
+import dav.views.entrypoints as entrypoints  # noqa: F401
 from dav.core import sync as core_sync
 
 

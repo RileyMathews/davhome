@@ -16,7 +16,7 @@ from .core import davxml as core_davxml
 from .core import paths as core_paths
 from .core import payloads as core_payloads
 from .xml import NS_CALDAV, NS_DAV, multistatus_document, parse_propfind_request, qname
-from .view_helpers.sync_tokens import (
+from dav.views.helpers.sync_tokens import (
     _build_sync_token,
     _parse_sync_token_for_calendar as _parse_sync_token_for_calendar_impl,
     _sync_token_revision_from_parts,

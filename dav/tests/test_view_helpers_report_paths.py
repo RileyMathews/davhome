@@ -3,7 +3,7 @@ from unittest.mock import patch
 
 from django.test import SimpleTestCase
 
-from dav.view_helpers import report_paths
+import dav.views.helpers.report_paths as report_paths
 
 
 class ViewHelpersReportPathsTests(SimpleTestCase):
