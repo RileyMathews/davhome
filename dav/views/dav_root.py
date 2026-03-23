@@ -95,11 +95,6 @@ _CALENDAR_OBJECT_ALLOWED_METHODS = [
 class DavRootView(DavView):
     allowed_methods = _ROOT_ALLOWED_METHODS
 
-    def options(self, request, *args, **kwargs):
-        response = HttpResponse(status=204)
-        response["Allow"] = ", ".join(_ROOT_ALLOWED_METHODS)
-        return _dav_common_headers(response)
-
     def get(self, request, *args, **kwargs):
         user = cast(User, request.user)
 

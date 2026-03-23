@@ -123,11 +123,6 @@ class CalendarCollectionView(DavView):
             return None, HttpResponse(status=404)
         return calendar, None
 
-    def options(self, request, *args, **kwargs):
-        response = HttpResponse(status=204)
-        response["Allow"] = ", ".join(_CALENDAR_COLLECTION_ALLOWED_METHODS)
-        return _dav_common_headers(response)
-
     def mkcol(self, request, *args, **kwargs):
         if request.body:
             return HttpResponse(status=415)

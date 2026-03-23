@@ -105,11 +105,6 @@ class CalendarHomeView(DavView):
 
         return user, cast(User, owner), None
 
-    def options(self, request, *args, **kwargs):
-        response = HttpResponse(status=204)
-        response["Allow"] = ", ".join(_CALENDAR_HOME_ALLOWED_METHODS)
-        return _dav_common_headers(response)
-
     def get(self, request, username, *args, **kwargs):
         user, owner, error_response = self._resolve_home(username)
         if error_response is not None:

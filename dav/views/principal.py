@@ -94,11 +94,6 @@ _CALENDAR_OBJECT_ALLOWED_METHODS = [
 class PrincipalView(DavView):
     allowed_methods = _PRINCIPAL_ALLOWED_METHODS
 
-    def options(self, request, *args, **kwargs):
-        response = HttpResponse(status=204)
-        response["Allow"] = ", ".join(_PRINCIPAL_ALLOWED_METHODS)
-        return _dav_common_headers(response)
-
     def _resolve_principal(self, request, username):
         user = cast(User, request.user)
 
