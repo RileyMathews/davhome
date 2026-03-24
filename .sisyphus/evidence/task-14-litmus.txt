@@ -1,95 +1,0 @@
-uv run python manage.py shell --settings=config.settings_test -c "from django.contrib.auth.models import User; from calendars.models import Calendar; user,_=User.objects.get_or_create(username='user01', defaults={'is_active':True,'email':'user01@example.com'}); user.set_password('user01'); user.save(update_fields=['password','is_active','email']); Calendar.objects.filter(owner=user, slug='litmus').delete()"
-16 objects imported automatically (use -v 2 for details).
-
-nix develop path:.#litmus -c litmus "http://127.0.0.1:8000/dav/calendars/user01/" "user01" "user01"
-Entered litmus shell.
-Run: just litmus-test
--> running `basic':
- 0. begin.................  0. begin................. pass
- 1. options............... WARNING: server does not claim Class 2 compliance
-    ...................... pass (with 1 warning)
-    ......................  2. put_get............... pass
- 3. put_get_utf8_segment..  3. put_get_utf8_segment.. pass
- 4. put_no_parent.........  4. put_no_parent......... pass
- 5. put_location..........  5. put_location.......... pass
- 6. mkcol_over_plain......  6. mkcol_over_plain...... pass
- 7. delete................  7. delete................ pass
- 8. delete_null...........  8. delete_null........... pass
- 9. delete_fragment.......  9. delete_fragment....... pass
-10. mkcol................. 10. mkcol................. pass
-11. mkcol_again........... 11. mkcol_again........... pass
-12. delete_coll........... 12. delete_coll........... pass
-13. mkcol_no_parent....... 13. mkcol_no_parent....... pass
-14. mkcol_with_body....... 14. mkcol_with_body....... pass
-15. finish................ 15. finish................ pass
-<- summary for `basic': of 16 tests run: 16 passed, 0 failed. 100.0%
--> 1 warning was issued.
--> running `copymove':
- 0. begin.................  0. begin................. pass
- 1. copy_init.............  1. copy_init............. pass
- 2. copy_simple...........  2. copy_simple........... pass
- 3. copy_overwrite........ WARNING: COPY to existing resource should give 204 (RFC4918:S9.8.5), got 201 Created
-    ...................... pass (with 1 warning)
-    ......................  4. copy_abspath.......... pass
- 5. copy_nodestcoll.......  5. copy_nodestcoll....... pass
- 6. copy_cleanup..........  6. copy_cleanup.......... pass
- 7. copy_coll.............  7. copy_coll............. pass
- 8. copy_shallow..........  8. copy_shallow.......... pass
- 9. move.................. WARNING: MOVE to existing collection resource didn't give 204
-    ...................... pass (with 1 warning)
-    ...................... 10. move_coll............. pass
-11. move_cleanup.......... 11. move_cleanup.......... pass
-12. finish................ 12. finish................ pass
-<- summary for `copymove': of 13 tests run: 13 passed, 0 failed. 100.0%
--> 2 warnings were issued.
--> running `props':
- 0. begin.................  0. begin................. pass
- 1. propfind_invalid......  1. propfind_invalid...... pass
- 2. propfind_invalid2.....  2. propfind_invalid2..... pass
- 3. propfind_d0...........  3. propfind_d0........... pass
- 4. propinit..............  4. propinit.............. pass
- 5. propset...............  5. propset............... pass
- 6. propget...............  6. propget............... pass
- 7. propextended..........  7. propextended.......... pass
- 8. propmove..............  8. propmove.............. pass
- 9. propget...............  9. propget............... pass
-10. propdeletes........... 10. propdeletes........... pass
-11. propget............... 11. propget............... pass
-12. propset............... 12. propset............... pass
-13. propdeletes........... 13. propdeletes........... pass
-14. propdeletes........... 14. propdeletes........... pass
-15. propreplace........... 15. propreplace........... pass
-16. propget............... 16. propget............... pass
-17. propnullns............ 17. propnullns............ pass
-18. propget............... 18. propget............... pass
-19. prophighunicode....... 19. prophighunicode....... pass
-20. propget............... 20. propget............... pass
-21. propremoveset......... 21. propremoveset......... pass
-22. propget............... 22. propget............... pass
-23. propsetremove......... 23. propsetremove......... pass
-24. propget............... 24. propget............... pass
-25. propvalnspace......... 25. propvalnspace......... pass
-26. propwformed........... 26. propwformed........... pass
-27. propinit.............. 27. propinit.............. pass
-28. propgetlastmod........ 28. propgetlastmod........ pass
-29. propmanyns............ 29. propmanyns............ pass
-30. propget............... 30. propget............... pass
-31. propcleanup........... 31. propcleanup........... pass
-32. finish................ 32. finish................ pass
-<- summary for `props': of 33 tests run: 33 passed, 0 failed. 100.0%
--> running `locks':
- 0. begin.................  0. begin................. pass
- 1. options............... WARNING: server does not claim Class 2 compliance
-    ...................... pass (with 1 warning)
-    ......................  2. precond............... SKIPPED (locking tests skipped,
-server does not claim Class 2 compliance)
--> 1 test was skipped.
-<- summary for `locks': of 2 tests run: 2 passed, 0 failed. 100.0%
--> 1 warning was issued.
--> running `http':
- 0. begin.................  0. begin................. pass
- 1. direct_connect........  1. direct_connect........ pass
- 2. expect100.............  2. expect100............. pass
- 3. finish................  3. finish................ pass
-<- summary for `http': of 4 tests run: 4 passed, 0 failed. 100.0%
-EXIT_STATUS=0
