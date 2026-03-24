@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-# pyright: reportAttributeAccessIssue=false
-
 import re
 from collections.abc import Sequence
 
