@@ -1,10 +1,8 @@
 from django.contrib import messages
 from django.contrib.auth.decorators import login_required
-from django.contrib.auth.models import User
 from django.core.exceptions import PermissionDenied
 from django.shortcuts import get_object_or_404, redirect, render
 from django.utils import timezone
-from typing import cast
 
 from .forms import CalendarForm, ShareCreateForm, ShareUpdateForm
 from .models import Calendar, CalendarShare
@@ -119,10 +117,9 @@ def calendar_share_add(request, calendar_id):
 
     form = ShareCreateForm(request.POST, calendar=calendar)
     if form.is_valid():
-        target_user = cast(User, form.target_user)
         CalendarShare.objects.create(
             calendar=calendar,
-            user=target_user,
+            user=form.target_user,
             role=form.cleaned_data["role"],
         )
         messages.success(request, "Invitation sent.")

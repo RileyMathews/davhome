@@ -17,7 +17,7 @@ def property_lines(component_text, property_name):
 def parse_property_params(prop_line):
     head = prop_line.split(":", 1)[0]
     parts = head.split(";")
-    params: dict[str, list[str]] = {}
+    params = {}
     for part in parts[1:]:
         if "=" not in part:
             continue

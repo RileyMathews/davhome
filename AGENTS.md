@@ -40,7 +40,7 @@ Do not treat partial test runs as completion verification when `just full-verify
 - Prefer expressing guaranteed shapes in signatures and shared typed abstractions instead of adding redundant runtime type guards.
 - In Django views, rely on typed URL parameters when routing already guarantees string path components.
 - Keep runtime validation at genuinely dynamic boundaries such as parsed payloads, rewritten dispatch kwargs, unauthenticated requests, or external input that the type system cannot guarantee.
-- Run `just type-check` or `uv run mypy` during implementation when a change affects typed code.
+- Run `just type-check` or `uv run ty check` during implementation when a change affects typed code.
 
 
 ### CalDAVTester source of truth
