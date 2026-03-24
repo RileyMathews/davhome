@@ -216,7 +216,7 @@ def _parse_propfind_payload(request):
 
 
 def _visible_calendars_for_home(owner, user):
-    calendars = Calendar.objects.filter(owner=owner)  # type: ignore[attr-defined]
+    calendars = Calendar.objects.filter(owner=owner)
     return [calendar for calendar in calendars if can_view_calendar(calendar, user)]
 
 

@@ -34,6 +34,14 @@ Use a single command for correctness verification:
 
 Do not treat partial test runs as completion verification when `just full-verify` is available.
 
+## Typing
+
+- Agents should incrementally improve type checking in code they touch.
+- Prefer expressing guaranteed shapes in signatures and shared typed abstractions instead of adding redundant runtime type guards.
+- In Django views, rely on typed URL parameters when routing already guarantees string path components.
+- Keep runtime validation at genuinely dynamic boundaries such as parsed payloads, rewritten dispatch kwargs, unauthenticated requests, or external input that the type system cannot guarantee.
+- Run `just type-check` or `uv run ty check` during implementation when a change affects typed code.
+
 
 ### CalDAVTester source of truth
 
@@ -71,6 +79,9 @@ We want views to be very clear to follow and have minimal indirection. An ideal 
 2. return validation errors if needed
 3. query a database model directly
 4. serialize model(s) to response shape
+
+Whenever Django or our own abstractions can guarantee an input shape, prefer pushing that guarantee into type annotations instead of repeating defensive runtime `isinstance` checks in the view body.
+Use runtime validation for protocol data and other truly dynamic inputs, but let typed method signatures carry router-provided values like `username`, `slug`, and `filename`.
 
 The serialization should be built into the model system with functions like `to_xml` or similar.
 Share these serialization functions on a base model when it would be helpful.

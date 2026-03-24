@@ -41,7 +41,7 @@ class CalendarHomeAndPrincipalViewTests(TestCase):
         view.request = request
         return view
 
-    def test_calendar_home_options_and_resolve_errors(self):
+    def test_calendar_home_options_and_missing_owner_paths(self):
         request = self.factory.options("/dav/")
         request.user = self.owner
         view = self._home_view(request)
@@ -50,12 +50,10 @@ class CalendarHomeAndPrincipalViewTests(TestCase):
         self.assertEqual(response.status_code, 204)
         self.assertIn("REPORT", response["Allow"])
 
-        _, _, error_invalid = view._resolve_home(123)
-        self.assertEqual(error_invalid.status_code, 404)
-
-        with patch("dav.views.calendar_home.get_principal", return_value=None):
-            _, _, error_missing = view._resolve_home("missing")
-        self.assertEqual(error_missing.status_code, 404)
+        self.assertEqual(view.get(request, "missing").status_code, 404)
+        self.assertEqual(view.head(request, "missing").status_code, 404)
+        self.assertEqual(view.report(request, "missing").status_code, 404)
+        self.assertEqual(view.propfind(request, "missing").status_code, 404)
 
     def test_calendar_home_get_head_report_and_propfind_paths(self):
         request = self.factory.get("/dav/")

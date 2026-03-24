@@ -18,9 +18,9 @@ def _get_calendar_for_manage(user, calendar_id):
 
 @login_required
 def calendar_list(request):
-    owned_calendars = Calendar.objects.filter(owner=request.user)  # type: ignore[attr-defined]
+    owned_calendars = Calendar.objects.filter(owner=request.user)
     shared_calendars = (
-        Calendar.objects.filter(  # type: ignore[attr-defined]
+        Calendar.objects.filter(
             shares__user=request.user,
             shares__accepted_at__isnull=False,
         )
@@ -117,7 +117,7 @@ def calendar_share_add(request, calendar_id):
 
     form = ShareCreateForm(request.POST, calendar=calendar)
     if form.is_valid():
-        CalendarShare.objects.create(  # type: ignore[attr-defined]
+        CalendarShare.objects.create(
             calendar=calendar,
             user=form.target_user,
             role=form.cleaned_data["role"],
