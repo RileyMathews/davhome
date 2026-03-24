@@ -1,5 +1,3 @@
-# pyright: reportAttributeAccessIssue=false, reportGeneralTypeIssues=false
-
 from typing import Any, cast
 
 from calendars.models import Calendar, CalendarObject

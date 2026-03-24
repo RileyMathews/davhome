@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-# pyright: reportAttributeAccessIssue=false
-
 from xml.etree import ElementTree as ET
 from urllib.parse import quote
 from typing import Any, cast

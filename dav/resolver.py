@@ -1,5 +1,3 @@
-# pyright: reportAttributeAccessIssue=false
-
 from django.contrib.auth.models import User
 
 from calendars.models import Calendar, CalendarObject

@@ -1,5 +1,3 @@
-# pyright: reportGeneralTypeIssues=false, reportAttributeAccessIssue=false
-
 import hashlib
 import logging
 from xml.etree import ElementTree as ET

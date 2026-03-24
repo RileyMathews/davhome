@@ -1,5 +1,3 @@
-# pyright: reportGeneralTypeIssues=false, reportAttributeAccessIssue=false
-
 import logging
 from xml.etree import ElementTree as ET
 from zoneinfo import ZoneInfo
