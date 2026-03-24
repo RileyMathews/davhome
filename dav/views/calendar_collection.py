@@ -9,13 +9,13 @@ from typing import Any, cast
 from calendars.models import Calendar
 from django.contrib.auth.models import User
 from django.db import IntegrityError, transaction
-from django.http import HttpResponse
+from django.http import HttpRequest, HttpResponse
 from django.utils import timezone
 from django.utils.http import http_date
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 
-from .base import DavView
+from .base import DavView, current_user
 from dav.core import paths as core_paths
 from dav.core import payloads as core_payloads
 from dav.core import propmap as core_propmap
@@ -94,21 +94,25 @@ _CALENDAR_OBJECT_ALLOWED_METHODS = [
 class CalendarCollectionView(DavView):
     allowed_methods = _CALENDAR_COLLECTION_ALLOWED_METHODS
 
-    def _resolve_owner(self, username):
-        if not isinstance(username, str):
-            return None, None, HttpResponse(status=404)
-
-        user = cast(User, self.request.user)
+    def _resolve_owner(
+        self, request: HttpRequest, username: str
+    ) -> tuple[User, User] | HttpResponse:
+        user = current_user(request)
         owner = get_principal(username)
         if owner is None:
-            return None, None, HttpResponse(status=404)
+            return HttpResponse(status=404)
 
-        return user, cast(User, owner), None
+        return user, cast(User, owner)
 
     def _resolve_calendar(
-        self, request, username, slug, *, allow_report_fallback=False
-    ):
-        user = cast(User, request.user)
+        self,
+        request: HttpRequest,
+        username: str,
+        slug: str,
+        *,
+        allow_report_fallback: bool = False,
+    ) -> Calendar | HttpResponse:
+        user = current_user(request)
         calendar = get_calendar_for_user(user, username, slug)
         if calendar is None and allow_report_fallback:
             owner = get_principal(username)
@@ -120,21 +124,27 @@ class CalendarCollectionView(DavView):
             ):
                 calendar = Calendar.objects.filter(owner=owner, slug=slug).first()
         if calendar is None:
-            return None, HttpResponse(status=404)
-        return calendar, None
+            return HttpResponse(status=404)
+        return calendar
 
     def mkcol(self, request, *args, **kwargs):
         if request.body:
             return HttpResponse(status=415)
         return self.mkcalendar(request, *args, **kwargs)
 
-    def mkcalendar(self, request, username, slug, *args, **kwargs):
-        user, owner, error_response = self._resolve_owner(username)
-        if error_response is not None:
-            return error_response
+    def mkcalendar(
+        self,
+        request: HttpRequest,
+        username: str,
+        slug: str,
+        *args: object,
+        **kwargs: object,
+    ) -> HttpResponse:
+        owner_state = self._resolve_owner(request, username)
+        if isinstance(owner_state, HttpResponse):
+            return owner_state
 
-        user = cast(User, user)
-        owner = cast(User, owner)
+        user, owner = owner_state
 
         if owner != user:
             return HttpResponse(status=403)
@@ -184,23 +194,23 @@ class CalendarCollectionView(DavView):
         )
         return _dav_common_headers(response)
 
-    def delete(self, request, *args, **kwargs):
-        username = kwargs.get("username")
-        slug = kwargs.get("slug")
-        if not isinstance(username, str) or not isinstance(slug, str):
-            return HttpResponse(status=404)
+    def delete(
+        self,
+        request: HttpRequest,
+        username: str,
+        slug: str,
+        *args: object,
+        **kwargs: object,
+    ) -> HttpResponse:
+        owner_state = self._resolve_owner(request, username)
+        if isinstance(owner_state, HttpResponse):
+            return owner_state
 
-        user, owner, error_response = self._resolve_owner(username)
-        if error_response is not None:
-            return error_response
+        calendar = self._resolve_calendar(request, username, slug)
+        if isinstance(calendar, HttpResponse):
+            return calendar
 
-        calendar, calendar_error = self._resolve_calendar(request, username, slug)
-        if calendar_error is not None:
-            return calendar_error
-
-        user = cast(User, user)
-        owner = cast(User, owner)
-        calendar = cast(Calendar, calendar)
+        user, owner = owner_state
 
         if owner != user:
             return HttpResponse(status=403)
@@ -208,22 +218,23 @@ class CalendarCollectionView(DavView):
         response = HttpResponse(status=204)
         return _dav_common_headers(response)
 
-    def proppatch(self, request, username, *args, **kwargs):
-        slug = kwargs.get("slug")
-        if not isinstance(slug, str):
-            return HttpResponse(status=404)
+    def proppatch(
+        self,
+        request: HttpRequest,
+        username: str,
+        slug: str,
+        *args: object,
+        **kwargs: object,
+    ) -> HttpResponse:
+        owner_state = self._resolve_owner(request, username)
+        if isinstance(owner_state, HttpResponse):
+            return owner_state
 
-        user, owner, error_response = self._resolve_owner(username)
-        if error_response is not None:
-            return error_response
+        calendar = self._resolve_calendar(request, username, slug)
+        if isinstance(calendar, HttpResponse):
+            return calendar
 
-        calendar, calendar_error = self._resolve_calendar(request, username, slug)
-        if calendar_error is not None:
-            return calendar_error
-
-        user = cast(User, user)
-        owner = cast(User, owner)
-        calendar = cast(Calendar, calendar)
+        user, owner = owner_state
 
         if owner != user:
             return HttpResponse(status=403)
@@ -258,17 +269,18 @@ class CalendarCollectionView(DavView):
             bad_tags,
         )
 
-    def get(self, request, *args, **kwargs):
-        username = kwargs.get("username")
-        slug = kwargs.get("slug")
-        if not isinstance(username, str) or not isinstance(slug, str):
-            return HttpResponse(status=404)
+    def get(
+        self,
+        request: HttpRequest,
+        username: str,
+        slug: str,
+        *args: object,
+        **kwargs: object,
+    ) -> HttpResponse:
+        calendar = self._resolve_calendar(request, username, slug)
+        if isinstance(calendar, HttpResponse):
+            return calendar
 
-        calendar, calendar_error = self._resolve_calendar(request, username, slug)
-        if calendar_error is not None:
-            return calendar_error
-
-        calendar = cast(Calendar, calendar)
         calendar_etag = _etag_for_calendar(calendar)
         calendar_timestamp = calendar.updated_at.timestamp()
         if _conditional_not_modified(request, calendar_etag, calendar_timestamp):
@@ -285,17 +297,18 @@ class CalendarCollectionView(DavView):
         response["Last-Modified"] = http_date(calendar_timestamp)
         return _dav_common_headers(response)
 
-    def head(self, request, *args, **kwargs):
-        username = kwargs.get("username")
-        slug = kwargs.get("slug")
-        if not isinstance(username, str) or not isinstance(slug, str):
-            return HttpResponse(status=404)
+    def head(
+        self,
+        request: HttpRequest,
+        username: str,
+        slug: str,
+        *args: object,
+        **kwargs: object,
+    ) -> HttpResponse:
+        calendar = self._resolve_calendar(request, username, slug)
+        if isinstance(calendar, HttpResponse):
+            return calendar
 
-        calendar, calendar_error = self._resolve_calendar(request, username, slug)
-        if calendar_error is not None:
-            return calendar_error
-
-        calendar = cast(Calendar, calendar)
         calendar_etag = _etag_for_calendar(calendar)
         calendar_timestamp = calendar.updated_at.timestamp()
         if _conditional_not_modified(request, calendar_etag, calendar_timestamp):
@@ -309,35 +322,37 @@ class CalendarCollectionView(DavView):
         response["Last-Modified"] = http_date(calendar_timestamp)
         return _dav_common_headers(response)
 
-    def report(self, request, *args, **kwargs):
-        username = kwargs.get("username")
-        slug = kwargs.get("slug")
-        if not isinstance(username, str) or not isinstance(slug, str):
-            return HttpResponse(status=404)
-
-        calendar, calendar_error = self._resolve_calendar(
+    def report(
+        self,
+        request: HttpRequest,
+        username: str,
+        slug: str,
+        *args: object,
+        **kwargs: object,
+    ) -> HttpResponse:
+        calendar = self._resolve_calendar(
             request,
             username,
             slug,
             allow_report_fallback=True,
         )
-        if calendar_error is not None:
-            return calendar_error
+        if isinstance(calendar, HttpResponse):
+            return calendar
 
-        calendar = cast(Calendar, calendar)
         return _handle_report([calendar], request, allow_sync_collection=True)
 
-    def propfind(self, request, username, *args, **kwargs):
-        slug = kwargs.get("slug")
-        if not isinstance(slug, str):
-            return HttpResponse(status=404)
-
-        user = cast(User, request.user)
-        calendar, calendar_error = self._resolve_calendar(request, username, slug)
-        if calendar_error is not None:
-            return calendar_error
-
-        calendar = cast(Calendar, calendar)
+    def propfind(
+        self,
+        request: HttpRequest,
+        username: str,
+        slug: str,
+        *args: object,
+        **kwargs: object,
+    ) -> HttpResponse:
+        user = current_user(request)
+        calendar = self._resolve_calendar(request, username, slug)
+        if isinstance(calendar, HttpResponse):
+            return calendar
 
         propfind_etag = _etag_for_calendar(calendar)
         propfind_timestamp = calendar.updated_at.timestamp()

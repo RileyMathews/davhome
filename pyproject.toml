@@ -36,3 +36,28 @@ omit = [
     "*/tests.py",
     "manage.py",
 ]
+
+[tool.ty.rules]
+unresolved-attribute = "ignore"
+
+[tool.ty.src]
+include = [
+    "accounts",
+    "calendars",
+    "config",
+    "dav",
+    "manage.py",
+]
+exclude = [
+    "**/migrations/**",
+    "caldavtester-lab/**",
+]
+
+[[tool.ty.overrides]]
+include = [
+    "**/tests/**",
+    "**/test_*.py",
+]
+
+[tool.ty.overrides.rules]
+all = "ignore"

@@ -38,20 +38,12 @@ class CalendarCollectionViewTests(TestCase):
         view.request = request
         return view
 
-    def test_resolve_owner_rejects_non_string_username(self):
-        request = self.factory.get("/dav/")
-        request.user = self.owner
-
-        _, _, error = self._view(request)._resolve_owner(123)
-
-        self.assertEqual(error.status_code, 404)
-
     def test_resolve_owner_rejects_unknown_principal(self):
         request = self.factory.get("/dav/")
         request.user = self.owner
 
         with patch("dav.views.calendar_collection.get_principal", return_value=None):
-            _, _, error = self._view(request)._resolve_owner("missing")
+            error = self._view(request)._resolve_owner(request, "missing")
 
         self.assertEqual(error.status_code, 404)
 
@@ -81,14 +73,13 @@ class CalendarCollectionViewTests(TestCase):
                 "dav.views.calendar_collection.get_principal", return_value=self.owner
             ),
         ):
-            calendar, error = self._view(request)._resolve_calendar(
+            calendar = self._view(request)._resolve_calendar(
                 request,
                 self.owner.username,
                 "fallback",
                 allow_report_fallback=True,
             )
 
-        self.assertIsNone(error)
         self.assertEqual(calendar, fallback)
 
     def test_resolve_calendar_returns_404_when_not_found(self):
@@ -98,13 +89,12 @@ class CalendarCollectionViewTests(TestCase):
         with patch(
             "dav.views.calendar_collection.get_calendar_for_user", return_value=None
         ):
-            calendar, error = self._view(request)._resolve_calendar(
+            error = self._view(request)._resolve_calendar(
                 request,
                 self.owner.username,
                 "missing",
             )
 
-        self.assertIsNone(calendar)
         self.assertEqual(error.status_code, 404)
 
     def test_resolve_calendar_report_fallback_non_freebusy_returns_404(self):
@@ -123,14 +113,13 @@ class CalendarCollectionViewTests(TestCase):
                 return_value=ET.Element(qname("DAV:", "propfind")),
             ),
         ):
-            calendar, error = self._view(request)._resolve_calendar(
+            error = self._view(request)._resolve_calendar(
                 request,
                 self.owner.username,
                 "fallback",
                 allow_report_fallback=True,
             )
 
-        self.assertIsNone(calendar)
         self.assertEqual(error.status_code, 404)
 
     def test_options_sets_allow_and_dav_headers(self):
@@ -155,14 +144,6 @@ class CalendarCollectionViewTests(TestCase):
         response = self._view(request).mkcol(request)
 
         self.assertEqual(response.status_code, 415)
-
-    def test_mkcalendar_returns_404_for_invalid_username_type(self):
-        request = self.factory.generic("MKCALENDAR", "/dav/calendars/owner/newcal/")
-        request.user = self.owner
-
-        response = self._view(request).mkcalendar(request, 123, "newcal")
-
-        self.assertEqual(response.status_code, 404)
 
     def test_mkcalendar_rejects_existing_calendar(self):
         request = self.factory.generic("MKCALENDAR", "/dav/calendars/owner/family/")
@@ -217,21 +198,13 @@ class CalendarCollectionViewTests(TestCase):
 
         self.assertEqual(response.status_code, 207)
 
-    def test_delete_rejects_missing_path_parts(self):
-        request = self.factory.delete("/dav/calendars/owner/")
-        request.user = self.owner
-
-        response = self._view(request).delete(request)
-
-        self.assertEqual(response.status_code, 404)
-
     def test_delete_returns_calendar_resolution_error(self):
         request = self.factory.delete("/dav/calendars/owner/family/")
         request.user = self.owner
         view = self._view(request)
 
         with patch.object(
-            view, "_resolve_calendar", return_value=(None, HttpResponse(status=404))
+            view, "_resolve_calendar", return_value=HttpResponse(status=404)
         ):
             response = view.delete(
                 request,
@@ -259,10 +232,8 @@ class CalendarCollectionViewTests(TestCase):
         view = self._view(request)
 
         with (
-            patch.object(
-                view, "_resolve_owner", return_value=(self.other, self.owner, None)
-            ),
-            patch.object(view, "_resolve_calendar", return_value=(self.calendar, None)),
+            patch.object(view, "_resolve_owner", return_value=(self.other, self.owner)),
+            patch.object(view, "_resolve_calendar", return_value=self.calendar),
         ):
             response = view.delete(
                 request,
@@ -291,14 +262,6 @@ class CalendarCollectionViewTests(TestCase):
 
         self.assertEqual(response.status_code, 204)
         self.assertFalse(Calendar.objects.filter(id=calendar.id).exists())
-
-    def test_proppatch_rejects_missing_slug(self):
-        request = self.factory.generic("PROPPATCH", "/dav/calendars/owner/")
-        request.user = self.owner
-
-        response = self._view(request).proppatch(request, self.owner.username)
-
-        self.assertEqual(response.status_code, 404)
 
     def test_proppatch_rejects_invalid_xml(self):
         request = self.factory.generic(
@@ -395,10 +358,8 @@ class CalendarCollectionViewTests(TestCase):
         view = self._view(request)
 
         with (
-            patch.object(
-                view, "_resolve_owner", return_value=(self.other, self.owner, None)
-            ),
-            patch.object(view, "_resolve_calendar", return_value=(self.calendar, None)),
+            patch.object(view, "_resolve_owner", return_value=(self.other, self.owner)),
+            patch.object(view, "_resolve_calendar", return_value=self.calendar),
         ):
             response = view.proppatch(
                 request,
@@ -408,21 +369,13 @@ class CalendarCollectionViewTests(TestCase):
 
         self.assertEqual(response.status_code, 403)
 
-    def test_get_rejects_invalid_path_parts(self):
-        request = self.factory.get("/dav/calendars/owner/")
-        request.user = self.owner
-
-        response = self._view(request).get(request)
-
-        self.assertEqual(response.status_code, 404)
-
     def test_get_returns_calendar_error(self):
         request = self.factory.get("/dav/calendars/owner/family/")
         request.user = self.owner
         view = self._view(request)
 
         with patch.object(
-            view, "_resolve_calendar", return_value=(None, HttpResponse(status=404))
+            view, "_resolve_calendar", return_value=HttpResponse(status=404)
         ):
             response = view.get(
                 request, username=self.owner.username, slug=self.calendar.slug
@@ -465,33 +418,17 @@ class CalendarCollectionViewTests(TestCase):
         self.assertIn("ETag", response)
         self.assertIn("Last-Modified", response)
 
-    def test_head_rejects_invalid_path_parts(self):
-        request = self.factory.head("/dav/calendars/owner/")
-        request.user = self.owner
-
-        response = self._view(request).head(request)
-
-        self.assertEqual(response.status_code, 404)
-
     def test_head_returns_calendar_error(self):
         request = self.factory.head("/dav/calendars/owner/family/")
         request.user = self.owner
         view = self._view(request)
 
         with patch.object(
-            view, "_resolve_calendar", return_value=(None, HttpResponse(status=404))
+            view, "_resolve_calendar", return_value=HttpResponse(status=404)
         ):
             response = view.head(
                 request, username=self.owner.username, slug=self.calendar.slug
             )
-
-        self.assertEqual(response.status_code, 404)
-
-    def test_report_rejects_invalid_path_parts(self):
-        request = self.factory.generic("REPORT", "/dav/calendars/owner/")
-        request.user = self.owner
-
-        response = self._view(request).report(request)
 
         self.assertEqual(response.status_code, 404)
 
@@ -501,19 +438,11 @@ class CalendarCollectionViewTests(TestCase):
         view = self._view(request)
 
         with patch.object(
-            view, "_resolve_calendar", return_value=(None, HttpResponse(status=404))
+            view, "_resolve_calendar", return_value=HttpResponse(status=404)
         ):
             response = view.report(
                 request, username=self.owner.username, slug=self.calendar.slug
             )
-
-        self.assertEqual(response.status_code, 404)
-
-    def test_propfind_rejects_missing_slug(self):
-        request = self.factory.generic("PROPFIND", "/dav/calendars/owner/")
-        request.user = self.owner
-
-        response = self._view(request).propfind(request, self.owner.username)
 
         self.assertEqual(response.status_code, 404)
 
@@ -523,7 +452,7 @@ class CalendarCollectionViewTests(TestCase):
         view = self._view(request)
 
         with patch.object(
-            view, "_resolve_calendar", return_value=(None, HttpResponse(status=404))
+            view, "_resolve_calendar", return_value=HttpResponse(status=404)
         ):
             response = view.propfind(
                 request, self.owner.username, slug=self.calendar.slug

@@ -3,7 +3,6 @@ from __future__ import annotations
 # pyright: reportAttributeAccessIssue=false
 
 import hashlib
-from typing import cast
 
 from calendars.models import Calendar
 from django.contrib.auth.models import User
@@ -13,7 +12,9 @@ from django.utils.http import http_date
 from django.utils.decorators import method_decorator
 from django.views.decorators.csrf import csrf_exempt
 
-from .base import DavView
+from django.http import HttpRequest
+
+from .base import DavView, current_user
 from dav.core import propmap as core_propmap
 from dav.core import props as core_props
 from dav.common import (
@@ -35,11 +36,14 @@ _CALENDAR_HOME_ALLOWED_METHODS = ["OPTIONS", "PROPFIND", "GET", "HEAD", "REPORT"
 class CalendarHomeView(DavView):
     allowed_methods = _CALENDAR_HOME_ALLOWED_METHODS
 
-    def get(self, request, username, *args, **kwargs):
-        if not isinstance(username, str):
-            return HttpResponse(status=404)
-
-        user = cast(User, request.user)
+    def get(
+        self,
+        request: HttpRequest,
+        username: str,
+        *args: object,
+        **kwargs: object,
+    ) -> HttpResponse:
+        user = current_user(request)
         owner = User.objects.filter(username=username).first()
         if owner is None:
             return HttpResponse(status=404)
@@ -85,11 +89,14 @@ class CalendarHomeView(DavView):
         response["Last-Modified"] = http_date(home_timestamp)
         return _dav_common_headers(response)
 
-    def head(self, request, username, *args, **kwargs):
-        if not isinstance(username, str):
-            return HttpResponse(status=404)
-
-        user = cast(User, request.user)
+    def head(
+        self,
+        request: HttpRequest,
+        username: str,
+        *args: object,
+        **kwargs: object,
+    ) -> HttpResponse:
+        user = current_user(request)
         owner = User.objects.filter(username=username).first()
         if owner is None:
             return HttpResponse(status=404)
@@ -132,11 +139,14 @@ class CalendarHomeView(DavView):
         response["Last-Modified"] = http_date(home_timestamp)
         return _dav_common_headers(response)
 
-    def report(self, request, username, *args, **kwargs):
-        if not isinstance(username, str):
-            return HttpResponse(status=404)
-
-        user = cast(User, request.user)
+    def report(
+        self,
+        request: HttpRequest,
+        username: str,
+        *args: object,
+        **kwargs: object,
+    ) -> HttpResponse:
+        user = current_user(request)
         owner = User.objects.filter(username=username).first()
         if owner is None:
             return HttpResponse(status=404)
@@ -154,11 +164,14 @@ class CalendarHomeView(DavView):
         )
         return _handle_report(calendars, request, allow_sync_collection=False)
 
-    def propfind(self, request, username, *args, **kwargs):
-        if not isinstance(username, str):
-            return HttpResponse(status=404)
-
-        user = cast(User, request.user)
+    def propfind(
+        self,
+        request: HttpRequest,
+        username: str,
+        *args: object,
+        **kwargs: object,
+    ) -> HttpResponse:
+        user = current_user(request)
         owner = User.objects.filter(username=username).first()
         if owner is None:
             return HttpResponse(status=404)

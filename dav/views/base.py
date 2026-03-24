@@ -1,11 +1,18 @@
 from __future__ import annotations
 
+from typing import cast
+
+from django.contrib.auth.models import User
+from django.http import HttpRequest, HttpResponse
 from django.utils.decorators import method_decorator
 from django.views import View
 from django.views.decorators.csrf import csrf_exempt
-from django.http import HttpResponse
 
 from .mixins import DavOptionsMixin
+
+
+def current_user(request: HttpRequest) -> User:
+    return cast(User, request.user)
 
 
 @method_decorator(csrf_exempt, name="dispatch")
