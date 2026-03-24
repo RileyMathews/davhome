@@ -12,7 +12,7 @@ def _append_date_or_datetime_line(lines, prop_name, text, is_date):
 
 def _uid_drop_recurrence_map(expanded, tzinfo):
     uid_has_master = set()
-    uid_recurrence_ids = {}
+    uid_recurrence_ids: dict[str, list[str]] = {}
     for comp in expanded:
         uid = comp.get("UID")
         if not uid:

@@ -17,6 +17,8 @@ dependencies = [
 [dependency-groups]
 dev = [
     "coverage>=7.10.6",
+    "django-stubs[compatible-mypy]>=6.0.1",
+    "types-icalendar>=6.3.1.20260301",
 ]
 
 [tool.coverage.run]
@@ -61,3 +63,30 @@ include = [
 
 [tool.ty.overrides.rules]
 all = "ignore"
+
+[tool.mypy]
+plugins = ["mypy_django_plugin.main"]
+python_version = "3.12"
+packages = ["accounts", "calendars", "config", "dav"]
+exclude = [
+    '(^|/).*migrations/.*$',
+    '(^|/)caldavtester-lab/.*$',
+    '(^|/).*tests/.*$',
+    '(^|/).*tests\.py$',
+    '(^|/)test_.*\.py$',
+]
+warn_unused_configs = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+check_untyped_defs = true
+
+[[tool.mypy.overrides]]
+module = [
+    "icalendar",
+    "recurring_ical_events",
+    "recurring_ical_events.*",
+]
+ignore_missing_imports = true
+
+[tool.django-stubs]
+django_settings_module = "config.settings_test"

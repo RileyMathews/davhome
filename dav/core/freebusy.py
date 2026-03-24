@@ -1,7 +1,11 @@
 from datetime import datetime, timedelta, timezone as datetime_timezone
+from typing import Any, cast
 
 import icalendar
 from recurring_ical_events import of as recurring_of
+
+
+type Interval = tuple[datetime, datetime]
 
 
 def format_ical_utc(dt):
@@ -54,9 +58,9 @@ def freebusy_intervals_for_object(
     parse_freebusy_value,
     as_utc_datetime,
 ):
-    busy = []
-    tentative = []
-    unavailable = []
+    busy: list[Interval] = []
+    tentative: list[Interval] = []
+    unavailable: list[Interval] = []
 
     try:
         cal = icalendar.Calendar.from_ical(ical_blob)
@@ -66,7 +70,8 @@ def freebusy_intervals_for_object(
     for component in cal.walk():
         name = (component.name or "").upper()
         if name == "VFREEBUSY":
-            for prop in component.getall("FREEBUSY"):
+            freebusy_component = cast(Any, component)
+            for prop in freebusy_component.getall("FREEBUSY"):
                 params = {k.upper(): str(v) for k, v in prop.params.items()}
                 fbtype = params.get("FBTYPE", "BUSY").upper()
                 values = prop.to_ical().decode("utf-8").split(":", 1)[1].split(",")

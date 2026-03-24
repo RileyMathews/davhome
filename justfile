@@ -39,7 +39,7 @@ django-test-server *args:
 	uv run python manage.py runserver --settings=config.settings_test {{args}}
 
 type-check:
-	uv run ty check
+	uv run mypy
 
 verify: type-check setup-integration-fixtures django-test litmus-test caldavtester-test-suite
 
@@ -47,7 +47,7 @@ full-verify:
 	@image="davhome-verify:local"; container="davhome-verify-$(date +%s)"; ready=0; \
 	cleanup() { status=$?; if [ "$status" -ne 0 ]; then docker logs "$container" || true; fi; docker rm -f "$container" >/dev/null 2>&1 || true; exit "$status"; }; \
 	trap cleanup EXIT; \
-	uv run ty check; \
+	uv run mypy; \
 	docker build -t "$image" .; \
 	docker run -d --name "$container" -p 8000:8000 "$image" sh -c 'python manage.py migrate --settings=config.settings_test --noinput && python manage.py setup_integration_fixtures --settings=config.settings_test && DJANGO_SETTINGS_MODULE=config.settings_test exec gunicorn config.wsgi:application --bind 0.0.0.0:8000'; \
 	for _ in {1..120}; do \

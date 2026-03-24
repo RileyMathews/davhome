@@ -8,7 +8,7 @@ from .parsing import _parse_xml_body
 
 
 def _mkcalendar_props_from_payload(payload, caldav_error_response):
-    defaults = {
+    defaults: dict[str, str | int | None] = {
         "display_name": None,
         "description": "",
         "timezone": "UTC",
