@@ -1132,7 +1132,7 @@ class DavReportTests(TestCase):
         self.assertTrue(token_value.startswith(f"data:,{self.calendar.id}/"))
 
     def test_sync_collection_limit_with_filter_returns_207(self):
-        body = f"""<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+        body = """<?xml version=\"1.0\" encoding=\"UTF-8\"?>
 <sync-collection xmlns=\"DAV:\">
   <sync-token />
   <sync-level>1</sync-level>

@@ -20,43 +20,27 @@ from dav.core import propmap as core_propmap
 from dav.core import props as core_props
 from dav.core import write_ops as core_write_ops
 from dav.resolver import (
-    get_calendar_for_user,
     get_calendar_object_for_user,
     get_calendar_for_write_user,
-    get_principal,
-)
-from dav.views.helpers.calendar_mutation_payloads import (
-    _calendar_collection_proppatch_plan,
-    _mkcalendar_props_from_payload,
 )
 from dav.views.helpers.copy_move import copy_or_move_calendar_object
 from dav.views.helpers.ical import _dedupe_duplicate_alarms
-from dav.views.helpers.identity import (
-    _calendar_home_href_for_user,
-    _principal_href_for_user,
-)
 from dav.views.helpers.parsing import _parse_xml_body
 from dav.common import (
     _caldav_error_response,
     _collection_exists,
-    _conditional_not_modified,
     _create_calendar_change,
-    _dav_error_response,
     _dav_common_headers,
-    _etag_for_calendar,
     _etag_for_object,
     _generate_strong_etag,
-    _home_etag_and_timestamp,
     _latest_sync_revision,
     _log_dav_create,
     _parse_propfind_payload,
     _proppatch_multistatus_response,
-    _sync_token_for_calendar,
-    _visible_calendars_for_home,
     _xml_response,
 )
-from dav.reports.handlers import _build_prop_map_for_object, _handle_report
-from dav.xml import NS_CALDAV, NS_DAV, multistatus_document, qname, response_with_props
+from dav.reports.handlers import _build_prop_map_for_object
+from dav.xml import NS_DAV, multistatus_document, qname, response_with_props
 
 
 _ROOT_ALLOWED_METHODS = ["OPTIONS", "PROPFIND", "GET", "HEAD"]
