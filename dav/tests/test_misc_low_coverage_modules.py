@@ -6,7 +6,6 @@ from django.http import HttpResponse
 from django.test import RequestFactory, SimpleTestCase, TestCase
 
 from calendars.models import Calendar
-from dav.cbv import root as cbv_root
 from dav.core import davxml as core_davxml
 from dav.core import filters as core_filters
 from dav.core import payloads as core_payloads
@@ -222,7 +221,6 @@ class DavDispatchAndShellTests(SimpleTestCase):
 
     def test_report_engine_and_exports_modules(self):
         self.assertIsNone(parse_report_request(b"<not xml"))
-        self.assertIn("DavRootView", cbv_root.__all__)
 
 
 class DavRepositoryTests(TestCase):
