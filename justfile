@@ -48,6 +48,8 @@ full-verify:
 	cleanup() { status=$?; if [ "$status" -ne 0 ]; then docker logs "$container" || true; fi; docker rm -f "$container" >/dev/null 2>&1 || true; exit "$status"; }; \
 	trap cleanup EXIT; \
 	uv run ty check; \
+	uv run ruff check; \
+	just django-test; \
 	docker build -t "$image" .; \
 	docker run -d --name "$container" -p 8000:8000 "$image" sh -c 'python manage.py migrate --settings=config.settings_test --noinput && python manage.py setup_integration_fixtures --settings=config.settings_test && DJANGO_SETTINGS_MODULE=config.settings_test exec gunicorn config.wsgi:application --bind 0.0.0.0:8000'; \
 	for _ in {1..120}; do \
@@ -61,4 +63,3 @@ full-verify:
 	fi; \
 	nix develop path:.#litmus -c litmus "http://127.0.0.1:8000/dav/calendars/user01/" "user01" "user01"; \
 	nix develop path:.#caldavtester -c bash -lc 'cd caldavtester-lab && ./bootstrap.sh >/dev/null && source ./.env-py2.sh && cd ccs-caldavtester && MODULES="`rg -v "^\\s*(#|$$)" ../caldav-suite-modules.txt | tr "\n" " "`" && python2 testcaldav.py $MODULES'; \
-	just django-test
