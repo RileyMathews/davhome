@@ -51,11 +51,13 @@ from dav.views.helpers.recurrence_serialization import (
 )
 from dav.views.helpers.report_paths import _all_object_hrefs, _report_href_style
 from dav.views.helpers import sync_tokens as sync_token_helpers
-from dav.views.helpers.sync_tokens import _build_sync_token
+from dav.views.helpers.sync_tokens import (
+    _build_sync_token,
+    _sync_token_revision_from_parts,
+)
 from dav.common import (
     _parse_sync_token_for_calendar,
     _remote_ip,
-    _sync_token_revision_from_parts,
 )
 from dav.reports.handlers import (
     _sync_collection_limit,
@@ -1132,7 +1134,7 @@ class DavReportTests(TestCase):
         self.assertTrue(token_value.startswith(f"data:,{self.calendar.id}/"))
 
     def test_sync_collection_limit_with_filter_returns_207(self):
-        body = f"""<?xml version=\"1.0\" encoding=\"UTF-8\"?>
+        body = """<?xml version=\"1.0\" encoding=\"UTF-8\"?>
 <sync-collection xmlns=\"DAV:\">
   <sync-token />
   <sync-level>1</sync-level>

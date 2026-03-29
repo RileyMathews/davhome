@@ -62,3 +62,9 @@ include = [
 
 [tool.ty.overrides.rules]
 all = "ignore"
+
+[tool.ruff]
+exclude = [
+    "caldavtester-lab",
+    "**/migrations/**",
+]
