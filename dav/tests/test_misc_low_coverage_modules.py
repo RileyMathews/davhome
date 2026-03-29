@@ -5,6 +5,7 @@ from django.contrib.auth.models import AnonymousUser, User
 from django.http import HttpResponse
 from django.test import RequestFactory, SimpleTestCase, TestCase
 
+from calendars.models import Calendar
 from dav.core import davxml as core_davxml
 from dav.core import filters as core_filters
 from dav.core import payloads as core_payloads

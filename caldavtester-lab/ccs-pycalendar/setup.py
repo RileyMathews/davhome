@@ -14,7 +14,7 @@
 #    limitations under the License.
 ##
 
-from distutils.core import setup
+from distutils.core import setup, Extension
 
 setup(
     name="pycalendar",

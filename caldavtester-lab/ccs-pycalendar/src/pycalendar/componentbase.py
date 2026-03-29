@@ -203,7 +203,7 @@ class ComponentBase(object):
         return self.loadValue(prop, value)
 
     def finalise(self):
-        raise NotImplementedError
+        raise NotImplemented
 
     def validate(self, doFix=False):
         """

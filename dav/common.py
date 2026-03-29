@@ -4,6 +4,7 @@ from xml.etree import ElementTree as ET
 
 from django.http import HttpResponse
 from django.db.models import Max
+from django.utils.http import http_date
 
 from calendars.models import Calendar
 from calendars.models import CalendarObjectChange
@@ -16,6 +17,7 @@ from .xml import NS_CALDAV, NS_DAV, multistatus_document, parse_propfind_request
 from dav.views.helpers.sync_tokens import (
     _build_sync_token,
     _parse_sync_token_for_calendar as _parse_sync_token_for_calendar_impl,
+    _sync_token_revision_from_parts,
 )
 
 

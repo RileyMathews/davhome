@@ -7,7 +7,7 @@ from django.test import RequestFactory, TestCase
 
 from calendars.models import Calendar, CalendarObject
 from dav.views.calendar_collection import CalendarCollectionView
-from dav.xml import qname
+from dav.xml import NS_CALDAV, qname
 
 
 class CalendarCollectionViewTests(TestCase):
