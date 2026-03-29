@@ -57,7 +57,7 @@ class PrincipalsCollectionView(DavView):
     allowed_methods = _PRINCIPAL_ALLOWED_METHODS
 
     def get(self, request, *args, **kwargs):
-        user = cast(User, request.user)
+        cast(User, request.user)
 
         response = HttpResponse(
             b"Collection",
@@ -66,7 +66,7 @@ class PrincipalsCollectionView(DavView):
         return _dav_common_headers(response)
 
     def head(self, request, *args, **kwargs):
-        user = cast(User, request.user)
+        cast(User, request.user)
 
         response = HttpResponse(status=200)
         return _dav_common_headers(response)

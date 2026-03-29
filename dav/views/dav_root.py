@@ -56,7 +56,7 @@ class DavRootView(DavView):
     allowed_methods = _ROOT_ALLOWED_METHODS
 
     def get(self, request, *args, **kwargs):
-        user = cast(User, request.user)
+        cast(User, request.user)
 
         response = HttpResponse(
             b"DAV root",
@@ -65,7 +65,7 @@ class DavRootView(DavView):
         return _dav_common_headers(response)
 
     def head(self, request, *args, **kwargs):
-        user = cast(User, request.user)
+        cast(User, request.user)
 
         response = HttpResponse(status=200)
         return _dav_common_headers(response)

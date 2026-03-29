@@ -72,9 +72,10 @@ class DavCoreCalendarDataTests(SimpleTestCase):
         )
         self.assertNotIn("RECURRENCE-ID", unchanged)
 
-        stub_extract = lambda _ical, _name: [
-            "BEGIN:VEVENT\r\nUID:evt\r\nEND:VEVENT\r\n"
-        ]
+        def stub_extract(_ical, _name):
+            return [
+                    "BEGIN:VEVENT\r\nUID:evt\r\nEND:VEVENT\r\n"
+                ]
         unchanged = core_calendar_data.ensure_shifted_first_occurrence_recurrence_id(
             "dummy",
             {"evt": core_time.parse_ical_datetime("20260219T100000Z")},
