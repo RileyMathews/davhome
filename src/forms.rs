@@ -44,3 +44,65 @@ pub fn validate_min_length(value: &str, field_name: &str, min: usize, errors: &m
         );
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn validate_required_rejects_empty_values() {
+        let mut errors = FormErrors::new();
+
+        validate_required("   ", "username", &mut errors);
+
+        assert!(errors.has_errors());
+        assert_eq!(
+            errors.get_field_errors("username").unwrap(),
+            &vec!["username is required".to_string()]
+        );
+    }
+
+    #[test]
+    fn validate_required_accepts_trimmed_non_empty_values() {
+        let mut errors = FormErrors::new();
+
+        validate_required("  alice  ", "username", &mut errors);
+
+        assert!(!errors.has_errors());
+    }
+
+    #[test]
+    fn validate_min_length_rejects_short_values() {
+        let mut errors = FormErrors::new();
+
+        validate_min_length("short", "password", 8, &mut errors);
+
+        assert!(errors.has_errors());
+        assert_eq!(
+            errors.get_field_errors("password").unwrap(),
+            &vec!["password must be at least 8 characters".to_string()]
+        );
+    }
+
+    #[test]
+    fn validate_min_length_accepts_values_at_threshold() {
+        let mut errors = FormErrors::new();
+
+        validate_min_length("12345678", "password", 8, &mut errors);
+
+        assert!(!errors.has_errors());
+    }
+
+    #[test]
+    fn form_errors_reports_general_and_field_errors() {
+        let mut errors = FormErrors::new();
+        assert!(!errors.has_errors());
+
+        errors.add_general_error("something went wrong");
+        assert!(errors.has_errors());
+
+        let mut field_errors = FormErrors::new();
+        field_errors.add_field_error("username", "already exists");
+        assert!(field_errors.has_errors());
+    }
+}

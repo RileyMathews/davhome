@@ -56,10 +56,10 @@ pub async fn create_calendar(
     calendar_description: Option<&str>,
 ) -> Result<Uuid, sqlx::Error> {
     let mut txn = pool.begin().await?;
-    
+
     // Generate a UUID for the calendar
     let calendar_id = Uuid::new_v4();
-    
+
     // Insert the calendar
     sqlx::query!(
         r#"
@@ -73,10 +73,10 @@ pub async fn create_calendar(
     )
     .execute(&mut *txn)
     .await?;
-    
+
     // Generate a UUID for the binding URI
     let binding_uri = Uuid::new_v4().to_string();
-    
+
     // Insert the owner binding
     sqlx::query!(
         r#"
@@ -94,9 +94,9 @@ pub async fn create_calendar(
     )
     .execute(&mut *txn)
     .await?;
-    
+
     txn.commit().await?;
-    
+
     Ok(calendar_id)
 }
 
@@ -125,7 +125,7 @@ pub async fn list_user_calendars(
     )
     .fetch_all(pool)
     .await?;
-    
+
     Ok(calendars)
 }
 
@@ -147,7 +147,7 @@ pub async fn delete_calendar_if_owner(
     .bind(user_id)
     .fetch_optional(pool)
     .await?;
-    
+
     Ok(result.is_some())
 }
 
@@ -167,6 +167,6 @@ pub async fn is_calendar_owner(
     .bind(user_id)
     .fetch_optional(pool)
     .await?;
-    
+
     Ok(result.is_some())
 }

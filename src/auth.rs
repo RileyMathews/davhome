@@ -50,18 +50,45 @@ pub async fn require_auth(
     cookies: &Cookies,
 ) -> Result<user::User, axum::response::Html<String>> {
     let user_id = get_user_id_from_session(cookies);
-    
+
     match user_id {
         None => Err(axum::response::Html(
-            r#"<meta http-equiv="refresh" content="0; url=/signin" />"#.to_string()
+            r#"<meta http-equiv="refresh" content="0; url=/signin" />"#.to_string(),
         )),
-        Some(uid) => {
-            match user::find_by_id(pool, uid).await {
-                Ok(Some(user)) => Ok(user),
-                _ => Err(axum::response::Html(
-                    r#"<meta http-equiv="refresh" content="0; url=/signin" />"#.to_string()
-                ))
-            }
-        }
+        Some(uid) => match user::find_by_id(pool, uid).await {
+            Ok(Some(user)) => Ok(user),
+            _ => Err(axum::response::Html(
+                r#"<meta http-equiv="refresh" content="0; url=/signin" />"#.to_string(),
+            )),
+        },
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn hash_password_does_not_return_plaintext() {
+        let password = "correct horse battery staple";
+        let hash = hash_password(password).unwrap();
+
+        assert_ne!(hash, password);
+        assert!(hash.starts_with("$argon2"));
+    }
+
+    #[test]
+    fn verify_password_accepts_matching_password() {
+        let password = "correct horse battery staple";
+        let hash = hash_password(password).unwrap();
+
+        assert!(verify_password(password, &hash).unwrap());
+    }
+
+    #[test]
+    fn verify_password_rejects_wrong_password() {
+        let hash = hash_password("correct horse battery staple").unwrap();
+
+        assert!(!verify_password("wrong password", &hash).unwrap());
     }
 }
