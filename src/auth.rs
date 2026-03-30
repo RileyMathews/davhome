@@ -2,8 +2,11 @@ use argon2::{
     Argon2,
     password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString, rand_core::OsRng},
 };
+use sqlx::PgPool;
 use tower_cookies::{Cookie, Cookies};
 use uuid::Uuid;
+
+use crate::models::user;
 
 const SESSION_COOKIE_NAME: &str = "session";
 
@@ -38,4 +41,27 @@ pub fn get_user_id_from_session(cookies: &Cookies) -> Option<Uuid> {
     cookies
         .get(SESSION_COOKIE_NAME)
         .and_then(|cookie| cookie.value().parse::<Uuid>().ok())
+}
+
+/// Requires a signed-in user, returning the user record
+/// Returns a redirect response if not signed in
+pub async fn require_auth(
+    pool: &PgPool,
+    cookies: &Cookies,
+) -> Result<user::User, axum::response::Html<String>> {
+    let user_id = get_user_id_from_session(cookies);
+    
+    match user_id {
+        None => Err(axum::response::Html(
+            r#"<meta http-equiv="refresh" content="0; url=/signin" />"#.to_string()
+        )),
+        Some(uid) => {
+            match user::find_by_id(pool, uid).await {
+                Ok(Some(user)) => Ok(user),
+                _ => Err(axum::response::Html(
+                    r#"<meta http-equiv="refresh" content="0; url=/signin" />"#.to_string()
+                ))
+            }
+        }
+    }
 }

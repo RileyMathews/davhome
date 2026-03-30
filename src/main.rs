@@ -27,18 +27,27 @@ struct IndexTemplate {
 }
 
 async fn index(pool: PgPool, cookies: tower_cookies::Cookies) -> Html<String> {
-    let username = if let Some(user_id) = get_user_id_from_session(&cookies) {
+    let user = if let Some(user_id) = get_user_id_from_session(&cookies) {
         user::find_by_id(&pool, user_id)
             .await
             .ok()
             .flatten()
-            .map(|u| u.username)
     } else {
         None
     };
 
-    let template = IndexTemplate { username };
-    Html(template.render().unwrap())
+    match user {
+        // If signed in, show calendar management page
+        Some(_u) => routes::calendars::calendars_page(
+            axum::extract::State(pool),
+            cookies,
+        ).await,
+        // If not signed in, show welcome page
+        None => {
+            let template = IndexTemplate { username: None };
+            Html(template.render().unwrap())
+        }
+    }
 }
 
 #[tokio::main]
@@ -81,6 +90,9 @@ async fn main() -> Result<(), Box<dyn std::error::Error>> {
             get(routes::auth::signin_page).post(routes::auth::handle_signin),
         )
         .route("/signout", post(routes::auth::handle_signout))
+        // Calendar management routes
+        .route("/calendars", post(routes::calendars::handle_create_calendar))
+        .route("/calendars/delete", post(routes::calendars::handle_delete_calendar))
         .layer(CookieManagerLayer::new())
         .layer(
             TraceLayer::new_for_http()

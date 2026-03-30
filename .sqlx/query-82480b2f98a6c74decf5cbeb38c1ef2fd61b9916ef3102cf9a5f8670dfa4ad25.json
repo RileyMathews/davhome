@@ -1,0 +1,69 @@
+{
+  "db_name": "PostgreSQL",
+  "query": "\n        SELECT \n            c.id,\n            cb.uri,\n            cb.displayname,\n            cb.calendar_description,\n            c.supported_component_set AS \"supported_component_set!: Vec<String>\",\n            c.created_at\n        FROM calendars c\n        JOIN calendar_bindings cb ON c.id = cb.calendar_id\n        WHERE cb.principal_user_id = $1\n        AND c.deleted_at IS NULL\n        ORDER BY cb.calendar_order, c.created_at DESC\n        ",
+  "describe": {
+    "columns": [
+      {
+        "ordinal": 0,
+        "name": "id",
+        "type_info": "Uuid"
+      },
+      {
+        "ordinal": 1,
+        "name": "uri",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 2,
+        "name": "displayname",
+        "type_info": "Varchar"
+      },
+      {
+        "ordinal": 3,
+        "name": "calendar_description",
+        "type_info": "Text"
+      },
+      {
+        "ordinal": 4,
+        "name": "supported_component_set!: Vec<String>",
+        "type_info": {
+          "Custom": {
+            "name": "calendar_component[]",
+            "kind": {
+              "Array": {
+                "Custom": {
+                  "name": "calendar_component",
+                  "kind": {
+                    "Enum": [
+                      "VEVENT",
+                      "VTODO"
+                    ]
+                  }
+                }
+              }
+            }
+          }
+        }
+      },
+      {
+        "ordinal": 5,
+        "name": "created_at",
+        "type_info": "Timestamptz"
+      }
+    ],
+    "parameters": {
+      "Left": [
+        "Uuid"
+      ]
+    },
+    "nullable": [
+      false,
+      false,
+      true,
+      true,
+      false,
+      false
+    ]
+  },
+  "hash": "82480b2f98a6c74decf5cbeb38c1ef2fd61b9916ef3102cf9a5f8670dfa4ad25"
+}

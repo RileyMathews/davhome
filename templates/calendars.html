@@ -1,0 +1,247 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>My Calendars - DavHome</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 900px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        h1 {
+            color: #333;
+        }
+        .nav {
+            display: flex;
+            gap: 15px;
+            margin-bottom: 30px;
+            padding: 15px;
+            background-color: #f5f5f5;
+            border-radius: 8px;
+            align-items: center;
+        }
+        .nav a {
+            color: #2196F3;
+            text-decoration: none;
+            font-weight: 500;
+        }
+        .nav a:hover {
+            text-decoration: underline;
+        }
+        .nav form {
+            margin: 0;
+        }
+        .nav button {
+            background: none;
+            border: none;
+            color: #d32f2f;
+            cursor: pointer;
+            font-weight: 500;
+            padding: 0;
+            font-size: inherit;
+        }
+        .nav button:hover {
+            text-decoration: underline;
+        }
+        .create-section {
+            background-color: #f5f5f5;
+            padding: 20px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+        }
+        .create-section h2 {
+            margin-top: 0;
+            color: #333;
+        }
+        .form-inline {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+            align-items: flex-start;
+        }
+        .form-group {
+            display: flex;
+            flex-direction: column;
+            gap: 5px;
+        }
+        .form-group label {
+            font-weight: 600;
+            color: #555;
+            font-size: 14px;
+        }
+        .form-group input[type="text"] {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+            min-width: 250px;
+        }
+        .form-group input[type="text"]:focus {
+            outline: none;
+            border-color: #2196F3;
+        }
+        button[type="submit"] {
+            padding: 12px 24px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+            font-weight: 500;
+            align-self: flex-end;
+        }
+        button[type="submit"]:hover {
+            background-color: #45a049;
+        }
+        .error-box {
+            color: #d32f2f;
+            background-color: #ffebee;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 15px;
+        }
+        .error-box .error {
+            margin: 5px 0;
+        }
+        .field-error {
+            color: #d32f2f;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+        .calendars-list {
+            margin-top: 20px;
+        }
+        .calendars-list h2 {
+            color: #333;
+            margin-bottom: 20px;
+        }
+        .calendar-card {
+            background-color: #fff;
+            border: 1px solid #e0e0e0;
+            border-radius: 8px;
+            padding: 20px;
+            margin-bottom: 15px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .calendar-info h3 {
+            margin: 0 0 8px 0;
+            color: #333;
+        }
+        .calendar-info p {
+            margin: 0;
+            color: #666;
+            font-size: 14px;
+        }
+        .calendar-meta {
+            margin-top: 8px;
+            font-size: 13px;
+            color: #888;
+        }
+        .calendar-actions form {
+            margin: 0;
+        }
+        .calendar-actions button {
+            padding: 8px 16px;
+            background-color: #f44336;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 14px;
+            cursor: pointer;
+        }
+        .calendar-actions button:hover {
+            background-color: #d32f2f;
+        }
+        .empty-state {
+            text-align: center;
+            padding: 40px;
+            color: #666;
+            background-color: #fafafa;
+            border-radius: 8px;
+        }
+        .empty-state h3 {
+            margin-bottom: 10px;
+            color: #333;
+        }
+    </style>
+</head>
+<body>
+    <div class="nav">
+        <a href="/">My Calendars</a>
+        <span>Welcome, {{ username }}!</span>
+        <form method="POST" action="/signout" style="display: inline;">
+            <button type="submit">Sign Out</button>
+        </form>
+    </div>
+
+    <h1>My Calendars</h1>
+
+    <div class="create-section">
+        <h2>Create New Calendar</h2>
+        
+        {% if !errors.general.is_empty() %}
+            <div class="error-box">
+                {% for error in errors.general %}
+                    <div class="error">{{ error }}</div>
+                {% endfor %}
+            </div>
+        {% endif %}
+        
+        <form method="POST" action="/calendars" class="form-inline">
+            <div class="form-group">
+                <label for="displayname">Calendar Name *</label>
+                <input type="text" id="displayname" name="displayname" value="{{ form.displayname }}" placeholder="e.g., Personal, Work" required>
+                {% if let Some(field_errors) = errors.get_field_errors("displayname") %}
+                    {% for error in field_errors %}
+                        <div class="field-error">{{ error }}</div>
+                    {% endfor %}
+                {% endif %}
+            </div>
+            
+            <div class="form-group">
+                <label for="description">Description (optional)</label>
+                <input type="text" id="description" name="description" value="{{ form.description.as_ref().unwrap_or(&"".to_string()) }}" placeholder="Brief description">
+            </div>
+            
+            <button type="submit">Create Calendar</button>
+        </form>
+    </div>
+
+    <div class="calendars-list">
+        <h2>Your Calendars</h2>
+        
+        {% if calendars.is_empty() %}
+            <div class="empty-state">
+                <h3>No calendars yet</h3>
+                <p>Use the form above to create your first calendar.</p>
+            </div>
+        {% else %}
+            {% for calendar in calendars %}
+                <div class="calendar-card">
+                    <div class="calendar-info">
+                        <h3>{{ calendar.displayname.as_ref().unwrap_or(&"Untitled".to_string()) }}</h3>
+                        {% if let Some(desc) = &calendar.calendar_description %}
+                            <p>{{ desc }}</p>
+                        {% endif %}
+                        <div class="calendar-meta">
+                            Path: {{ calendar.uri }} | 
+                            Supports: {{ calendar.supported_component_set.join(", ") }} | 
+                            Created: {{ calendar.created_at.format("%Y-%m-%d") }}
+                        </div>
+                    </div>
+                    <div class="calendar-actions">
+                        <form method="POST" action="/calendars/delete" onsubmit="return confirm('Are you sure you want to delete this calendar? This action cannot be undone.');">
+                            <input type="hidden" name="calendar_id" value="{{ calendar.id }}">
+                            <button type="submit">Delete</button>
+                        </form>
+                    </div>
+                </div>
+            {% endfor %}
+        {% endif %}
+    </div>
+</body>
+</html>
