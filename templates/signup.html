@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Sign Up - DavHome</title>
+    <style>
+        body {
+            font-family: system-ui, -apple-system, sans-serif;
+            max-width: 400px;
+            margin: 50px auto;
+            padding: 20px;
+        }
+        h1 {
+            text-align: center;
+            color: #333;
+        }
+        form {
+            display: flex;
+            flex-direction: column;
+            gap: 15px;
+        }
+        label {
+            font-weight: bold;
+            color: #555;
+        }
+        input {
+            padding: 10px;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            font-size: 16px;
+        }
+        input:focus {
+            outline: none;
+            border-color: #4CAF50;
+        }
+        button {
+            padding: 12px;
+            background-color: #4CAF50;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            font-size: 16px;
+            cursor: pointer;
+        }
+        button:hover {
+            background-color: #45a049;
+        }
+        .error-box {
+            color: #d32f2f;
+            background-color: #ffebee;
+            padding: 10px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+        }
+        .error-box .error {
+            margin: 5px 0;
+        }
+        .field-error {
+            color: #d32f2f;
+            font-size: 14px;
+            margin-top: 5px;
+        }
+        .link {
+            text-align: center;
+            margin-top: 15px;
+        }
+        a {
+            color: #4CAF50;
+            text-decoration: none;
+        }
+        a:hover {
+            text-decoration: underline;
+        }
+    </style>
+</head>
+<body>
+    <h1>Sign Up</h1>
+    
+    {% if !errors.general.is_empty() %}
+        <div class="error-box">
+            {% for error in errors.general %}
+                <div class="error">{{ error }}</div>
+            {% endfor %}
+        </div>
+    {% endif %}
+    
+    <form method="POST" action="/signup">
+        <div>
+            <label for="username">Username</label>
+            <input type="text" id="username" name="username" value="{{ form.username }}" required>
+            {% if let Some(field_errors) = errors.get_field_errors("username") %}
+                {% for error in field_errors %}
+                    <div class="field-error">{{ error }}</div>
+                {% endfor %}
+            {% endif %}
+        </div>
+        
+        <div>
+            <label for="password">Password</label>
+            <input type="password" id="password" name="password" required>
+            {% if let Some(field_errors) = errors.get_field_errors("password") %}
+                {% for error in field_errors %}
+                    <div class="field-error">{{ error }}</div>
+                {% endfor %}
+            {% endif %}
+        </div>
+        
+        <div>
+            <label for="confirm_password">Confirm Password</label>
+            <input type="password" id="confirm_password" name="confirm_password" required>
+            {% if let Some(field_errors) = errors.get_field_errors("confirm_password") %}
+                {% for error in field_errors %}
+                    <div class="field-error">{{ error }}</div>
+                {% endfor %}
+            {% endif %}
+        </div>
+        
+        <button type="submit">Create Account</button>
+    </form>
+    
+    <div class="link">
+        Already have an account? <a href="/signin">Sign in</a>
+    </div>
+    <div class="link">
+        <a href="/">← Back to home</a>
+    </div>
+</body>
+</html>
