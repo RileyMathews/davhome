@@ -2,92 +2,29 @@
 
 Guidance for coding agents working in this repository.
 
-## Project Snapshot
+## Project overview
+This project is meant to be a caldav compliant server targeted at homelab/selfhosted/family use.
+It is still in an early POC stage and we are slowly building it up for the moment.
+It will have two main parts that will share some core logic but should otherwise remain isolated.
+1. A web UI where users sign up and manage their calendars.
+2. A dav entrypoint on its own sub URL path `/dav` that acts as the dav entrypoint for dav compatible clients.
 
-- Stack: Django 6 + Python 3.12.
-- Package/runtime tooling: `uv` (see `pyproject.toml`, `uv.lock`).
-- Task runner: `just` (`justfile` recipes are the primary workflow entry points).
-- Main apps: `accounts`, `calendars`, `dav`.
-- Local/dev DB uses SQLite (`config.settings_dev`); production settings use Postgres (`config.settings`).
+It is written in rust using the AXUM framework and SQLX with postgres for the database layer and Askama for the templates.
 
-## Rule Files (Cursor / Copilot)
+## Code architecture guidelines
+When writing code in the app keep these guidelines in mind.
+* All responses must be an Askama template, including XML responses for the dav API.
+* Do not use AXUM middleware for anything. For Things like authentication we should build a well factored helper module that exports high level functions to authenticate and retrieve user info that should be called directly in handler code. Not via abastracted wrappers or middleware.
+* For the arbitrary properties that the dav compliance requires for some endpoints and models we will store the data as a JSON blob in the database.
 
-- `.cursor/rules/`: not present.
-- `.cursorrules`: not present.
-- `.github/copilot-instructions.md`: not present.
-- No extra IDE agent rule set is currently enforced in-repo.
+## RFC documentation
+The relavent RFCs have been included in the `./RFC` directory of this repository. Make liberal use of looking at the RFCs to find the relavent specification for what you are working on for any given moment.
 
-## Environment Setup
+## Vendored test suite
+We have a test suite that apple abandoned a long time ago in the `./caldavtester-lab/` directory. The README.md file in that directory contains information about how to run it and its overall architecture.
+The test suite should be run against our server to determine compliance. I have set the test suite up with what I believe is all of the features I want this server to support.
+We will keep a section in the repositories top level README.md file that is a count of the current total passing tests so that we can ensure as wel work that we are passing where expected.
+If you are ever working and the vendored test suite reports more failing tests than the README currently says then something is wrong and we should investigate the regression.
+As you work and improve the passing test score ensure that section in the README is updated to show the new passing test count.
 
-- Install dependencies:
-  - `uv sync`
-- Activate environment if needed:
-  - `source .venv/bin/activate`
-- For agent-driven local work, prefer `config.settings_test` or `config.settings_dev` to avoid Postgres/env requirements.
-
-## Build / Run Commands
-Use a single command for correctness verification:
-
-- `just full-verify`
-
-`just full-verify` is the required verification sweep for agents. It builds and starts a fresh Docker container, applies migrations and integration fixtures inside that container, runs integration suites, runs Django unit tests, and then tears the container down.
-
-Do not treat partial test runs as completion verification when `just full-verify` is available.
-
-## Typing
-
-- Agents should incrementally improve type checking in code they touch.
-- Prefer expressing guaranteed shapes in signatures and shared typed abstractions instead of adding redundant runtime type guards.
-- In Django views, rely on typed URL parameters when routing already guarantees string path components.
-- Keep runtime validation at genuinely dynamic boundaries such as parsed payloads, rewritten dispatch kwargs, unauthenticated requests, or external input that the type system cannot guarantee.
-- Run `just type-check` or `uv run ty check` during implementation when a change affects typed code.
-
-
-### CalDAVTester source of truth
-
-- The CalDAVTester repos are vendored under `caldavtester-lab/`:
-  - `caldavtester-lab/ccs-caldavtester`
-  - `caldavtester-lab/ccs-pycalendar`
-- `ccs-caldavtester` is a vendored upstream conformance suite and should be
-  treated as spec authority for supported modules.
-- Do not rewrite existing vendored tests/resources to make failures pass.
-  In normal feature work, only adjust which tests run by changing:
-  - module inclusion in `caldavtester-lab/caldav-suite-modules.txt`
-  - feature toggles in
-    `caldavtester-lab/ccs-caldavtester/scripts/server/serverinfo.xml`
-    (and matching template/pod variants when needed)
-- If you think a change to vendored tests/resources is required (beyond
-  enabling/disabling modules/features), stop and ask the user for explicit
-  clarification before making any such change.
-- `just caldavtester-test-suite` runs an explicit list of supported
-  `scripts/tests/CalDAV/*.xml` modules from
-  `caldavtester-lab/caldav-suite-modules.txt`.
-- `caldavtester-lab/ccs-caldavtester/scripts/server/serverinfo.xml` controls
-  feature-gated behavior *within* those modules.
-  - Tests/suites guarded with `<require-feature>` only run when the matching
-    `<feature>` is enabled in that file.
-  - To add/remove module-level coverage in the default suite, edit
-    `caldavtester-lab/caldav-suite-modules.txt`.
-  - To tune suite/test-level coverage inside a module, adjust feature flags in
-    `serverinfo.xml`.
-
-# Refactor goals
-We want to try to refactor this app as we continue working on it to match the future architecture vision.
-We want views to be very clear to follow and have minimal indirection. An ideal view function would follow this pattern
-
-1. validate inputs
-2. return validation errors if needed
-3. query a database model directly
-4. serialize model(s) to response shape
-
-Whenever Django or our own abstractions can guarantee an input shape, prefer pushing that guarantee into type annotations instead of repeating defensive runtime `isinstance` checks in the view body.
-Use runtime validation for protocol data and other truly dynamic inputs, but let typed method signatures carry router-provided values like `username`, `slug`, and `filename`.
-
-The serialization should be built into the model system with functions like `to_xml` or similar.
-Share these serialization functions on a base model when it would be helpful.
-
-The goal here is to maximize for clarity. Currently logic is scattered among lots of util/helper files.
-A human should be able to pull up any view function and immediatley get a clear picture of its high level
-flow. Then digging into functions and model methods it calls should slowly add context if needed.
-
-In any cases where implementation might be ambiguous follow django best practices.
+We also have a nix flake shell for the 'litmus' test suite that tests general dav compliance. It should also be run to verify changes and similarly documented as to its progress in the README.
