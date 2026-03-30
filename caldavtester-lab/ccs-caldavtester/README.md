@@ -101,14 +101,188 @@ CalDAVTester is run via the `testcaldav.py` script:
 
 # QUICKSTART
 
-Edit the serverinfo.xml file to run the test against your server setup.
+If you are using this vendored copy inside the `davhome` repository, do not
+follow the virtualenv flow above. The repo runs this code through a wrapper in
+`../` and `../../` that isolates the Python 2 runtime and limits the default
+suite to the subset of CalDAV modules that `davhome` currently supports.
 
-Prior to running, make sure you are in the virtualenv:
+## davhome wrapper layout
 
-	source venv/bin/activate
+- `../../flake.nix` defines the `caldavtester` Nix shell with `python2`.
+- `../bootstrap.sh` generates `../.env-py2.sh` and sets `PYTHONPATH` so this
+  checkout and `../ccs-pycalendar` can be imported together.
+- `../../justfile` target `caldavtester-test-suite` is the default repo entry
+  point. It enters the Nix shell, runs `../bootstrap.sh`, reads
+  `../caldav-suite-modules.txt`, and then invokes `python2 testcaldav.py` with
+  that module allowlist.
+- `../../justfile` target `full-verify` includes the same CalDAVTester run as
+  part of the repo verification sweep.
 
-Run `testcaldav.py --all` on the command line to run the tests. The app
-will print its progress through the tests.
+## How the runner is structured
+
+The execution pipeline in this vendored tree is:
+
+1. `testcaldav.py` creates `src.manager.manager`, parses command-line options,
+   and starts the run.
+2. `src/manager.py` loads `scripts/server/serverinfo.xml`, expands server
+   substitutions, discovers XML modules, loads observers, and drives the run.
+3. `src/serverinfo.py` holds target server configuration and substitution
+   values such as `$host:`, `$root:`, `$userid1:`, generated UIDs, and feature
+   flags.
+4. Each XML file in `scripts/tests/...` becomes one `src/caldavtest.py`
+   instance. That file can define `<start>` requests, multiple `<test-suite>`
+   blocks, and `<end>` requests.
+5. Each `<test-suite>` becomes a `src/testsuite.py` object, each `<test>`
+   becomes a `src/test.py` object, and each `<request>` becomes a
+   `src/request.py` object.
+6. `src/caldavtest.py` executes requests, handles special pseudo-methods such
+   as `GETNEW`, `FINDNEW`, `DELETEALL`, and `WAITCOUNT`, and runs response
+   verification.
+7. `<verify><callback>...</callback></verify>` dynamically loads verifier
+   modules from `verifiers/`.
+8. Output formatting is handled by observer plugins in `src/observers/`.
+
+At the filesystem level:
+
+- `scripts/server/` contains `serverinfo.xml`, templates, and DTDs.
+- `scripts/tests/CalDAV/` and `scripts/tests/CardDAV/` contain declarative XML
+  modules.
+- `Resource/` contains request and expected-response payload fixtures that XML
+  files reference via `<filepath>`.
+- `verifiers/` contains pluggable response checkers.
+- `generators/` contains optional request-body generators.
+- `../ccs-pycalendar/` provides iCalendar and vCard parsing used by semantic
+  verifiers such as `calendarDataMatch`, `addressDataMatch`, `jcalDataMatch`,
+  and `jcardDataMatch`.
+
+## How to run it in davhome
+
+From the repo root, the normal workflow is:
+
+```bash
+just caldavtester-test-suite
+```
+
+That command is equivalent to:
+
+```bash
+nix develop path:.#caldavtester
+cd caldavtester-lab
+./bootstrap.sh
+source .env-py2.sh
+cd ccs-caldavtester
+MODULES="$(rg -v "^\s*(#|$)" ../caldav-suite-modules.txt | tr "\n" " ")"
+python2 testcaldav.py $MODULES
+```
+
+For manual iteration inside the Nix shell:
+
+```bash
+cd /path/to/davhome
+nix develop path:.#caldavtester
+cd caldavtester-lab
+./bootstrap.sh
+source .env-py2.sh
+cd ccs-caldavtester
+python2 testcaldav.py CalDAV/current-user-principal.xml
+```
+
+Useful manual variants:
+
+- Run the repo-supported allowlist: `python2 testcaldav.py $(rg -v "^\s*(#|$)" ../caldav-suite-modules.txt)`
+- Run every XML module in `scripts/tests`: `python2 testcaldav.py --all`
+- Use SSL settings from `serverinfo.xml`: `python2 testcaldav.py --ssl CalDAV/current-user-principal.xml`
+- Use a different server config file: `python2 testcaldav.py -s scripts/server/serverinfo.xml CalDAV/current-user-principal.xml`
+
+`--all` is broader than the repo-supported subset. For normal `davhome` work,
+prefer `just caldavtester-test-suite` or the allowlisted module list.
+
+## What controls which tests run
+
+There are two main control planes in `davhome`:
+
+1. Module allowlist in `../caldav-suite-modules.txt`
+
+   - This file controls which top-level CalDAV XML modules are included by
+     `just caldavtester-test-suite`.
+   - Entries are paths relative to `scripts/tests/`.
+   - Adding or removing a line changes repo-default suite coverage without
+     modifying vendored XML modules.
+
+2. Feature flags in `scripts/server/serverinfo.xml`
+
+   - `<features>` controls conditional execution inside already-loaded modules.
+   - XML modules, suites, tests, requests, and verifiers can all use
+     `<require-feature>` and `<exclude-feature>`.
+   - If a feature is absent, gated sections are skipped and reported as
+     ignored rather than failed.
+
+This means:
+
+- Use `../caldav-suite-modules.txt` to control the default supported module
+  surface.
+- Use `scripts/server/serverinfo.xml` to control expectations inside those
+  modules.
+- Use explicit file arguments to `testcaldav.py` when you want to run an ad hoc
+  module without changing the repo default.
+
+In this repo, prefer changing the allowlist and feature flags rather than
+editing vendored test resources just to make a run pass.
+
+## How target server configuration works
+
+The main target configuration file is `scripts/server/serverinfo.xml`. The
+important parts are:
+
+- `<host>`, `<nonsslport>`, and `<sslport>` control the primary server target.
+- `<authtype>` controls whether requests use basic or digest auth.
+- `<unix>` can be used instead of TCP for a Unix-domain socket target.
+- `<host2>`, `<nonsslport2>`, `<sslport2>`, and `<unix2>` provide an optional
+  secondary target for requests marked with the `host2="yes"` attribute.
+- `<waitcount>`, `<waitdelay>`, and `<waitsuccess>` tune the retry behavior of
+  wait-style pseudo-methods and `wait-for-success` requests.
+- `<substitutions>` defines the variable map used across XML requests and
+  verifiers.
+
+For `davhome`, the default checked-in config points at a local server and DAV
+root:
+
+- `<host>localhost</host>`
+- `<nonsslport>8000</nonsslport>`
+- `$root:` set to `/dav/`
+
+If you need to point the suite elsewhere, edit `scripts/server/serverinfo.xml`
+first. Common changes are:
+
+- Change `<host>` and `<nonsslport>` when the app is listening on a different
+  interface or port.
+- Change `<sslport>` and add `--ssl` when exercising HTTPS.
+- Change `$root:` and related substitutions if the DAV service is mounted under
+  a different URL prefix.
+- Update user, principal, and calendar path substitutions if your fixture users
+  or collection layout differ from the defaults expected by the XML modules.
+
+The manager also derives some substitutions automatically from these values,
+including `$host:`, `$hostssl:`, `$host2:`, and `$hostssl2:`.
+
+## How feature gating and substitutions interact
+
+Most modules are written as templates. They expect `serverinfo.xml` to provide:
+
+- feature flags describing server behavior
+- substitution values for principals, calendar homes, users, passwords, and
+  root paths
+- per-run generated UIDs so resources created by one test file do not collide
+  with another
+
+During execution, requests can also capture response values back into the
+substitution table using grab instructions such as `graburi`, `grabheader`,
+`grabproperty`, `grabelement`, `grabjson`, `grabcalprop`, and `grabcalparam`.
+That allows later requests in the same test file to reuse values discovered
+during earlier requests.
+
+The rest of this README documents the upstream XML format and verifier
+behaviors in detail.
 
 # EXECUTION PROCESS
 
