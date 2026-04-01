@@ -13,6 +13,8 @@ use crate::auth::get_user_id_from_session;
 use crate::models::user;
 
 pub mod auth;
+pub mod custom_method_router;
+pub mod dav_method;
 pub mod db;
 pub mod forms;
 pub mod models;
@@ -68,6 +70,74 @@ pub fn build_app(pool: PgPool) -> Router {
         .route(
             "/calendars/delete",
             post(routes::calendars::handle_delete_calendar),
+        )
+        .route_service(
+            "/dav",
+            crate::custom_method_router::CustomMethodRouter::new(())
+                .on(
+                    crate::dav_method::DavMethod::Options,
+                    routes::dav::handle_root_options,
+                )
+                .fallback(routes::dav::handle_root_fallback),
+        )
+        .route_service(
+            "/dav/",
+            crate::custom_method_router::CustomMethodRouter::new(())
+                .on(
+                    crate::dav_method::DavMethod::Options,
+                    routes::dav::handle_root_options,
+                )
+                .fallback(routes::dav::handle_root_fallback),
+        )
+        .route_service(
+            "/dav/calendars/{username}",
+            crate::custom_method_router::CustomMethodRouter::new(())
+                .on(
+                    crate::dav_method::DavMethod::Options,
+                    routes::dav::handle_home_options,
+                )
+                .fallback(routes::dav::handle_home_fallback),
+        )
+        .route_service(
+            "/dav/calendars/{username}/",
+            crate::custom_method_router::CustomMethodRouter::new(())
+                .on(
+                    crate::dav_method::DavMethod::Options,
+                    routes::dav::handle_home_options,
+                )
+                .fallback(routes::dav::handle_home_fallback),
+        )
+        .route_service(
+            "/dav/calendars/{username}/{binding}",
+            crate::custom_method_router::CustomMethodRouter::new(pool.clone())
+                .on(
+                    crate::dav_method::DavMethod::Options,
+                    routes::dav::handle_collection_options,
+                )
+                .on(
+                    crate::dav_method::DavMethod::Delete,
+                    routes::dav::handle_collection_delete,
+                )
+                .on(
+                    crate::dav_method::DavMethod::Mkcol,
+                    routes::dav::handle_collection_mkcol,
+                ),
+        )
+        .route_service(
+            "/dav/calendars/{username}/{binding}/",
+            crate::custom_method_router::CustomMethodRouter::new(pool.clone())
+                .on(
+                    crate::dav_method::DavMethod::Options,
+                    routes::dav::handle_collection_options,
+                )
+                .on(
+                    crate::dav_method::DavMethod::Delete,
+                    routes::dav::handle_collection_delete,
+                )
+                .on(
+                    crate::dav_method::DavMethod::Mkcol,
+                    routes::dav::handle_collection_mkcol,
+                ),
         )
         .layer(CookieManagerLayer::new())
         .layer(

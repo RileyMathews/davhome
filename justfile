@@ -59,3 +59,6 @@ update-sqlx:
     @DATABASE_URL={{db_url}} cargo sqlx prepare
     @echo "SQLx query cache updated successfully!"
     @echo "Don't forget to commit the .sqlx/ directory"
+
+litmus-test:
+	nix develop path:.#litmus -c litmus "http://127.0.0.1:3000/dav/calendars/user01/" "user01" "1234567890123456"

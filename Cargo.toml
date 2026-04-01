@@ -6,8 +6,10 @@ edition = "2024"
 [dependencies]
 askama = "0.15.6"
 axum = "0.8.8"
+base64 = "0.22"
 sqlx = { version = "0.8.6", features = ["postgres", "runtime-tokio-native-tls", "uuid", "chrono", "json"] }
 tokio = { version = "1", features = ["full"] }
+tower = { version = "0.5", features = ["util"] }
 tower-http = { version = "0.6", features = ["trace"] }
 tracing = "0.1"
 tracing-subscriber = { version = "0.3", features = ["json"] }
@@ -23,5 +25,4 @@ uuid = { version = "1.6", features = ["v4"] }
 chrono = { version = "0.4", features = ["serde"] }
 
 [dev-dependencies]
-tower = { version = "0.5", features = ["util"] }
 http-body-util = "0.1"

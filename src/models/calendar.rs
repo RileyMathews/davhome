@@ -52,15 +52,14 @@ pub struct CalendarWithBinding {
 pub async fn create_calendar(
     pool: &PgPool,
     owner_user_id: Uuid,
+    binding_uri: &str,
     displayname: &str,
     calendar_description: Option<&str>,
 ) -> Result<Uuid, sqlx::Error> {
     let mut txn = pool.begin().await?;
 
-    // Generate a UUID for the calendar
     let calendar_id = Uuid::new_v4();
 
-    // Insert the calendar
     sqlx::query!(
         r#"
         INSERT INTO calendars (
@@ -74,10 +73,6 @@ pub async fn create_calendar(
     .execute(&mut *txn)
     .await?;
 
-    // Generate a UUID for the binding URI
-    let binding_uri = Uuid::new_v4().to_string();
-
-    // Insert the owner binding
     sqlx::query!(
         r#"
         INSERT INTO calendar_bindings (
@@ -145,6 +140,31 @@ pub async fn delete_calendar_if_owner(
     )
     .bind(calendar_id)
     .bind(user_id)
+    .fetch_optional(pool)
+    .await?;
+
+    Ok(result.is_some())
+}
+
+/// Delete a calendar by binding URI when the authenticated user is the owner.
+pub async fn delete_calendar_by_uri_if_owner(
+    pool: &PgPool,
+    user_id: Uuid,
+    binding_uri: &str,
+) -> Result<bool, sqlx::Error> {
+    let result: Option<sqlx::postgres::PgRow> = sqlx::query(
+        r#"
+        DELETE FROM calendars c
+        USING calendar_bindings cb
+        WHERE c.id = cb.calendar_id
+          AND c.owner_user_id = $1
+          AND cb.principal_user_id = $1
+          AND cb.uri = $2
+        RETURNING c.id
+        "#,
+    )
+    .bind(user_id)
+    .bind(binding_uri)
     .fetch_optional(pool)
     .await?;
 

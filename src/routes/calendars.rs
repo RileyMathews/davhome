@@ -83,8 +83,11 @@ pub async fn handle_create_calendar(
 
     // Create the calendar
     let description = form.description.as_deref().filter(|s| !s.trim().is_empty());
+    let binding_uri = Uuid::new_v4().to_string();
 
-    match calendar::create_calendar(&pool, user.id, &form.displayname, description).await {
+    match calendar::create_calendar(&pool, user.id, &binding_uri, &form.displayname, description)
+        .await
+    {
         Ok(_id) => {
             // Redirect to refresh the page
             Html(r#"<meta http-equiv="refresh" content="0; url=/" />"#.to_string())

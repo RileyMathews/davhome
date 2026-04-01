@@ -2,6 +2,8 @@ use argon2::{
     Argon2,
     password_hash::{PasswordHash, PasswordHasher, PasswordVerifier, SaltString, rand_core::OsRng},
 };
+use axum::http::{HeaderMap, HeaderValue, StatusCode, header};
+use base64::{Engine as _, engine::general_purpose::STANDARD};
 use sqlx::PgPool;
 use tower_cookies::{Cookie, Cookies};
 use uuid::Uuid;
@@ -64,9 +66,57 @@ pub async fn require_auth(
     }
 }
 
+pub async fn require_dav_basic_auth(
+    pool: &PgPool,
+    headers: &HeaderMap,
+) -> Result<user::User, crate::routes::dav::DavResponse> {
+    let Some(credentials) = parse_basic_auth(headers) else {
+        return Err(dav_unauthorized());
+    };
+
+    let Some(found_user) = user::find_by_username(pool, &credentials.username)
+        .await
+        .ok()
+        .flatten()
+    else {
+        return Err(dav_unauthorized());
+    };
+
+    match verify_password(&credentials.password, &found_user.password_hash) {
+        Ok(true) => Ok(found_user),
+        _ => Err(dav_unauthorized()),
+    }
+}
+
+struct BasicCredentials {
+    username: String,
+    password: String,
+}
+
+fn parse_basic_auth(headers: &HeaderMap) -> Option<BasicCredentials> {
+    let value = headers.get(header::AUTHORIZATION)?.to_str().ok()?;
+    let encoded = value.strip_prefix("Basic ")?;
+    let decoded = STANDARD.decode(encoded).ok()?;
+    let decoded = String::from_utf8(decoded).ok()?;
+    let (username, password) = decoded.split_once(':')?;
+
+    Some(BasicCredentials {
+        username: username.to_string(),
+        password: password.to_string(),
+    })
+}
+
+fn dav_unauthorized() -> crate::routes::dav::DavResponse {
+    crate::routes::dav::DavResponse::new(StatusCode::UNAUTHORIZED).with_header(
+        header::WWW_AUTHENTICATE,
+        HeaderValue::from_static("Basic realm=\"davhome\""),
+    )
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
+    use axum::http::{HeaderMap, HeaderValue, header};
 
     #[test]
     fn hash_password_does_not_return_plaintext() {
@@ -90,5 +140,19 @@ mod tests {
         let hash = hash_password("correct horse battery staple").unwrap();
 
         assert!(!verify_password("wrong password", &hash).unwrap());
+    }
+
+    #[test]
+    fn parse_basic_auth_decodes_username_and_password() {
+        let mut headers = HeaderMap::new();
+        headers.insert(
+            header::AUTHORIZATION,
+            HeaderValue::from_static("Basic YWxpY2U6c2VjcmV0"),
+        );
+
+        let credentials = parse_basic_auth(&headers).unwrap();
+
+        assert_eq!(credentials.username, "alice");
+        assert_eq!(credentials.password, "secret");
     }
 }

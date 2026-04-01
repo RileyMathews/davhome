@@ -16,6 +16,7 @@ When writing code in the app keep these guidelines in mind.
 * All responses must be an Askama template, including XML responses for the dav API.
 * Do not use AXUM middleware for anything. For Things like authentication we should build a well factored helper module that exports high level functions to authenticate and retrieve user info that should be called directly in handler code. Not via abastracted wrappers or middleware.
 * For the arbitrary properties that the dav compliance requires for some endpoints and models we will store the data as a JSON blob in the database.
+* Only extract a new function when it will actually be used in at least two places. Do not extract one-off helper functions that are only called from a single call site.
 
 ## RFC documentation
 The relavent RFCs have been included in the `./RFC` directory of this repository. Make liberal use of looking at the RFCs to find the relavent specification for what you are working on for any given moment.

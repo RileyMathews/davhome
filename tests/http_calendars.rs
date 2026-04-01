@@ -108,8 +108,14 @@ async fn http_post_calendars_blank_displayname_renders_validation_error(
 #[sqlx::test]
 async fn http_post_calendars_delete_removes_owned_calendar(pool: PgPool) -> sqlx::Result<()> {
     let user = common::create_user_with_password(&pool, "alice", "1234567890123456").await?;
-    let calendar_id =
-        davhome::models::calendar::create_calendar(&pool, user.id, "Personal", None).await?;
+    let calendar_id = davhome::models::calendar::create_calendar(
+        &pool,
+        user.id,
+        &uuid::Uuid::new_v4().to_string(),
+        "Personal",
+        None,
+    )
+    .await?;
     let app = common::app(pool.clone());
 
     let response = common::send(
@@ -165,8 +171,14 @@ async fn http_post_calendars_delete_non_owner_does_not_remove_calendar(
 ) -> sqlx::Result<()> {
     let owner = common::create_user_with_password(&pool, "owner", "1234567890123456").await?;
     let other = common::create_user_with_password(&pool, "other", "1234567890123456").await?;
-    let calendar_id =
-        davhome::models::calendar::create_calendar(&pool, owner.id, "Shared", None).await?;
+    let calendar_id = davhome::models::calendar::create_calendar(
+        &pool,
+        owner.id,
+        &uuid::Uuid::new_v4().to_string(),
+        "Shared",
+        None,
+    )
+    .await?;
     let app = common::app(pool.clone());
 
     let response = common::send(
