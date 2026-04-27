@@ -20,6 +20,7 @@ When writing code in the app keep these guidelines in mind.
 
 ## RFC documentation
 The relavent RFCs have been included in the `./RFC` directory of this repository. Make liberal use of looking at the RFCs to find the relavent specification for what you are working on for any given moment.
+You should ALWAYS consult the relavent RFC section before implementing a feature to ensure we are implementing things correctly.
 
 ## CalDAV parity checklist
 Use `CALDAV_RADICALE_PARITY_CHECKLIST.md` as the implementation backlog for DAV/CalDAV compliance work. Before implementing a DAV feature, check that file for the target Radicale behavior, relevant source references, and existing progress.
