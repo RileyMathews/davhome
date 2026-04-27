@@ -11,8 +11,9 @@ fi
 
 cat >"${ENV_FILE}" <<EOF
 #!/usr/bin/env bash
-export CALDAVTESTER_LAB_ROOT="${ROOT_DIR}"
-export PYTHONPATH="${ROOT_DIR}/ccs-pycalendar/src:${ROOT_DIR}/ccs-caldavtester:\${PYTHONPATH:-}"
+CALDAVTESTER_LAB_ROOT="\$(cd "\$(dirname "\${BASH_SOURCE[0]}")" && pwd)"
+export CALDAVTESTER_LAB_ROOT
+export PYTHONPATH="\${CALDAVTESTER_LAB_ROOT}/ccs-pycalendar/src:\${CALDAVTESTER_LAB_ROOT}/ccs-caldavtester:\${PYTHONPATH:-}"
 EOF
 
 chmod +x "${ENV_FILE}"

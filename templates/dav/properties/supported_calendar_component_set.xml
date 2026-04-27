@@ -1,0 +1,1 @@
+<C:supported-calendar-component-set>{% for component in components %}<C:comp name="{{ component }}"/>{% endfor %}</C:supported-calendar-component-set>

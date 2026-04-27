@@ -389,7 +389,7 @@
 		<!-- password for admin user -->
 		<substitution>
 			<key>$pswdadmin:</key>
-			<value>admin</value>
+			<value>davhome-test-admin-password</value>
 		</substitution>
 
 		<!-- relative path to admin principal resource-->
@@ -415,7 +415,7 @@
 		<!-- password for admin user -->
 		<substitution>
 			<key>$pswdapprentice:</key>
-			<value>apprentice</value>
+			<value>davhome-test-apprentice-password</value>
 		</substitution>
 
 		<!-- relative path to apprentice principal resource-->
@@ -436,7 +436,7 @@
 		<!-- password for proxy user -->
 		<substitution>
 			<key>$pswdproxy:</key>
-			<value>superuser</value>
+			<value>davhome-test-superuser-password</value>
 		</substitution>
 
 		<!--  Forty user accounts -->
@@ -474,7 +474,7 @@
 			<!-- password -->
 			<substitution>
 				<key>$pswd%d:</key>
-				<value>user%02d</value>
+				<value>davhome-test-user-%02d</value>
 			</substitution>
 			<!-- relative path to user principal resource-->
 			<substitution>

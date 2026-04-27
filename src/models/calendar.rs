@@ -47,6 +47,14 @@ pub struct CalendarWithBinding {
     pub created_at: chrono::DateTime<chrono::Utc>,
 }
 
+#[derive(Debug, Clone, sqlx::FromRow)]
+pub struct DavCalendarBinding {
+    pub uri: String,
+    pub displayname: Option<String>,
+    pub calendar_description: Option<String>,
+    pub supported_component_set: Vec<String>,
+}
+
 /// Create a new calendar with an owner binding
 /// Returns the created calendar ID
 pub async fn create_calendar(
@@ -122,6 +130,54 @@ pub async fn list_user_calendars(
     .await?;
 
     Ok(calendars)
+}
+
+pub async fn list_dav_calendar_bindings(
+    pool: &PgPool,
+    principal_user_id: Uuid,
+) -> Result<Vec<DavCalendarBinding>, sqlx::Error> {
+    sqlx::query_as::<_, DavCalendarBinding>(
+        r#"
+        SELECT
+            cb.uri,
+            cb.displayname,
+            cb.calendar_description,
+            c.supported_component_set::text[] AS supported_component_set
+        FROM calendars c
+        JOIN calendar_bindings cb ON c.id = cb.calendar_id
+        WHERE cb.principal_user_id = $1
+        AND c.deleted_at IS NULL
+        ORDER BY cb.calendar_order, c.created_at DESC
+        "#,
+    )
+    .bind(principal_user_id)
+    .fetch_all(pool)
+    .await
+}
+
+pub async fn find_dav_calendar_binding(
+    pool: &PgPool,
+    principal_user_id: Uuid,
+    binding_uri: &str,
+) -> Result<Option<DavCalendarBinding>, sqlx::Error> {
+    sqlx::query_as::<_, DavCalendarBinding>(
+        r#"
+        SELECT
+            cb.uri,
+            cb.displayname,
+            cb.calendar_description,
+            c.supported_component_set::text[] AS supported_component_set
+        FROM calendars c
+        JOIN calendar_bindings cb ON c.id = cb.calendar_id
+        WHERE cb.principal_user_id = $1
+        AND cb.uri = $2
+        AND c.deleted_at IS NULL
+        "#,
+    )
+    .bind(principal_user_id)
+    .bind(binding_uri)
+    .fetch_optional(pool)
+    .await
 }
 
 /// Delete a calendar if the user is the owner

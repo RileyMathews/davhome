@@ -1,0 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
+<D:multistatus xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav">
+  <D:response>
+    <D:href>{{ home.href|escape }}</D:href>
+    <D:propstat>
+      <D:prop>
+{% for property in home.properties %}
+        {{ property.xml|safe }}
+{% endfor %}
+      </D:prop>
+      <D:status>HTTP/1.1 200 OK</D:status>
+    </D:propstat>
+  </D:response>
+{% for calendar in calendars %}
+  <D:response>
+    <D:href>{{ calendar.href|escape }}</D:href>
+    <D:propstat>
+      <D:prop>
+{% for property in calendar.properties %}
+        {{ property.xml|safe }}
+{% endfor %}
+      </D:prop>
+      <D:status>HTTP/1.1 200 OK</D:status>
+    </D:propstat>
+  </D:response>
+{% endfor %}
+</D:multistatus>

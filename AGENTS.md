@@ -45,3 +45,6 @@ I have checked out the Radicale code at ~/code/Radicale so we can inspect their 
 The main thing that sets this calendar server apart from others is native first class feature support for calendar sharing.
 The sharing is meant to be done in the web UI. The idea is that a calendar owner can share a calendar with another user
 and then that second user sees the shared calendar as a calendar available to them when they connect their calendar apps to this server.
+
+# Verification
+Any time you make a change you should test using 'just verify' and then 'just integration-suites' commands.

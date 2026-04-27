@@ -36,7 +36,7 @@ Use this as the DAV implementation backlog. Mark an item complete only when the 
 - [ ] Route DAV paths for `GET`.
 - [ ] Route DAV paths for `HEAD`.
 - [ ] Route DAV paths for `OPTIONS`.
-- [ ] Route DAV paths for `PROPFIND`.
+- [x] Route DAV paths for `PROPFIND`.
 - [ ] Route DAV paths for `PROPPATCH`.
 - [ ] Route DAV paths for `MKCOL`.
 - [ ] Route DAV paths for `MKCALENDAR`.
@@ -52,9 +52,9 @@ Use this as the DAV implementation backlog. Mark an item complete only when the 
 
 ## XML And Response Infrastructure
 
-- [ ] Return Askama-rendered XML templates for every DAV XML response.
+- [x] Return Askama-rendered XML templates for every DAV XML response currently implemented.
 - [ ] Add namespace support for `DAV:`, `urn:ietf:params:xml:ns:caldav`, `http://calendarserver.org/ns/`, and `http://apple.com/ns/ical/`.
-- [ ] Add reusable XML response templates for `D:multistatus`.
+- [x] Add reusable XML response templates for `D:multistatus`.
 - [ ] Add reusable XML response templates for `D:response` and `D:propstat`.
 - [ ] Add reusable XML response templates for `D:error` precondition responses.
 - [ ] Format WebDAV status values as full HTTP status lines such as `HTTP/1.1 200 OK`.
@@ -93,26 +93,26 @@ Use this as the DAV implementation backlog. Mark an item complete only when the 
 
 ## Discovery And PROPFIND
 
-- [ ] Treat empty `PROPFIND` bodies as `D:allprop`.
-- [ ] Support `D:allprop`.
+- [x] Treat empty `PROPFIND` bodies as `D:allprop`.
+- [x] Support minimal `D:allprop` for root, calendar home, and calendar collection discovery.
 - [ ] Support `D:propname`.
-- [ ] Support explicit `D:prop` requests.
-- [ ] Support `Depth: 0` discovery.
-- [ ] Support `Depth: 1` discovery.
+- [x] Support explicit `D:prop` requests for the currently implemented discovery properties.
+- [x] Support `Depth: 0` discovery.
+- [x] Support `Depth: 1` discovery for calendar homes.
 - [ ] Return `D:principal-collection-set`.
-- [ ] Return `D:current-user-principal`.
-- [ ] Return `D:principal-URL`.
-- [ ] Return `C:calendar-home-set`.
+- [x] Return `D:current-user-principal`.
+- [x] Return `D:principal-URL`.
+- [x] Return `C:calendar-home-set`.
 - [ ] Return `C:calendar-user-address-set`.
-- [ ] Return `D:resourcetype` for root, principals, collections, calendars, and objects.
-- [ ] Return `D:displayname` from binding or collection metadata.
+- [ ] Return `D:resourcetype` for root, principals, collections, calendars, and objects. Root, calendar home, and calendar collection discovery are implemented; principal and object resources are still pending.
+- [x] Return `D:displayname` from binding or collection metadata.
 - [ ] Return `D:owner`.
 - [ ] Return `D:getetag` for calendar objects and leaf collections where appropriate.
 - [ ] Return `D:getlastmodified`.
 - [ ] Return `D:getcontenttype`.
 - [ ] Return `D:getcontentlength`.
 - [ ] Return `D:supported-report-set`.
-- [ ] Return `C:supported-calendar-component-set`.
+- [x] Return `C:supported-calendar-component-set`.
 - [ ] Return `C:max-resource-size`.
 - [ ] Return `CS:getctag`.
 - [ ] Return `D:sync-token`.

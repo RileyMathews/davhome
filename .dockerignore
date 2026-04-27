@@ -1,0 +1,6 @@
+.git
+target
+debug.log
+child.log
+caldavtester-lab/ccs-caldavtester/debug.log
+caldavtester-lab/.env-py2.sh

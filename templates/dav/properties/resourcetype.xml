@@ -1,0 +1,1 @@
+<D:resourcetype>{% if collection %}<D:collection/>{% endif %}{% if calendar %}<C:calendar/>{% endif %}</D:resourcetype>

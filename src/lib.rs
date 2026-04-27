@@ -73,37 +73,53 @@ pub fn build_app(pool: PgPool) -> Router {
         )
         .route_service(
             "/dav",
-            crate::custom_method_router::CustomMethodRouter::new(())
+            crate::custom_method_router::CustomMethodRouter::new(pool.clone())
                 .on(
                     crate::dav_method::DavMethod::Options,
                     routes::dav::handle_root_options,
+                )
+                .on(
+                    crate::dav_method::DavMethod::Propfind,
+                    routes::dav::handle_root_propfind,
                 )
                 .fallback(routes::dav::handle_root_fallback),
         )
         .route_service(
             "/dav/",
-            crate::custom_method_router::CustomMethodRouter::new(())
+            crate::custom_method_router::CustomMethodRouter::new(pool.clone())
                 .on(
                     crate::dav_method::DavMethod::Options,
                     routes::dav::handle_root_options,
+                )
+                .on(
+                    crate::dav_method::DavMethod::Propfind,
+                    routes::dav::handle_root_propfind,
                 )
                 .fallback(routes::dav::handle_root_fallback),
         )
         .route_service(
             "/dav/calendars/{username}",
-            crate::custom_method_router::CustomMethodRouter::new(())
+            crate::custom_method_router::CustomMethodRouter::new(pool.clone())
                 .on(
                     crate::dav_method::DavMethod::Options,
                     routes::dav::handle_home_options,
+                )
+                .on(
+                    crate::dav_method::DavMethod::Propfind,
+                    routes::dav::handle_home_propfind,
                 )
                 .fallback(routes::dav::handle_home_fallback),
         )
         .route_service(
             "/dav/calendars/{username}/",
-            crate::custom_method_router::CustomMethodRouter::new(())
+            crate::custom_method_router::CustomMethodRouter::new(pool.clone())
                 .on(
                     crate::dav_method::DavMethod::Options,
                     routes::dav::handle_home_options,
+                )
+                .on(
+                    crate::dav_method::DavMethod::Propfind,
+                    routes::dav::handle_home_propfind,
                 )
                 .fallback(routes::dav::handle_home_fallback),
         )
@@ -113,6 +129,10 @@ pub fn build_app(pool: PgPool) -> Router {
                 .on(
                     crate::dav_method::DavMethod::Options,
                     routes::dav::handle_collection_options,
+                )
+                .on(
+                    crate::dav_method::DavMethod::Propfind,
+                    routes::dav::handle_collection_propfind,
                 )
                 .on(
                     crate::dav_method::DavMethod::Delete,
@@ -129,6 +149,10 @@ pub fn build_app(pool: PgPool) -> Router {
                 .on(
                     crate::dav_method::DavMethod::Options,
                     routes::dav::handle_collection_options,
+                )
+                .on(
+                    crate::dav_method::DavMethod::Propfind,
+                    routes::dav::handle_collection_propfind,
                 )
                 .on(
                     crate::dav_method::DavMethod::Delete,

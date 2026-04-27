@@ -1,0 +1,35 @@
+services:
+  postgres-test:
+    image: postgres:15-alpine
+    environment:
+      POSTGRES_USER: davhome
+      POSTGRES_PASSWORD: davhome
+      POSTGRES_DB: davhome
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U davhome -d davhome"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+  app-test:
+    build:
+      context: ..
+      dockerfile: .docker/Dockerfile.test
+    environment:
+      DATABASE_URL: postgres://davhome:davhome@postgres-test:5432/davhome
+      PORT: 8000
+    ports:
+      - "127.0.0.1:8000:8000"
+    depends_on:
+      postgres-test:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD-SHELL", "bash -c '</dev/tcp/127.0.0.1/8000'"]
+      interval: 2s
+      timeout: 5s
+      retries: 30
+
+volumes:
+  postgres_test_data:
