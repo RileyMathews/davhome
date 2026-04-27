@@ -7,6 +7,9 @@ use sqlx::PgPool;
 
 mod common;
 
+const USER01_PRINCIPAL: &str = "/dav/principals/__uids__/10000000-0000-0000-0000-000000000001/";
+const USER01_HOME: &str = "/dav/calendars/__uids__/10000000-0000-0000-0000-000000000001/";
+
 fn basic_auth(username: &str, password: &str) -> String {
     let encoded = STANDARD.encode(format!("{username}:{password}"));
     format!("Basic {encoded}")
@@ -75,7 +78,53 @@ async fn http_propfind_root_returns_current_user_principal(pool: PgPool) -> sqlx
     assert_eq!(response.status(), StatusCode::MULTI_STATUS);
     let body = common::body_text(response).await;
     assert!(body.contains("<D:href>/dav/</D:href>"));
-    assert!(body.contains("<D:current-user-principal><D:href>/dav/principals/user01/</D:href></D:current-user-principal>"));
+    assert!(body.contains(&format!(
+        "<D:current-user-principal><D:href>{USER01_PRINCIPAL}</D:href></D:current-user-principal>"
+    )));
+    Ok(())
+}
+
+#[sqlx::test]
+async fn http_well_known_caldav_redirects_to_dav_root(pool: PgPool) -> sqlx::Result<()> {
+    let app = common::app(pool);
+
+    let response = common::send(
+        app,
+        Request::builder()
+            .uri("/.well-known/caldav")
+            .body(Body::empty())
+            .unwrap(),
+    )
+    .await;
+
+    assert!(response.status().is_redirection());
+    assert_eq!(response.headers().get(header::LOCATION).unwrap(), "/dav/");
+    Ok(())
+}
+
+#[sqlx::test]
+async fn http_propfind_principal_collection_returns_current_user_principal(
+    pool: PgPool,
+) -> sqlx::Result<()> {
+    common::create_user_with_password(&pool, "user01", "user01").await?;
+    let app = common::app(pool);
+
+    let response = common::send(
+        app,
+        Request::builder()
+            .method("PROPFIND")
+            .uri("/dav/principals/users/")
+            .header(header::AUTHORIZATION, basic_auth("user01", "user01"))
+            .body(propfind_body(&["current-user-principal"]))
+            .unwrap(),
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::MULTI_STATUS);
+    let body = common::body_text(response).await;
+    assert!(body.contains(&format!(
+        "<D:current-user-principal><D:href>{USER01_PRINCIPAL}</D:href></D:current-user-principal>"
+    )));
     Ok(())
 }
 
@@ -88,7 +137,7 @@ async fn http_propfind_calendar_home_returns_calendar_home_set(pool: PgPool) -> 
         app,
         Request::builder()
             .method("PROPFIND")
-            .uri("/dav/calendars/user01/")
+            .uri(USER01_HOME)
             .header(header::AUTHORIZATION, basic_auth("user01", "user01"))
             .body(calendar_propfind_body(&["calendar-home-set"]))
             .unwrap(),
@@ -97,10 +146,10 @@ async fn http_propfind_calendar_home_returns_calendar_home_set(pool: PgPool) -> 
 
     assert_eq!(response.status(), StatusCode::MULTI_STATUS);
     let body = common::body_text(response).await;
-    assert!(body.contains("<D:href>/dav/calendars/user01/</D:href>"));
-    assert!(body.contains(
-        "<C:calendar-home-set><D:href>/dav/calendars/user01/</D:href></C:calendar-home-set>"
-    ));
+    assert!(body.contains(&format!("<D:href>{USER01_HOME}</D:href>")));
+    assert!(body.contains(&format!(
+        "<C:calendar-home-set><D:href>{USER01_HOME}</D:href></C:calendar-home-set>"
+    )));
     Ok(())
 }
 
@@ -115,7 +164,7 @@ async fn http_propfind_depth_one_calendar_home_lists_bindings(pool: PgPool) -> s
         app,
         Request::builder()
             .method("PROPFIND")
-            .uri("/dav/calendars/user01/")
+            .uri(USER01_HOME)
             .header(header::AUTHORIZATION, basic_auth("user01", "user01"))
             .header("Depth", "1")
             .body(propfind_body(&["resourcetype", "displayname"]))
@@ -125,8 +174,8 @@ async fn http_propfind_depth_one_calendar_home_lists_bindings(pool: PgPool) -> s
 
     assert_eq!(response.status(), StatusCode::MULTI_STATUS);
     let body = common::body_text(response).await;
-    assert!(body.contains("<D:href>/dav/calendars/user01/</D:href>"));
-    assert!(body.contains("<D:href>/dav/calendars/user01/personal/</D:href>"));
+    assert!(body.contains(&format!("<D:href>{USER01_HOME}</D:href>")));
+    assert!(body.contains(&format!("<D:href>{USER01_HOME}personal/</D:href>")));
     assert!(body.contains("<D:displayname>Personal</D:displayname>"));
     assert!(body.contains("<D:resourcetype><D:collection/><C:calendar/></D:resourcetype>"));
     Ok(())
@@ -145,7 +194,7 @@ async fn http_propfind_calendar_collection_returns_supported_components(
         app,
         Request::builder()
             .method("PROPFIND")
-            .uri("/dav/calendars/user01/personal/")
+            .uri(format!("{USER01_HOME}personal/"))
             .header(header::AUTHORIZATION, basic_auth("user01", "user01"))
             .body(calendar_propfind_body(&[
                 "supported-calendar-component-set",
@@ -156,7 +205,7 @@ async fn http_propfind_calendar_collection_returns_supported_components(
 
     assert_eq!(response.status(), StatusCode::MULTI_STATUS);
     let body = common::body_text(response).await;
-    assert!(body.contains("<D:href>/dav/calendars/user01/personal/</D:href>"));
+    assert!(body.contains(&format!("<D:href>{USER01_HOME}personal/</D:href>")));
     assert!(body.contains("<C:supported-calendar-component-set>"));
     assert!(body.contains("<C:comp name=\"VEVENT\"/>"));
     assert!(body.contains("<C:comp name=\"VTODO\"/>"));
@@ -171,7 +220,7 @@ async fn http_mkcol_requires_basic_auth(pool: PgPool) -> sqlx::Result<()> {
         app,
         Request::builder()
             .method("MKCOL")
-            .uri("/dav/calendars/user01/litmus/")
+            .uri(format!("{USER01_HOME}litmus/"))
             .body(Body::empty())
             .unwrap(),
     )
@@ -196,7 +245,7 @@ async fn http_mkcol_creates_calendar_binding_for_authenticated_user(
         app,
         Request::builder()
             .method("MKCOL")
-            .uri("/dav/calendars/user01/litmus/")
+            .uri(format!("{USER01_HOME}litmus/"))
             .header(header::AUTHORIZATION, basic_auth("user01", "user01"))
             .body(Body::empty())
             .unwrap(),
@@ -228,7 +277,7 @@ async fn http_mkcol_duplicate_collection_returns_method_not_allowed(
         app,
         Request::builder()
             .method("MKCOL")
-            .uri("/dav/calendars/user01/litmus/")
+            .uri(format!("{USER01_HOME}litmus/"))
             .header(header::AUTHORIZATION, basic_auth("user01", "user01"))
             .body(Body::empty())
             .unwrap(),
@@ -236,6 +285,98 @@ async fn http_mkcol_duplicate_collection_returns_method_not_allowed(
     .await;
 
     assert_eq!(response.status(), StatusCode::METHOD_NOT_ALLOWED);
+    Ok(())
+}
+
+#[sqlx::test]
+async fn http_mkcalendar_creates_calendar_with_requested_properties(
+    pool: PgPool,
+) -> sqlx::Result<()> {
+    let user = common::create_user_with_password(&pool, "user01", "user01").await?;
+    let app = common::app(pool.clone());
+
+    let response = common::send(
+        app,
+        Request::builder()
+            .method("MKCALENDAR")
+            .uri(format!("{USER01_HOME}events/"))
+            .header(header::AUTHORIZATION, basic_auth("user01", "user01"))
+            .header(header::CONTENT_TYPE, "text/xml; charset=utf-8")
+            .body(Body::from(mkcalendar_body(
+                "Events",
+                "Events only",
+                &["VEVENT"],
+            )))
+            .unwrap(),
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::CREATED);
+
+    let binding = davhome::models::calendar::find_dav_calendar_binding(&pool, user.id, "events")
+        .await?
+        .unwrap();
+    assert_eq!(binding.displayname.as_deref(), Some("Events"));
+    assert_eq!(binding.calendar_description.as_deref(), Some("Events only"));
+    assert_eq!(binding.supported_component_set, vec!["VEVENT".to_string()]);
+    Ok(())
+}
+
+#[sqlx::test]
+async fn http_mkcalendar_existing_destination_returns_precondition_error(
+    pool: PgPool,
+) -> sqlx::Result<()> {
+    let user = common::create_user_with_password(&pool, "user01", "user01").await?;
+    davhome::models::calendar::create_calendar(&pool, user.id, "events", "Events", None).await?;
+    let app = common::app(pool);
+
+    let response = common::send(
+        app,
+        Request::builder()
+            .method("MKCALENDAR")
+            .uri(format!("{USER01_HOME}events/"))
+            .header(header::AUTHORIZATION, basic_auth("user01", "user01"))
+            .body(Body::empty())
+            .unwrap(),
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::FORBIDDEN);
+    assert!(
+        common::body_text(response)
+            .await
+            .contains("<D:resource-must-be-null/>")
+    );
+    Ok(())
+}
+
+#[sqlx::test]
+async fn http_mkcalendar_rejects_multi_component_calendar_body(pool: PgPool) -> sqlx::Result<()> {
+    common::create_user_with_password(&pool, "user01", "user01").await?;
+    let app = common::app(pool);
+
+    let response = common::send(
+        app,
+        Request::builder()
+            .method("MKCALENDAR")
+            .uri(format!("{USER01_HOME}mixed/"))
+            .header(header::AUTHORIZATION, basic_auth("user01", "user01"))
+            .header(header::CONTENT_TYPE, "text/xml; charset=utf-8")
+            .body(Body::from(mkcalendar_body(
+                "Mixed",
+                "Mixed components",
+                &["VEVENT", "VTODO"],
+            )))
+            .unwrap(),
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::MULTI_STATUS);
+    assert!(
+        common::body_text(response)
+            .await
+            .contains("<C:supported-calendar-component-set/>")
+    );
     Ok(())
 }
 
@@ -249,7 +390,7 @@ async fn http_delete_removes_owned_dav_collection(pool: PgPool) -> sqlx::Result<
         app,
         Request::builder()
             .method("DELETE")
-            .uri("/dav/calendars/user01/litmus/")
+            .uri(format!("{USER01_HOME}litmus/"))
             .header(header::AUTHORIZATION, basic_auth("user01", "user01"))
             .body(Body::empty())
             .unwrap(),
@@ -278,7 +419,7 @@ async fn http_delete_missing_dav_collection_returns_not_found(pool: PgPool) -> s
         app,
         Request::builder()
             .method("DELETE")
-            .uri("/dav/calendars/user01/litmus/")
+            .uri(format!("{USER01_HOME}litmus/"))
             .header(header::AUTHORIZATION, basic_auth("user01", "user01"))
             .body(Body::empty())
             .unwrap(),
@@ -300,7 +441,7 @@ async fn http_put_calendar_object_creates_event(pool: PgPool) -> sqlx::Result<()
         app,
         Request::builder()
             .method("PUT")
-            .uri("/dav/calendars/user01/personal/event.ics")
+            .uri(format!("{USER01_HOME}personal/event.ics"))
             .header(header::AUTHORIZATION, basic_auth("user01", "user01"))
             .header(header::CONTENT_TYPE, "text/calendar")
             .header(header::IF_NONE_MATCH, "*")
@@ -341,7 +482,7 @@ async fn http_get_calendar_object_returns_icalendar_with_cache_headers(
         app.clone(),
         Request::builder()
             .method("PUT")
-            .uri("/dav/calendars/user01/personal/event.ics")
+            .uri(format!("{USER01_HOME}personal/event.ics"))
             .header(header::AUTHORIZATION, basic_auth("user01", "user01"))
             .header(header::CONTENT_TYPE, "text/calendar")
             .body(Body::from(ics.clone()))
@@ -354,7 +495,7 @@ async fn http_get_calendar_object_returns_icalendar_with_cache_headers(
         app,
         Request::builder()
             .method("GET")
-            .uri("/dav/calendars/user01/personal/event.ics")
+            .uri(format!("{USER01_HOME}personal/event.ics"))
             .header(header::AUTHORIZATION, basic_auth("user01", "user01"))
             .body(Body::empty())
             .unwrap(),
@@ -384,7 +525,7 @@ async fn http_get_calendar_object_preserves_vtimezone(pool: PgPool) -> sqlx::Res
         app.clone(),
         Request::builder()
             .method("PUT")
-            .uri("/dav/calendars/user01/personal/event.ics")
+            .uri(format!("{USER01_HOME}personal/event.ics"))
             .header(header::AUTHORIZATION, basic_auth("user01", "user01"))
             .header(header::CONTENT_TYPE, "text/calendar")
             .body(Body::from(ics.clone()))
@@ -396,7 +537,7 @@ async fn http_get_calendar_object_preserves_vtimezone(pool: PgPool) -> sqlx::Res
         app,
         Request::builder()
             .method("GET")
-            .uri("/dav/calendars/user01/personal/event.ics")
+            .uri(format!("{USER01_HOME}personal/event.ics"))
             .header(header::AUTHORIZATION, basic_auth("user01", "user01"))
             .body(Body::empty())
             .unwrap(),
@@ -419,7 +560,7 @@ async fn http_head_calendar_object_returns_headers_without_body(pool: PgPool) ->
         app.clone(),
         Request::builder()
             .method("PUT")
-            .uri("/dav/calendars/user01/personal/event.ics")
+            .uri(format!("{USER01_HOME}personal/event.ics"))
             .header(header::AUTHORIZATION, basic_auth("user01", "user01"))
             .header(header::CONTENT_TYPE, "text/calendar")
             .body(Body::from(event_ics("event-1", "First")))
@@ -431,7 +572,7 @@ async fn http_head_calendar_object_returns_headers_without_body(pool: PgPool) ->
         app,
         Request::builder()
             .method("HEAD")
-            .uri("/dav/calendars/user01/personal/event.ics")
+            .uri(format!("{USER01_HOME}personal/event.ics"))
             .header(header::AUTHORIZATION, basic_auth("user01", "user01"))
             .body(Body::empty())
             .unwrap(),
@@ -456,7 +597,7 @@ async fn http_propfind_calendar_object_returns_dav_metadata(pool: PgPool) -> sql
         app.clone(),
         Request::builder()
             .method("PUT")
-            .uri("/dav/calendars/user01/personal/event.ics")
+            .uri(format!("{USER01_HOME}personal/event.ics"))
             .header(header::AUTHORIZATION, basic_auth("user01", "user01"))
             .header(header::CONTENT_TYPE, "text/calendar")
             .body(Body::from(ics.clone()))
@@ -475,7 +616,7 @@ async fn http_propfind_calendar_object_returns_dav_metadata(pool: PgPool) -> sql
         app,
         Request::builder()
             .method("PROPFIND")
-            .uri("/dav/calendars/user01/personal/event.ics")
+            .uri(format!("{USER01_HOME}personal/event.ics"))
             .header(header::AUTHORIZATION, basic_auth("user01", "user01"))
             .body(propfind_body(&[
                 "getetag",
@@ -490,7 +631,7 @@ async fn http_propfind_calendar_object_returns_dav_metadata(pool: PgPool) -> sql
 
     assert_eq!(response.status(), StatusCode::MULTI_STATUS);
     let body = common::body_text(response).await;
-    assert!(body.contains("<D:href>/dav/calendars/user01/personal/event.ics</D:href>"));
+    assert!(body.contains(&format!("<D:href>{USER01_HOME}personal/event.ics</D:href>")));
     assert!(body.contains(&format!("<D:getetag>{etag}</D:getetag>")));
     assert!(body.contains(
         "<D:getcontenttype>text/calendar;charset=utf-8;component=VEVENT</D:getcontenttype>"
@@ -516,7 +657,7 @@ async fn http_put_calendar_object_if_none_match_existing_precondition_fails(
         app.clone(),
         Request::builder()
             .method("PUT")
-            .uri("/dav/calendars/user01/personal/event.ics")
+            .uri(format!("{USER01_HOME}personal/event.ics"))
             .header(header::AUTHORIZATION, basic_auth("user01", "user01"))
             .header(header::CONTENT_TYPE, "text/calendar")
             .body(Body::from(event_ics("event-1", "First")))
@@ -528,7 +669,7 @@ async fn http_put_calendar_object_if_none_match_existing_precondition_fails(
         app,
         Request::builder()
             .method("PUT")
-            .uri("/dav/calendars/user01/personal/event.ics")
+            .uri(format!("{USER01_HOME}personal/event.ics"))
             .header(header::AUTHORIZATION, basic_auth("user01", "user01"))
             .header(header::CONTENT_TYPE, "text/calendar")
             .header(header::IF_NONE_MATCH, "*")
@@ -552,7 +693,7 @@ async fn http_put_calendar_object_updates_with_matching_if_match(pool: PgPool) -
         app.clone(),
         Request::builder()
             .method("PUT")
-            .uri("/dav/calendars/user01/personal/event.ics")
+            .uri(format!("{USER01_HOME}personal/event.ics"))
             .header(header::AUTHORIZATION, basic_auth("user01", "user01"))
             .header(header::CONTENT_TYPE, "text/calendar")
             .body(Body::from(event_ics("event-1", "First")))
@@ -565,7 +706,7 @@ async fn http_put_calendar_object_updates_with_matching_if_match(pool: PgPool) -
         app,
         Request::builder()
             .method("PUT")
-            .uri("/dav/calendars/user01/personal/event.ics")
+            .uri(format!("{USER01_HOME}personal/event.ics"))
             .header(header::AUTHORIZATION, basic_auth("user01", "user01"))
             .header(header::CONTENT_TYPE, "text/calendar")
             .header(header::IF_MATCH, etag)
@@ -590,7 +731,7 @@ async fn http_put_calendar_object_accepts_vtodo(pool: PgPool) -> sqlx::Result<()
         app,
         Request::builder()
             .method("PUT")
-            .uri("/dav/calendars/user01/personal/task.ics")
+            .uri(format!("{USER01_HOME}personal/task.ics"))
             .header(header::AUTHORIZATION, basic_auth("user01", "user01"))
             .header(header::CONTENT_TYPE, "text/calendar")
             .body(Body::from(todo_ics("task-1", "Task")))
@@ -622,7 +763,7 @@ async fn http_put_calendar_object_rejects_unsupported_component(pool: PgPool) ->
         app,
         Request::builder()
             .method("PUT")
-            .uri("/dav/calendars/user01/personal/journal.ics")
+            .uri(format!("{USER01_HOME}personal/journal.ics"))
             .header(header::AUTHORIZATION, basic_auth("user01", "user01"))
             .header(header::CONTENT_TYPE, "text/calendar")
             .body(Body::from(journal_ics("journal-1", "Journal")))
@@ -645,7 +786,7 @@ async fn http_put_calendar_object_duplicate_uid_returns_conflict(pool: PgPool) -
         app.clone(),
         Request::builder()
             .method("PUT")
-            .uri("/dav/calendars/user01/personal/first.ics")
+            .uri(format!("{USER01_HOME}personal/first.ics"))
             .header(header::AUTHORIZATION, basic_auth("user01", "user01"))
             .header(header::CONTENT_TYPE, "text/calendar")
             .body(Body::from(event_ics("same-uid", "First")))
@@ -657,7 +798,7 @@ async fn http_put_calendar_object_duplicate_uid_returns_conflict(pool: PgPool) -
         app,
         Request::builder()
             .method("PUT")
-            .uri("/dav/calendars/user01/personal/second.ics")
+            .uri(format!("{USER01_HOME}personal/second.ics"))
             .header(header::AUTHORIZATION, basic_auth("user01", "user01"))
             .header(header::CONTENT_TYPE, "text/calendar")
             .body(Body::from(event_ics("same-uid", "Second")))
@@ -680,7 +821,7 @@ async fn http_delete_calendar_object_removes_event(pool: PgPool) -> sqlx::Result
         app.clone(),
         Request::builder()
             .method("PUT")
-            .uri("/dav/calendars/user01/personal/event.ics")
+            .uri(format!("{USER01_HOME}personal/event.ics"))
             .header(header::AUTHORIZATION, basic_auth("user01", "user01"))
             .header(header::CONTENT_TYPE, "text/calendar")
             .body(Body::from(event_ics("event-1", "First")))
@@ -692,7 +833,7 @@ async fn http_delete_calendar_object_removes_event(pool: PgPool) -> sqlx::Result
         app,
         Request::builder()
             .method("DELETE")
-            .uri("/dav/calendars/user01/personal/event.ics")
+            .uri(format!("{USER01_HOME}personal/event.ics"))
             .header(header::AUTHORIZATION, basic_auth("user01", "user01"))
             .body(Body::empty())
             .unwrap(),
@@ -729,7 +870,7 @@ async fn http_delete_calendar_object_with_stale_if_match_precondition_fails(
         app.clone(),
         Request::builder()
             .method("PUT")
-            .uri("/dav/calendars/user01/personal/event.ics")
+            .uri(format!("{USER01_HOME}personal/event.ics"))
             .header(header::AUTHORIZATION, basic_auth("user01", "user01"))
             .header(header::CONTENT_TYPE, "text/calendar")
             .body(Body::from(event_ics("event-1", "First")))
@@ -741,7 +882,7 @@ async fn http_delete_calendar_object_with_stale_if_match_precondition_fails(
         app,
         Request::builder()
             .method("DELETE")
-            .uri("/dav/calendars/user01/personal/event.ics")
+            .uri(format!("{USER01_HOME}personal/event.ics"))
             .header(header::AUTHORIZATION, basic_auth("user01", "user01"))
             .header(header::IF_MATCH, "\"stale\"")
             .body(Body::empty())
@@ -750,6 +891,119 @@ async fn http_delete_calendar_object_with_stale_if_match_precondition_fails(
     .await;
 
     assert_eq!(response.status(), StatusCode::PRECONDITION_FAILED);
+    Ok(())
+}
+
+#[sqlx::test]
+async fn http_report_calendar_multiget_returns_requested_objects(pool: PgPool) -> sqlx::Result<()> {
+    let user = common::create_user_with_password(&pool, "user01", "user01").await?;
+    davhome::models::calendar::create_calendar(&pool, user.id, "personal", "Personal", None)
+        .await?;
+    let app = common::app(pool);
+    let first = event_ics("event-1", "First");
+    let second = event_ics("event-2", "Second");
+
+    common::send(
+        app.clone(),
+        Request::builder()
+            .method("PUT")
+            .uri(format!("{USER01_HOME}personal/first.ics"))
+            .header(header::AUTHORIZATION, basic_auth("user01", "user01"))
+            .header(header::CONTENT_TYPE, "text/calendar")
+            .body(Body::from(first.clone()))
+            .unwrap(),
+    )
+    .await;
+    common::send(
+        app.clone(),
+        Request::builder()
+            .method("PUT")
+            .uri(format!("{USER01_HOME}personal/second.ics"))
+            .header(header::AUTHORIZATION, basic_auth("user01", "user01"))
+            .header(header::CONTENT_TYPE, "text/calendar")
+            .body(Body::from(second.clone()))
+            .unwrap(),
+    )
+    .await;
+
+    let response = common::send(
+        app,
+        Request::builder()
+            .method("REPORT")
+            .uri(format!("{USER01_HOME}personal/"))
+            .header(header::AUTHORIZATION, basic_auth("user01", "user01"))
+            .header(header::CONTENT_TYPE, "text/xml; charset=utf-8")
+            .body(Body::from(calendar_multiget_body(&[
+                &format!("{USER01_HOME}personal/first.ics"),
+                &format!("{USER01_HOME}personal/second.ics"),
+                &format!("{USER01_HOME}personal/missing.ics"),
+            ])))
+            .unwrap(),
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::MULTI_STATUS);
+    let body = common::body_text(response).await;
+    assert!(body.contains(&format!("<D:href>{USER01_HOME}personal/first.ics</D:href>")));
+    assert!(body.contains(&format!(
+        "<D:href>{USER01_HOME}personal/second.ics</D:href>"
+    )));
+    assert!(body.contains(&format!(
+        "<D:href>{USER01_HOME}personal/missing.ics</D:href>"
+    )));
+    assert!(body.contains("HTTP/1.1 404 Not Found"));
+    assert!(body.contains("event-1"));
+    assert!(body.contains("event-2"));
+    Ok(())
+}
+
+#[sqlx::test]
+async fn http_report_calendar_query_filters_by_component_type(pool: PgPool) -> sqlx::Result<()> {
+    let user = common::create_user_with_password(&pool, "user01", "user01").await?;
+    davhome::models::calendar::create_calendar(&pool, user.id, "personal", "Personal", None)
+        .await?;
+    let app = common::app(pool);
+
+    common::send(
+        app.clone(),
+        Request::builder()
+            .method("PUT")
+            .uri(format!("{USER01_HOME}personal/event.ics"))
+            .header(header::AUTHORIZATION, basic_auth("user01", "user01"))
+            .header(header::CONTENT_TYPE, "text/calendar")
+            .body(Body::from(event_ics("event-1", "First")))
+            .unwrap(),
+    )
+    .await;
+    common::send(
+        app.clone(),
+        Request::builder()
+            .method("PUT")
+            .uri(format!("{USER01_HOME}personal/task.ics"))
+            .header(header::AUTHORIZATION, basic_auth("user01", "user01"))
+            .header(header::CONTENT_TYPE, "text/calendar")
+            .body(Body::from(todo_ics("task-1", "Task")))
+            .unwrap(),
+    )
+    .await;
+
+    let response = common::send(
+        app,
+        Request::builder()
+            .method("REPORT")
+            .uri(format!("{USER01_HOME}personal/"))
+            .header(header::AUTHORIZATION, basic_auth("user01", "user01"))
+            .header(header::CONTENT_TYPE, "text/xml; charset=utf-8")
+            .body(Body::from(calendar_query_body("VTODO")))
+            .unwrap(),
+    )
+    .await;
+
+    assert_eq!(response.status(), StatusCode::MULTI_STATUS);
+    let body = common::body_text(response).await;
+    assert!(body.contains(&format!("<D:href>{USER01_HOME}personal/task.ics</D:href>")));
+    assert!(!body.contains(&format!("<D:href>{USER01_HOME}personal/event.ics</D:href>")));
+    assert!(body.contains("task-1"));
     Ok(())
 }
 
@@ -774,5 +1028,33 @@ fn todo_ics(uid: &str, summary: &str) -> String {
 fn journal_ics(uid: &str, summary: &str) -> String {
     format!(
         "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//davhome tests//EN\r\nBEGIN:VJOURNAL\r\nUID:{uid}\r\nDTSTAMP:20260427T120000Z\r\nSUMMARY:{summary}\r\nEND:VJOURNAL\r\nEND:VCALENDAR\r\n"
+    )
+}
+
+fn mkcalendar_body(displayname: &str, description: &str, components: &[&str]) -> String {
+    let components = components
+        .iter()
+        .map(|component| format!(r#"<C:comp name="{component}"/>"#))
+        .collect::<String>();
+
+    format!(
+        r#"<?xml version="1.0" encoding="utf-8" ?><C:mkcalendar xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav"><D:set><D:prop><D:displayname>{displayname}</D:displayname><C:calendar-description>{description}</C:calendar-description><C:supported-calendar-component-set>{components}</C:supported-calendar-component-set></D:prop></D:set></C:mkcalendar>"#
+    )
+}
+
+fn calendar_multiget_body(hrefs: &[&str]) -> String {
+    let hrefs = hrefs
+        .iter()
+        .map(|href| format!("<D:href>{href}</D:href>"))
+        .collect::<String>();
+
+    format!(
+        r#"<?xml version="1.0" encoding="utf-8" ?><C:calendar-multiget xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav"><D:prop><D:getetag/><C:calendar-data/></D:prop>{hrefs}</C:calendar-multiget>"#
+    )
+}
+
+fn calendar_query_body(component: &str) -> String {
+    format!(
+        r#"<?xml version="1.0" encoding="utf-8" ?><C:calendar-query xmlns:D="DAV:" xmlns:C="urn:ietf:params:xml:ns:caldav"><D:prop><D:getetag/><C:calendar-data/></D:prop><C:filter><C:comp-filter name="VCALENDAR"><C:comp-filter name="{component}"/></C:comp-filter></C:filter></C:calendar-query>"#
     )
 }

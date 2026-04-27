@@ -1,15 +1,16 @@
 use askama::Template;
-use axum::{body::Bytes, extract::State, http::HeaderMap, http::StatusCode, response::Redirect};
+use axum::{body::Bytes, extract::Path, extract::State, http::HeaderMap, http::StatusCode};
 use sqlx::PgPool;
 
-use crate::auth;
+use crate::{auth, models::user};
 
 use super::{
     RequestedProps, calendar_home_href, parse_propfind_request, principal_href,
+    principal_uid_matches_user,
     response::{DavResponse, RenderedDavProperty, propfind_response},
 };
 
-const ROOT_ALLPROP: RequestedProps = RequestedProps {
+const PRINCIPAL_ALLPROP: RequestedProps = RequestedProps {
     current_user_principal: true,
     principal_url: true,
     calendar_home_set: true,
@@ -26,7 +27,7 @@ const ROOT_ALLPROP: RequestedProps = RequestedProps {
 
 #[derive(Template)]
 #[template(path = "dav/propfind_root.xml")]
-struct RootPropfindTemplate {
+struct PrincipalPropfindTemplate {
     href: String,
     properties: Vec<RenderedDavProperty>,
 }
@@ -62,15 +63,11 @@ struct DisplaynamePropertyTemplate {
     displayname: String,
 }
 
-pub async fn handle_root_options() -> DavResponse {
+pub async fn handle_principal_collection_options() -> DavResponse {
     DavResponse::new(StatusCode::NO_CONTENT)
 }
 
-pub async fn handle_well_known_caldav() -> Redirect {
-    Redirect::permanent("/dav/")
-}
-
-pub async fn handle_root_propfind(
+pub async fn handle_principal_collection_propfind(
     State(pool): State<PgPool>,
     headers: HeaderMap,
     body: Bytes,
@@ -80,36 +77,54 @@ pub async fn handle_root_propfind(
         Err(response) => return response,
     };
 
-    let request = parse_propfind_request(&body);
-    let props = request.requested_props(ROOT_ALLPROP);
+    principal_propfind_response(&user, "/dav/principals/users/".to_string(), body)
+}
 
-    propfind_response(RootPropfindTemplate {
-        href: "/dav/".to_string(),
-        properties: root_properties(&props, &user),
+pub async fn handle_principal_options() -> DavResponse {
+    DavResponse::new(StatusCode::NO_CONTENT)
+}
+
+pub async fn handle_principal_propfind(
+    State(pool): State<PgPool>,
+    headers: HeaderMap,
+    Path(principal_uid): Path<String>,
+    body: Bytes,
+) -> DavResponse {
+    let user = match auth::require_dav_basic_auth(&pool, &headers).await {
+        Ok(user) => user,
+        Err(response) => return response,
+    };
+
+    if !principal_uid_matches_user(&principal_uid, &user) {
+        return DavResponse::new(StatusCode::FORBIDDEN);
+    }
+
+    principal_propfind_response(&user, principal_href(&user), body)
+}
+
+fn principal_propfind_response(user: &user::User, href: String, body: Bytes) -> DavResponse {
+    let request = parse_propfind_request(&body);
+    let props = request.requested_props(PRINCIPAL_ALLPROP);
+
+    propfind_response(PrincipalPropfindTemplate {
+        href,
+        properties: principal_properties(&props, user),
     })
 }
 
-pub async fn handle_root_fallback() -> DavResponse {
-    DavResponse::new(StatusCode::NOT_FOUND)
-}
-
-fn root_properties(
-    props: &RequestedProps,
-    user: &crate::models::user::User,
-) -> Vec<RenderedDavProperty> {
+fn principal_properties(props: &RequestedProps, user: &user::User) -> Vec<RenderedDavProperty> {
     let mut properties = Vec::new();
-    let principal_href = principal_href(user);
 
     if props.current_user_principal {
         properties.push(RenderedDavProperty::new(
             CurrentUserPrincipalPropertyTemplate {
-                href: principal_href.clone(),
+                href: principal_href(user),
             },
         ));
     }
     if props.principal_url {
         properties.push(RenderedDavProperty::new(PrincipalUrlPropertyTemplate {
-            href: principal_href,
+            href: principal_href(user),
         }));
     }
     if props.calendar_home_set {
@@ -119,13 +134,13 @@ fn root_properties(
     }
     if props.resourcetype {
         properties.push(RenderedDavProperty::new(ResourcetypePropertyTemplate {
-            collection: true,
+            collection: false,
             calendar: false,
         }));
     }
     if props.displayname {
         properties.push(RenderedDavProperty::new(DisplaynamePropertyTemplate {
-            displayname: "davhome".to_string(),
+            displayname: user.username.clone(),
         }));
     }
 

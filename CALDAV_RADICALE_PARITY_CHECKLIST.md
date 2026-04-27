@@ -39,16 +39,16 @@ Use this as the DAV implementation backlog. Mark an item complete only when the 
 - [x] Route DAV paths for `PROPFIND`.
 - [ ] Route DAV paths for `PROPPATCH`.
 - [ ] Route DAV paths for `MKCOL`.
-- [ ] Route DAV paths for `MKCALENDAR`.
+- [x] Route DAV paths for `MKCALENDAR`.
 - [x] Route DAV paths for `PUT`.
 - [x] Route DAV paths for `DELETE` on both collections and objects.
 - [ ] Route DAV paths for `MOVE`.
-- [ ] Route DAV paths for `REPORT`.
+- [x] Route DAV paths for `REPORT`.
 - [ ] Return accurate `Allow` headers for each route.
 - [ ] Return accurate `DAV` capability headers, including `1`, `2`, `3`, `calendar-access`, and `extended-mkcol` when implemented.
-- [ ] Implement `/.well-known/caldav` redirect behavior.
+- [x] Implement `/.well-known/caldav` redirect behavior.
 - [ ] Normalize or reject unsafe paths consistently, including double slashes and encoded path components.
-- [ ] Preserve a stable `/dav` namespace and principal/calendar homes under it.
+- [x] Preserve a stable `/dav` namespace and principal/calendar homes under it. The canonical DAV namespace now follows the CalDAVTester-style `/dav/principals/__uids__/{principal}/` and `/dav/calendars/__uids__/{principal}/` layout.
 
 ## XML And Response Infrastructure
 
@@ -111,7 +111,7 @@ Use this as the DAV implementation backlog. Mark an item complete only when the 
 - [x] Return `D:getlastmodified`.
 - [x] Return `D:getcontenttype`.
 - [x] Return `D:getcontentlength`.
-- [ ] Return `D:supported-report-set`.
+- [ ] Return `D:supported-report-set`. Calendar collections and calendar-home depth-one child responses advertise `calendar-query` and `calendar-multiget`; object resources and unsupported-property propstats are still pending.
 - [x] Return `C:supported-calendar-component-set`.
 - [ ] Return `C:max-resource-size`.
 - [ ] Return `CS:getctag`.
@@ -121,16 +121,16 @@ Use this as the DAV implementation backlog. Mark an item complete only when the 
 
 ## Collection Creation And Properties
 
-- [ ] Implement real `MKCALENDAR` calendar creation.
-- [ ] Parse `MKCALENDAR` property bodies.
-- [ ] Reject `MKCALENDAR` when the destination already exists with the proper WebDAV error.
+- [x] Implement real `MKCALENDAR` calendar creation.
+- [x] Parse `MKCALENDAR` property bodies for display name, description, and supported component set.
+- [x] Reject `MKCALENDAR` when the destination already exists with the proper WebDAV error.
 - [ ] Reject `MKCALENDAR` when intermediate collections are missing.
 - [ ] Implement generic `MKCOL` for plain WebDAV collections if needed by litmus.
 - [ ] Implement extended `MKCOL` for calendar collections via `D:resourcetype`.
 - [ ] Parse `D:resourcetype` from `MKCOL` bodies.
-- [ ] Parse and store `C:supported-calendar-component-set`.
-- [ ] Parse and store `D:displayname`.
-- [ ] Parse and store `C:calendar-description`.
+- [x] Parse and store `C:supported-calendar-component-set`.
+- [x] Parse and store `D:displayname`.
+- [x] Parse and store `C:calendar-description`.
 - [ ] Parse and store `ICAL:calendar-color`.
 - [ ] Implement `PROPPATCH` set operations for collection metadata.
 - [ ] Implement `PROPPATCH` remove operations for collection metadata.
@@ -177,15 +177,15 @@ Use this as the DAV implementation backlog. Mark an item complete only when the 
 
 ## REPORT Support
 
-- [ ] Advertise supported reports through `D:supported-report-set`.
-- [ ] Implement `C:calendar-multiget`.
-- [ ] Resolve `D:href` values in `calendar-multiget` relative to the DAV base path.
-- [ ] Return `404` response entries for missing `calendar-multiget` hrefs.
-- [ ] Implement `C:calendar-query` on calendar collections.
+- [ ] Advertise supported reports through `D:supported-report-set`. Basic collection-level advertising exists; full object-level advertising and 404 propstat behavior are pending.
+- [x] Implement `C:calendar-multiget`.
+- [x] Resolve `D:href` values in `calendar-multiget` relative to the DAV base path for canonical collection hrefs.
+- [x] Return `404` response entries for missing `calendar-multiget` hrefs.
+- [ ] Implement `C:calendar-query` on calendar collections. Basic all-object/component-type query exists; full CalDAV filters are pending.
 - [ ] Implement `C:calendar-query` on individual objects where clients send it.
-- [ ] Return `C:calendar-data` in report responses.
-- [ ] Return `D:getetag` in report responses.
-- [ ] Return `D:getcontenttype` in report responses.
+- [x] Return `C:calendar-data` in report responses.
+- [x] Return `D:getetag` in report responses.
+- [x] Return `D:getcontenttype` in report responses when requested.
 - [ ] Return requested unsupported report properties as `404` propstats.
 - [ ] Reject reports against incompatible collection types with `D:supported-report` errors.
 - [ ] Return empty multistatus for unsupported principal reports if needed for client compatibility.

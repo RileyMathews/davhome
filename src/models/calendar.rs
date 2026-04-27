@@ -109,43 +109,86 @@ pub async fn create_calendar(
     displayname: &str,
     calendar_description: Option<&str>,
 ) -> Result<Uuid, sqlx::Error> {
+    create_calendar_with_components(
+        pool,
+        owner_user_id,
+        binding_uri,
+        displayname,
+        calendar_description,
+        &["VEVENT", "VTODO"],
+    )
+    .await
+}
+
+pub async fn create_calendar_with_components(
+    pool: &PgPool,
+    owner_user_id: Uuid,
+    binding_uri: &str,
+    displayname: &str,
+    calendar_description: Option<&str>,
+    supported_components: &[&str],
+) -> Result<Uuid, sqlx::Error> {
     let mut txn = pool.begin().await?;
 
     let calendar_id = Uuid::new_v4();
+    let supported_components = supported_components
+        .iter()
+        .map(|component| component.to_string())
+        .collect::<Vec<_>>();
 
-    sqlx::query!(
+    sqlx::query(
         r#"
         INSERT INTO calendars (
             id, owner_user_id, supported_component_set, extra_properties
-        ) VALUES ($1, $2, ARRAY['VEVENT', 'VTODO']::calendar_component[], $3)
+        ) VALUES ($1, $2, $3::calendar_component[], $4)
         "#,
-        calendar_id,
-        owner_user_id,
-        serde_json::json!({})
     )
+    .bind(calendar_id)
+    .bind(owner_user_id)
+    .bind(&supported_components)
+    .bind(serde_json::json!({}))
     .execute(&mut *txn)
     .await?;
 
-    sqlx::query!(
+    sqlx::query(
         r#"
         INSERT INTO calendar_bindings (
             calendar_id, principal_user_id, uri, displayname, calendar_description, 
             extra_properties, schedule_transparency
         ) VALUES ($1, $2, $3, $4, $5, $6, 'opaque'::schedule_transparency)
         "#,
-        calendar_id,
-        owner_user_id,
-        binding_uri,
-        Some(displayname),
-        calendar_description,
-        serde_json::json!({})
     )
+    .bind(calendar_id)
+    .bind(owner_user_id)
+    .bind(binding_uri)
+    .bind(Some(displayname))
+    .bind(calendar_description)
+    .bind(serde_json::json!({}))
     .execute(&mut *txn)
     .await?;
 
     txn.commit().await?;
 
     Ok(calendar_id)
+}
+
+pub async fn create_default_calendars_for_user(
+    pool: &PgPool,
+    owner_user_id: Uuid,
+) -> Result<(), sqlx::Error> {
+    create_calendar_with_components(
+        pool,
+        owner_user_id,
+        "calendar",
+        "Calendar",
+        None,
+        &["VEVENT"],
+    )
+    .await?;
+    create_calendar_with_components(pool, owner_user_id, "tasks", "Tasks", None, &["VTODO"])
+        .await?;
+
+    Ok(())
 }
 
 /// List calendars visible to a user via their bindings

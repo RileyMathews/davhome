@@ -15,7 +15,7 @@ use crate::{
 };
 
 use super::{
-    RequestedProps, calendar_object_href, parse_propfind_request,
+    RequestedProps, calendar_object_href, parse_propfind_request, principal_uid_matches_user,
     response::{DavResponse, RenderedDavProperty, propfind_response},
 };
 
@@ -26,6 +26,8 @@ const OBJECT_ALLPROP: RequestedProps = RequestedProps {
     resourcetype: true,
     displayname: false,
     supported_calendar_component_set: false,
+    supported_report_set: false,
+    sync_token: false,
     getetag: true,
     getlastmodified: true,
     getcontenttype: true,
@@ -76,6 +78,12 @@ struct GetcontentlengthPropertyTemplate {
     content_length: usize,
 }
 
+#[derive(Template)]
+#[template(path = "dav/error.xml")]
+struct DavErrorTemplate {
+    condition_xml: &'static str,
+}
+
 struct ParsedCalendarObject {
     uid: String,
     component_type: String,
@@ -85,13 +93,41 @@ pub async fn handle_object_options() -> DavResponse {
     DavResponse::new(StatusCode::NO_CONTENT)
 }
 
+pub async fn handle_object_mkcol(
+    State(pool): State<PgPool>,
+    headers: HeaderMap,
+    Path((principal_uid, binding, _object)): Path<(String, String, String)>,
+) -> DavResponse {
+    match load_binding(&pool, &headers, &principal_uid, &binding).await {
+        Ok(_) => error_response(
+            StatusCode::FORBIDDEN,
+            "<C:calendar-collection-location-ok/>",
+        ),
+        Err(response) => response,
+    }
+}
+
+pub async fn handle_object_mkcalendar(
+    State(pool): State<PgPool>,
+    headers: HeaderMap,
+    Path((principal_uid, binding, _object)): Path<(String, String, String)>,
+) -> DavResponse {
+    match load_binding(&pool, &headers, &principal_uid, &binding).await {
+        Ok(_) => error_response(
+            StatusCode::FORBIDDEN,
+            "<C:calendar-collection-location-ok/>",
+        ),
+        Err(response) => response,
+    }
+}
+
 pub async fn handle_object_put(
     State(pool): State<PgPool>,
     headers: HeaderMap,
-    Path((username, binding, object)): Path<(String, String, String)>,
+    Path((principal_uid, binding, object)): Path<(String, String, String)>,
     body: Bytes,
 ) -> DavResponse {
-    let (user, binding) = match load_binding(&pool, &headers, &username, &binding).await {
+    let (user, binding) = match load_binding(&pool, &headers, &principal_uid, &binding).await {
         Ok(context) => context,
         Err(response) => return response,
     };
@@ -161,9 +197,10 @@ pub async fn handle_object_put(
 pub async fn handle_object_get(
     State(pool): State<PgPool>,
     headers: HeaderMap,
-    Path((username, binding, object)): Path<(String, String, String)>,
+    Path((principal_uid, binding, object)): Path<(String, String, String)>,
 ) -> DavResponse {
-    let (_, _, object) = match load_object(&pool, &headers, &username, &binding, &object).await {
+    let (_, _, object) = match load_object(&pool, &headers, &principal_uid, &binding, &object).await
+    {
         Ok(context) => context,
         Err(response) => return response,
     };
@@ -174,9 +211,10 @@ pub async fn handle_object_get(
 pub async fn handle_object_head(
     State(pool): State<PgPool>,
     headers: HeaderMap,
-    Path((username, binding, object)): Path<(String, String, String)>,
+    Path((principal_uid, binding, object)): Path<(String, String, String)>,
 ) -> DavResponse {
-    let (_, _, object) = match load_object(&pool, &headers, &username, &binding, &object).await {
+    let (_, _, object) = match load_object(&pool, &headers, &principal_uid, &binding, &object).await
+    {
         Ok(context) => context,
         Err(response) => return response,
     };
@@ -187,11 +225,11 @@ pub async fn handle_object_head(
 pub async fn handle_object_propfind(
     State(pool): State<PgPool>,
     headers: HeaderMap,
-    Path((username, binding, object)): Path<(String, String, String)>,
+    Path((principal_uid, binding, object)): Path<(String, String, String)>,
     body: Bytes,
 ) -> DavResponse {
-    let (_, binding, object) =
-        match load_object(&pool, &headers, &username, &binding, &object).await {
+    let (user, binding, object) =
+        match load_object(&pool, &headers, &principal_uid, &binding, &object).await {
             Ok(context) => context,
             Err(response) => return response,
         };
@@ -200,7 +238,7 @@ pub async fn handle_object_propfind(
     let props = request.requested_props(OBJECT_ALLPROP);
 
     propfind_response(CalendarObjectPropfindTemplate {
-        href: calendar_object_href(&username, &binding.uri, &object.href),
+        href: calendar_object_href(&user, &binding.uri, &object.href),
         properties: object_properties(&props, &object),
     })
 }
@@ -208,10 +246,10 @@ pub async fn handle_object_propfind(
 pub async fn handle_object_delete(
     State(pool): State<PgPool>,
     headers: HeaderMap,
-    Path((username, binding, object)): Path<(String, String, String)>,
+    Path((principal_uid, binding, object)): Path<(String, String, String)>,
 ) -> DavResponse {
     let (user, binding, existing) =
-        match load_object(&pool, &headers, &username, &binding, &object).await {
+        match load_object(&pool, &headers, &principal_uid, &binding, &object).await {
             Ok(context) => context,
             Err(response) => return response,
         };
@@ -238,12 +276,12 @@ pub async fn handle_object_delete(
 async fn load_binding(
     pool: &PgPool,
     headers: &HeaderMap,
-    username: &str,
+    principal_uid: &str,
     binding: &str,
 ) -> Result<(user::User, calendar::DavCalendarBinding), DavResponse> {
     let user = auth::require_dav_basic_auth(pool, headers).await?;
 
-    if user.username != username {
+    if !principal_uid_matches_user(principal_uid, &user) {
         return Err(DavResponse::new(StatusCode::FORBIDDEN));
     }
 
@@ -259,7 +297,7 @@ async fn load_binding(
 async fn load_object(
     pool: &PgPool,
     headers: &HeaderMap,
-    username: &str,
+    principal_uid: &str,
     binding: &str,
     object: &str,
 ) -> Result<
@@ -270,7 +308,7 @@ async fn load_object(
     ),
     DavResponse,
 > {
-    let (user, binding) = load_binding(pool, headers, username, binding).await?;
+    let (user, binding) = load_binding(pool, headers, principal_uid, binding).await?;
     let object = match calendar::find_dav_calendar_object(pool, binding.calendar_id, object).await {
         Ok(Some(object)) => object,
         Ok(None) => return Err(DavResponse::new(StatusCode::NOT_FOUND)),
@@ -502,6 +540,10 @@ fn object_content_type(component_type: &str) -> String {
 
 fn last_modified_http(last_modified_at: chrono::DateTime<chrono::Utc>) -> String {
     httpdate::fmt_http_date(SystemTime::from(last_modified_at))
+}
+
+fn error_response(status: StatusCode, condition_xml: &'static str) -> DavResponse {
+    DavResponse::new(status).with_body(DavErrorTemplate { condition_xml }.render().unwrap())
 }
 
 #[cfg(test)]

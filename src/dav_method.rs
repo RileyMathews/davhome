@@ -4,6 +4,7 @@ use axum::http::Method;
 pub enum DavMethod {
     Delete,
     Mkcol,
+    Mkcalendar,
     Options,
     Propfind,
     Proppatch,
@@ -15,6 +16,7 @@ impl From<DavMethod> for Method {
         match value {
             DavMethod::Delete => Method::DELETE,
             DavMethod::Mkcol => Method::from_bytes(b"MKCOL").unwrap(),
+            DavMethod::Mkcalendar => Method::from_bytes(b"MKCALENDAR").unwrap(),
             DavMethod::Options => Method::OPTIONS,
             DavMethod::Propfind => Method::from_bytes(b"PROPFIND").unwrap(),
             DavMethod::Proppatch => Method::from_bytes(b"PROPPATCH").unwrap(),

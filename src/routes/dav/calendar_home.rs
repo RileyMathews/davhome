@@ -6,7 +6,7 @@ use crate::{auth, models::calendar};
 
 use super::{
     RequestedProps, calendar_collection_href, calendar_home_href, parse_propfind_request,
-    principal_href,
+    principal_href, principal_uid_matches_user,
     response::{DavResponse, RenderedDavProperty, propfind_response},
 };
 
@@ -17,6 +17,8 @@ const HOME_ALLPROP: RequestedProps = RequestedProps {
     resourcetype: true,
     displayname: true,
     supported_calendar_component_set: false,
+    supported_report_set: false,
+    sync_token: false,
     getetag: false,
     getlastmodified: false,
     getcontenttype: false,
@@ -30,6 +32,8 @@ const CHILD_CALENDAR_ALLPROP: RequestedProps = RequestedProps {
     resourcetype: true,
     displayname: true,
     supported_calendar_component_set: true,
+    supported_report_set: true,
+    sync_token: false,
     getetag: false,
     getlastmodified: false,
     getcontenttype: false,
@@ -90,6 +94,10 @@ struct SupportedCalendarComponentSetPropertyTemplate {
     components: Vec<String>,
 }
 
+#[derive(Template)]
+#[template(path = "dav/properties/supported_report_set.xml")]
+struct SupportedReportSetPropertyTemplate;
+
 pub async fn handle_home_options() -> DavResponse {
     DavResponse::new(StatusCode::NO_CONTENT)
 }
@@ -97,7 +105,7 @@ pub async fn handle_home_options() -> DavResponse {
 pub async fn handle_home_propfind(
     State(pool): State<PgPool>,
     headers: HeaderMap,
-    Path(username): Path<String>,
+    Path(principal_uid): Path<String>,
     body: Bytes,
 ) -> DavResponse {
     let user = match auth::require_dav_basic_auth(&pool, &headers).await {
@@ -105,7 +113,7 @@ pub async fn handle_home_propfind(
         Err(response) => return response,
     };
 
-    if user.username != username {
+    if !principal_uid_matches_user(&principal_uid, &user) {
         return DavResponse::new(StatusCode::FORBIDDEN);
     }
 
@@ -123,14 +131,14 @@ pub async fn handle_home_propfind(
         calendars.extend(
             bindings
                 .into_iter()
-                .map(|binding| child_calendar_response(&calendar_props, &username, binding)),
+                .map(|binding| child_calendar_response(&calendar_props, &user, binding)),
         );
     }
 
     propfind_response(CalendarHomePropfindTemplate {
         home: CalendarHomePropfindResponse {
-            href: calendar_home_href(&username),
-            properties: home_properties(&props, &username),
+            href: calendar_home_href(&user),
+            properties: home_properties(&props, &user),
         },
         calendars,
     })
@@ -147,9 +155,12 @@ fn propfind_depth(headers: &HeaderMap) -> u8 {
     }
 }
 
-fn home_properties(props: &RequestedProps, username: &str) -> Vec<RenderedDavProperty> {
+fn home_properties(
+    props: &RequestedProps,
+    user: &crate::models::user::User,
+) -> Vec<RenderedDavProperty> {
     let mut properties = Vec::new();
-    let principal_href = principal_href(username);
+    let principal_href = principal_href(user);
 
     if props.current_user_principal {
         properties.push(RenderedDavProperty::new(
@@ -165,7 +176,7 @@ fn home_properties(props: &RequestedProps, username: &str) -> Vec<RenderedDavPro
     }
     if props.calendar_home_set {
         properties.push(RenderedDavProperty::new(CalendarHomeSetPropertyTemplate {
-            href: calendar_home_href(username),
+            href: calendar_home_href(user),
         }));
     }
     if props.resourcetype {
@@ -176,8 +187,11 @@ fn home_properties(props: &RequestedProps, username: &str) -> Vec<RenderedDavPro
     }
     if props.displayname {
         properties.push(RenderedDavProperty::new(DisplaynamePropertyTemplate {
-            displayname: username.to_string(),
+            displayname: user.username.clone(),
         }));
+    }
+    if props.supported_report_set {
+        properties.push(RenderedDavProperty::new(SupportedReportSetPropertyTemplate));
     }
 
     properties
@@ -185,19 +199,19 @@ fn home_properties(props: &RequestedProps, username: &str) -> Vec<RenderedDavPro
 
 fn child_calendar_response(
     props: &RequestedProps,
-    username: &str,
+    user: &crate::models::user::User,
     binding: calendar::DavCalendarBinding,
 ) -> CalendarCollectionPropfindResponse {
-    let href = calendar_collection_href(username, &binding.uri);
+    let href = calendar_collection_href(user, &binding.uri);
     CalendarCollectionPropfindResponse {
         href,
-        properties: child_calendar_properties(props, username, binding),
+        properties: child_calendar_properties(props, user, binding),
     }
 }
 
 fn child_calendar_properties(
     props: &RequestedProps,
-    username: &str,
+    user: &crate::models::user::User,
     binding: calendar::DavCalendarBinding,
 ) -> Vec<RenderedDavProperty> {
     let mut properties = Vec::new();
@@ -205,18 +219,18 @@ fn child_calendar_properties(
     if props.current_user_principal {
         properties.push(RenderedDavProperty::new(
             CurrentUserPrincipalPropertyTemplate {
-                href: principal_href(username),
+                href: principal_href(user),
             },
         ));
     }
     if props.principal_url {
         properties.push(RenderedDavProperty::new(PrincipalUrlPropertyTemplate {
-            href: principal_href(username),
+            href: principal_href(user),
         }));
     }
     if props.calendar_home_set {
         properties.push(RenderedDavProperty::new(CalendarHomeSetPropertyTemplate {
-            href: calendar_home_href(username),
+            href: calendar_home_href(user),
         }));
     }
     if props.resourcetype {
@@ -239,6 +253,9 @@ fn child_calendar_properties(
                 components: binding.supported_component_set,
             },
         ));
+    }
+    if props.supported_report_set {
+        properties.push(RenderedDavProperty::new(SupportedReportSetPropertyTemplate));
     }
 
     properties

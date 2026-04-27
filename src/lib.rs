@@ -72,6 +72,14 @@ pub fn build_app(pool: PgPool) -> Router {
             "/calendars/delete",
             post(routes::calendars::handle_delete_calendar),
         )
+        .route(
+            "/.well-known/caldav",
+            get(routes::dav::handle_well_known_caldav),
+        )
+        .route(
+            "/.well-known/caldav/",
+            get(routes::dav::handle_well_known_caldav),
+        )
         .route_service(
             "/dav",
             crate::custom_method_router::CustomMethodRouter::new(pool.clone())
@@ -99,7 +107,55 @@ pub fn build_app(pool: PgPool) -> Router {
                 .fallback(routes::dav::handle_root_fallback),
         )
         .route_service(
-            "/dav/calendars/{username}",
+            "/dav/principals/users",
+            crate::custom_method_router::CustomMethodRouter::new(pool.clone())
+                .on(
+                    crate::dav_method::DavMethod::Options,
+                    routes::dav::handle_principal_collection_options,
+                )
+                .on(
+                    crate::dav_method::DavMethod::Propfind,
+                    routes::dav::handle_principal_collection_propfind,
+                ),
+        )
+        .route_service(
+            "/dav/principals/users/",
+            crate::custom_method_router::CustomMethodRouter::new(pool.clone())
+                .on(
+                    crate::dav_method::DavMethod::Options,
+                    routes::dav::handle_principal_collection_options,
+                )
+                .on(
+                    crate::dav_method::DavMethod::Propfind,
+                    routes::dav::handle_principal_collection_propfind,
+                ),
+        )
+        .route_service(
+            "/dav/principals/__uids__/{principal_uid}",
+            crate::custom_method_router::CustomMethodRouter::new(pool.clone())
+                .on(
+                    crate::dav_method::DavMethod::Options,
+                    routes::dav::handle_principal_options,
+                )
+                .on(
+                    crate::dav_method::DavMethod::Propfind,
+                    routes::dav::handle_principal_propfind,
+                ),
+        )
+        .route_service(
+            "/dav/principals/__uids__/{principal_uid}/",
+            crate::custom_method_router::CustomMethodRouter::new(pool.clone())
+                .on(
+                    crate::dav_method::DavMethod::Options,
+                    routes::dav::handle_principal_options,
+                )
+                .on(
+                    crate::dav_method::DavMethod::Propfind,
+                    routes::dav::handle_principal_propfind,
+                ),
+        )
+        .route_service(
+            "/dav/calendars/__uids__/{principal_uid}",
             crate::custom_method_router::CustomMethodRouter::new(pool.clone())
                 .on(
                     crate::dav_method::DavMethod::Options,
@@ -112,7 +168,7 @@ pub fn build_app(pool: PgPool) -> Router {
                 .fallback(routes::dav::handle_home_fallback),
         )
         .route_service(
-            "/dav/calendars/{username}/",
+            "/dav/calendars/__uids__/{principal_uid}/",
             crate::custom_method_router::CustomMethodRouter::new(pool.clone())
                 .on(
                     crate::dav_method::DavMethod::Options,
@@ -125,7 +181,7 @@ pub fn build_app(pool: PgPool) -> Router {
                 .fallback(routes::dav::handle_home_fallback),
         )
         .route_service(
-            "/dav/calendars/{username}/{binding}",
+            "/dav/calendars/__uids__/{principal_uid}/{binding}",
             crate::custom_method_router::CustomMethodRouter::new(pool.clone())
                 .on(
                     crate::dav_method::DavMethod::Options,
@@ -142,10 +198,18 @@ pub fn build_app(pool: PgPool) -> Router {
                 .on(
                     crate::dav_method::DavMethod::Mkcol,
                     routes::dav::handle_collection_mkcol,
+                )
+                .on(
+                    crate::dav_method::DavMethod::Mkcalendar,
+                    routes::dav::handle_collection_mkcalendar,
+                )
+                .on(
+                    crate::dav_method::DavMethod::Report,
+                    routes::dav::handle_collection_report,
                 ),
         )
         .route_service(
-            "/dav/calendars/{username}/{binding}/",
+            "/dav/calendars/__uids__/{principal_uid}/{binding}/",
             crate::custom_method_router::CustomMethodRouter::new(pool.clone())
                 .on(
                     crate::dav_method::DavMethod::Options,
@@ -162,15 +226,31 @@ pub fn build_app(pool: PgPool) -> Router {
                 .on(
                     crate::dav_method::DavMethod::Mkcol,
                     routes::dav::handle_collection_mkcol,
+                )
+                .on(
+                    crate::dav_method::DavMethod::Mkcalendar,
+                    routes::dav::handle_collection_mkcalendar,
+                )
+                .on(
+                    crate::dav_method::DavMethod::Report,
+                    routes::dav::handle_collection_report,
                 ),
         )
         .route_service(
-            "/dav/calendars/{username}/{binding}/{object}",
+            "/dav/calendars/__uids__/{principal_uid}/{binding}/{object}",
             crate::custom_method_router::CustomMethodRouter::new(pool.clone())
                 .on(Method::OPTIONS, routes::dav::handle_object_options)
                 .on(Method::GET, routes::dav::handle_object_get)
                 .on(Method::HEAD, routes::dav::handle_object_head)
                 .on(Method::PUT, routes::dav::handle_object_put)
+                .on(
+                    crate::dav_method::DavMethod::Mkcol,
+                    routes::dav::handle_object_mkcol,
+                )
+                .on(
+                    crate::dav_method::DavMethod::Mkcalendar,
+                    routes::dav::handle_object_mkcalendar,
+                )
                 .on(
                     crate::dav_method::DavMethod::Propfind,
                     routes::dav::handle_object_propfind,

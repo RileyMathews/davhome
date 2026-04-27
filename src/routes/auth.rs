@@ -9,7 +9,7 @@ use tower_cookies::Cookies;
 
 use crate::auth::{clear_session_cookie, hash_password, set_session_cookie, verify_password};
 use crate::forms::{FormErrors, validate_min_length, validate_required};
-use crate::models::user;
+use crate::models::{calendar, user};
 
 #[derive(Deserialize, Default, Clone)]
 pub struct SignupForm {
@@ -90,6 +90,15 @@ pub async fn handle_signup(
     // Create user
     match user::create_user(&pool, &form.username, &password_hash).await {
         Ok(user) => {
+            if calendar::create_default_calendars_for_user(&pool, user.id)
+                .await
+                .is_err()
+            {
+                errors.add_general_error("Error creating default calendars. Please try again.");
+                let template = SignupTemplate { form, errors };
+                return Html(template.render().unwrap());
+            }
+
             set_session_cookie(&cookies, user.id);
             // Return a redirect response as HTML (askama templates return Html, but we need to redirect)
             Html(r#"<meta http-equiv="refresh" content="0; url=/" />"#.to_string())

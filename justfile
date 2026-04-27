@@ -63,7 +63,7 @@ update-sqlx:
     @echo "Don't forget to commit the .sqlx/ directory"
 
 litmus-test:
-	nix develop path:.#litmus -c litmus "http://127.0.0.1:3000/dav/calendars/user01/" "user01" "1234567890123456"
+	nix develop path:.#litmus -c litmus "http://127.0.0.1:3000/dav/calendars/__uids__/10000000-0000-0000-0000-000000000001/" "user01" "1234567890123456"
 
 # Start a fresh isolated Docker Compose stack for integration suites
 test-compose-up:
@@ -87,7 +87,7 @@ test-compose-down:
 
 # Run litmus against the isolated Docker Compose integration stack
 litmus-test-compose:
-    nix develop path:.#litmus -c litmus "{{test_base_url}}/dav/calendars/user01/" "user01" "davhome-test-user-01"
+    nix develop path:.#litmus -c litmus "{{test_base_url}}/dav/calendars/__uids__/10000000-0000-0000-0000-000000000001/" "user01" "davhome-test-user-01"
 
 # Run the allowlisted CalDAVTester suite against the isolated Docker Compose stack
 caldavtester-test-suite:
