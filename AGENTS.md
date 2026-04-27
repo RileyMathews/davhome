@@ -21,6 +21,11 @@ When writing code in the app keep these guidelines in mind.
 ## RFC documentation
 The relavent RFCs have been included in the `./RFC` directory of this repository. Make liberal use of looking at the RFCs to find the relavent specification for what you are working on for any given moment.
 
+## CalDAV parity checklist
+Use `CALDAV_RADICALE_PARITY_CHECKLIST.md` as the implementation backlog for DAV/CalDAV compliance work. Before implementing a DAV feature, check that file for the target Radicale behavior, relevant source references, and existing progress.
+
+When completing a DAV/CalDAV feature, update the checklist in the same change. Only mark an item complete when the behavior is implemented and covered by appropriate tests. If you discover a missing Radicale parity item while working, add it to the checklist instead of leaving it implicit.
+
 ## Vendored test suite
 We have a test suite that apple abandoned a long time ago in the `./caldavtester-lab/` directory. The README.md file in that directory contains information about how to run it and its overall architecture.
 The test suite should be run against our server to determine compliance. I have set the test suite up with what I believe is all of the features I want this server to support.
