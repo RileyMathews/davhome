@@ -24,8 +24,19 @@ The relavent RFCs have been included in the `./RFC` directory of this repository
 ## Vendored test suite
 We have a test suite that apple abandoned a long time ago in the `./caldavtester-lab/` directory. The README.md file in that directory contains information about how to run it and its overall architecture.
 The test suite should be run against our server to determine compliance. I have set the test suite up with what I believe is all of the features I want this server to support.
-We will keep a section in the repositories top level README.md file that is a count of the current total passing tests so that we can ensure as wel work that we are passing where expected.
+We will keep a section in the repositories top level README.md file that is a count of the current total passing tests so that we can ensure as we work that we are passing where expected.
 If you are ever working and the vendored test suite reports more failing tests than the README currently says then something is wrong and we should investigate the regression.
 As you work and improve the passing test score ensure that section in the README is updated to show the new passing test count.
 
 We also have a nix flake shell for the 'litmus' test suite that tests general dav compliance. It should also be run to verify changes and similarly documented as to its progress in the README.
+
+# Project goal
+The project goal is to implement enough of the caldav specification that this app can be used for the majority of real world use cases that a family would have.
+Then on top of that implement calendar sharing as a server specific feature so that users can share applications.
+For the pure caldav specifications that we want to meet we essentially want feature parity with the 'Radicale' project which is another self hostable calendar app.
+I have checked out the Radicale code at ~/code/Radicale so we can inspect their code to see what caldav features they implement.
+
+## Calendar sharing
+The main thing that sets this calendar server apart from others is native first class feature support for calendar sharing.
+The sharing is meant to be done in the web UI. The idea is that a calendar owner can share a calendar with another user
+and then that second user sees the shared calendar as a calendar available to them when they connect their calendar apps to this server.
