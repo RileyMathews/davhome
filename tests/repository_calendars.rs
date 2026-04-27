@@ -192,3 +192,154 @@ async fn repository_is_calendar_owner_matches_owner_state(pool: PgPool) -> sqlx:
     assert!(!calendar::is_calendar_owner(&pool, calendar_id, other.id).await?);
     Ok(())
 }
+
+#[sqlx::test]
+async fn repository_put_dav_calendar_object_creates_object_and_change(
+    pool: PgPool,
+) -> sqlx::Result<()> {
+    let owner = common::create_user_with_password(&pool, "owner10", "passwordpassword").await?;
+    let calendar_id =
+        calendar::create_calendar(&pool, owner.id, "personal", "Personal", None).await?;
+    let binding = calendar::find_dav_calendar_binding(&pool, owner.id, "personal")
+        .await?
+        .unwrap();
+
+    let result = calendar::put_dav_calendar_object(
+        &pool,
+        calendar_id,
+        binding.id,
+        owner.id,
+        calendar::CalendarObjectInput {
+            href: "event.ics".to_string(),
+            uid: "event-1".to_string(),
+            component_type: "VEVENT".to_string(),
+            icalendar: event_ics("event-1", "First"),
+            etag: "\"etag-1\"".to_string(),
+        },
+    )
+    .await
+    .unwrap();
+
+    assert!(matches!(
+        result,
+        calendar::CalendarObjectWriteResult::Created(_)
+    ));
+
+    let object = calendar::find_dav_calendar_object(&pool, calendar_id, "event.ics")
+        .await?
+        .unwrap();
+    assert_eq!(object.uid, "event-1");
+    assert_eq!(object.component_type, "VEVENT");
+
+    let change_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM calendar_changes WHERE calendar_id = $1 AND object_uri = $2 AND operation = 1",
+    )
+    .bind(calendar_id)
+    .bind("event.ics")
+    .fetch_one(&pool)
+    .await?;
+    assert_eq!(change_count, 1);
+    Ok(())
+}
+
+#[sqlx::test]
+async fn repository_put_dav_calendar_object_rejects_uid_conflict(pool: PgPool) -> sqlx::Result<()> {
+    let owner = common::create_user_with_password(&pool, "owner11", "passwordpassword").await?;
+    let calendar_id =
+        calendar::create_calendar(&pool, owner.id, "personal", "Personal", None).await?;
+    let binding = calendar::find_dav_calendar_binding(&pool, owner.id, "personal")
+        .await?
+        .unwrap();
+
+    calendar::put_dav_calendar_object(
+        &pool,
+        calendar_id,
+        binding.id,
+        owner.id,
+        calendar::CalendarObjectInput {
+            href: "first.ics".to_string(),
+            uid: "same-uid".to_string(),
+            component_type: "VEVENT".to_string(),
+            icalendar: event_ics("same-uid", "First"),
+            etag: "\"etag-1\"".to_string(),
+        },
+    )
+    .await
+    .unwrap();
+
+    let conflict = calendar::put_dav_calendar_object(
+        &pool,
+        calendar_id,
+        binding.id,
+        owner.id,
+        calendar::CalendarObjectInput {
+            href: "second.ics".to_string(),
+            uid: "same-uid".to_string(),
+            component_type: "VEVENT".to_string(),
+            icalendar: event_ics("same-uid", "Second"),
+            etag: "\"etag-2\"".to_string(),
+        },
+    )
+    .await;
+
+    assert!(matches!(
+        conflict,
+        Err(calendar::CalendarObjectWriteError::UidConflict { .. })
+    ));
+    Ok(())
+}
+
+#[sqlx::test]
+async fn repository_delete_dav_calendar_object_removes_object_and_records_change(
+    pool: PgPool,
+) -> sqlx::Result<()> {
+    let owner = common::create_user_with_password(&pool, "owner12", "passwordpassword").await?;
+    let calendar_id =
+        calendar::create_calendar(&pool, owner.id, "personal", "Personal", None).await?;
+    let binding = calendar::find_dav_calendar_binding(&pool, owner.id, "personal")
+        .await?
+        .unwrap();
+
+    calendar::put_dav_calendar_object(
+        &pool,
+        calendar_id,
+        binding.id,
+        owner.id,
+        calendar::CalendarObjectInput {
+            href: "event.ics".to_string(),
+            uid: "event-1".to_string(),
+            component_type: "VEVENT".to_string(),
+            icalendar: event_ics("event-1", "First"),
+            etag: "\"etag-1\"".to_string(),
+        },
+    )
+    .await
+    .unwrap();
+
+    let deleted =
+        calendar::delete_dav_calendar_object(&pool, calendar_id, binding.id, owner.id, "event.ics")
+            .await?;
+
+    assert!(deleted.is_some());
+    assert!(
+        calendar::find_dav_calendar_object(&pool, calendar_id, "event.ics")
+            .await?
+            .is_none()
+    );
+
+    let change_count: i64 = sqlx::query_scalar(
+        "SELECT COUNT(*) FROM calendar_changes WHERE calendar_id = $1 AND object_uri = $2 AND operation = 3",
+    )
+    .bind(calendar_id)
+    .bind("event.ics")
+    .fetch_one(&pool)
+    .await?;
+    assert_eq!(change_count, 1);
+    Ok(())
+}
+
+fn event_ics(uid: &str, summary: &str) -> String {
+    format!(
+        "BEGIN:VCALENDAR\r\nVERSION:2.0\r\nPRODID:-//davhome tests//EN\r\nBEGIN:VEVENT\r\nUID:{uid}\r\nDTSTAMP:20260427T120000Z\r\nDTSTART:20260427T120000Z\r\nSUMMARY:{summary}\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n"
+    )
+}

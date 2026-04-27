@@ -2,6 +2,7 @@ pub mod response;
 
 mod calendar_collection;
 mod calendar_home;
+mod calendar_object;
 mod root;
 
 pub use calendar_collection::{
@@ -9,6 +10,10 @@ pub use calendar_collection::{
     handle_collection_propfind,
 };
 pub use calendar_home::{handle_home_fallback, handle_home_options, handle_home_propfind};
+pub use calendar_object::{
+    handle_object_delete, handle_object_get, handle_object_head, handle_object_options,
+    handle_object_propfind, handle_object_put,
+};
 pub use response::DavResponse;
 pub use root::{handle_root_fallback, handle_root_options, handle_root_propfind};
 
@@ -26,6 +31,10 @@ pub(super) struct RequestedProps {
     pub resourcetype: bool,
     pub displayname: bool,
     pub supported_calendar_component_set: bool,
+    pub getetag: bool,
+    pub getlastmodified: bool,
+    pub getcontenttype: bool,
+    pub getcontentlength: bool,
 }
 
 impl PropfindRequest {
@@ -50,6 +59,10 @@ pub(super) fn parse_propfind_request(body: &[u8]) -> PropfindRequest {
         resourcetype: body.contains("resourcetype"),
         displayname: body.contains("displayname"),
         supported_calendar_component_set: body.contains("supported-calendar-component-set"),
+        getetag: body.contains("getetag"),
+        getlastmodified: body.contains("getlastmodified"),
+        getcontenttype: body.contains("getcontenttype"),
+        getcontentlength: body.contains("getcontentlength"),
     })
 }
 
@@ -63,4 +76,8 @@ pub(super) fn calendar_home_href(username: &str) -> String {
 
 pub(super) fn calendar_collection_href(username: &str, binding: &str) -> String {
     format!("/dav/calendars/{username}/{binding}/")
+}
+
+pub(super) fn calendar_object_href(username: &str, binding: &str, object: &str) -> String {
+    format!("/dav/calendars/{username}/{binding}/{object}")
 }

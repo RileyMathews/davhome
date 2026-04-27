@@ -17,6 +17,10 @@ const COLLECTION_ALLPROP: RequestedProps = RequestedProps {
     resourcetype: true,
     displayname: true,
     supported_calendar_component_set: true,
+    getetag: false,
+    getlastmodified: false,
+    getcontenttype: false,
+    getcontentlength: false,
 };
 
 #[derive(Template)]

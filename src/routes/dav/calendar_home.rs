@@ -17,6 +17,10 @@ const HOME_ALLPROP: RequestedProps = RequestedProps {
     resourcetype: true,
     displayname: true,
     supported_calendar_component_set: false,
+    getetag: false,
+    getlastmodified: false,
+    getcontenttype: false,
+    getcontentlength: false,
 };
 
 const CHILD_CALENDAR_ALLPROP: RequestedProps = RequestedProps {
@@ -26,6 +30,10 @@ const CHILD_CALENDAR_ALLPROP: RequestedProps = RequestedProps {
     resourcetype: true,
     displayname: true,
     supported_calendar_component_set: true,
+    getetag: false,
+    getlastmodified: false,
+    getcontenttype: false,
+    getcontentlength: false,
 };
 
 #[derive(Template)]

@@ -35,13 +35,13 @@ Use this as the DAV implementation backlog. Mark an item complete only when the 
 
 - [ ] Route DAV paths for `GET`.
 - [ ] Route DAV paths for `HEAD`.
-- [ ] Route DAV paths for `OPTIONS`.
+- [x] Route DAV paths for `OPTIONS`.
 - [x] Route DAV paths for `PROPFIND`.
 - [ ] Route DAV paths for `PROPPATCH`.
 - [ ] Route DAV paths for `MKCOL`.
 - [ ] Route DAV paths for `MKCALENDAR`.
-- [ ] Route DAV paths for `PUT`.
-- [ ] Route DAV paths for `DELETE` on both collections and objects.
+- [x] Route DAV paths for `PUT`.
+- [x] Route DAV paths for `DELETE` on both collections and objects.
 - [ ] Route DAV paths for `MOVE`.
 - [ ] Route DAV paths for `REPORT`.
 - [ ] Return accurate `Allow` headers for each route.
@@ -78,17 +78,17 @@ Use this as the DAV implementation backlog. Mark an item complete only when the 
 - [x] Per-user calendar binding tables exist.
 - [x] Sharing tables exist.
 - [x] Sync-change table scaffold exists.
-- [ ] Add calendar object storage with calendar id, href, UID, component type, serialized iCalendar, ETag, last modified, and time range fields.
-- [ ] Enforce unique object href per calendar.
-- [ ] Enforce unique UID per calendar where CalDAV requires it.
+- [x] Add calendar object storage with calendar id, href, UID, component type, serialized iCalendar, ETag, last modified, and time range fields.
+- [x] Enforce unique object href per calendar.
+- [x] Enforce unique UID per calendar where CalDAV requires it.
 - [ ] Store arbitrary live/dead DAV properties as JSON blobs where appropriate.
-- [ ] Compute stable object ETags from serialized object content.
+- [x] Compute stable object ETags from serialized object content.
 - [ ] Compute collection CTags from object and metadata changes.
 - [ ] Maintain last-modified values for objects and collections.
-- [ ] Record add, modify, delete, and move operations for sync reporting.
-- [ ] Add storage queries for object lookup by href.
+- [ ] Record add, modify, delete, and move operations for sync reporting. Add, modify, and delete are recorded for calendar objects; MOVE is still pending.
+- [x] Add storage queries for object lookup by href.
 - [ ] Add storage queries for object lookup by UID.
-- [ ] Add storage queries for all objects in a calendar.
+- [x] Add storage queries for all objects in a calendar.
 - [ ] Add storage queries optimized by component type and time range.
 
 ## Discovery And PROPFIND
@@ -104,13 +104,13 @@ Use this as the DAV implementation backlog. Mark an item complete only when the 
 - [x] Return `D:principal-URL`.
 - [x] Return `C:calendar-home-set`.
 - [ ] Return `C:calendar-user-address-set`.
-- [ ] Return `D:resourcetype` for root, principals, collections, calendars, and objects. Root, calendar home, and calendar collection discovery are implemented; principal and object resources are still pending.
+- [ ] Return `D:resourcetype` for root, principals, collections, calendars, and objects. Root, calendar home, calendar collection, and calendar object discovery are implemented; principal resources are still pending.
 - [x] Return `D:displayname` from binding or collection metadata.
 - [ ] Return `D:owner`.
-- [ ] Return `D:getetag` for calendar objects and leaf collections where appropriate.
-- [ ] Return `D:getlastmodified`.
-- [ ] Return `D:getcontenttype`.
-- [ ] Return `D:getcontentlength`.
+- [x] Return `D:getetag` for calendar objects and leaf collections where appropriate.
+- [x] Return `D:getlastmodified`.
+- [x] Return `D:getcontenttype`.
+- [x] Return `D:getcontentlength`.
 - [ ] Return `D:supported-report-set`.
 - [x] Return `C:supported-calendar-component-set`.
 - [ ] Return `C:max-resource-size`.
@@ -139,36 +139,36 @@ Use this as the DAV implementation backlog. Mark an item complete only when the 
 
 ## Calendar Object Operations
 
-- [ ] Implement `PUT` for single calendar objects.
+- [x] Implement `PUT` for single calendar objects.
 - [ ] Implement whole-calendar `PUT` that splits `VEVENT`, `VTODO`, and `VJOURNAL` components by UID.
-- [ ] Support `VEVENT` calendar objects.
-- [ ] Support `VTODO` calendar objects.
+- [x] Support `VEVENT` calendar objects.
+- [x] Support `VTODO` calendar objects.
 - [ ] Support `VJOURNAL` calendar objects, or explicitly decide not to target Radicale parity for journals.
-- [ ] Preserve and serialize `VTIMEZONE` components attached to calendar objects.
-- [ ] Validate that single-object `PUT` contains exactly one object UID.
-- [ ] Reject single calendar objects containing mixed main component types.
-- [ ] Reject malformed iCalendar payloads.
-- [ ] Enforce collection `supported-calendar-component-set`.
+- [x] Preserve and serialize `VTIMEZONE` components attached to calendar objects.
+- [x] Validate that single-object `PUT` contains exactly one object UID.
+- [x] Reject single calendar objects containing mixed main component types.
+- [x] Reject malformed iCalendar payloads.
+- [x] Enforce collection `supported-calendar-component-set`.
 - [ ] Enforce maximum request body size.
 - [ ] Enforce maximum resource size.
-- [ ] Detect UID conflicts and return CalDAV `C:no-uid-conflict` errors.
-- [ ] Implement `If-Match` handling for updates.
-- [ ] Implement `If-None-Match: *` handling for creates.
+- [ ] Detect UID conflicts and return CalDAV `C:no-uid-conflict` errors. UID conflicts now return `409 Conflict`; XML precondition body is still pending.
+- [x] Implement `If-Match` handling for updates.
+- [x] Implement `If-None-Match: *` handling for creates.
 - [ ] Decide whether to require strict preconditions for updates, then implement consistently.
-- [ ] Return object `ETag` headers from successful `PUT`.
-- [ ] Return `201 Created` for new objects.
-- [ ] Return `204 No Content` for updated objects.
-- [ ] Implement `GET` for individual calendar objects.
+- [x] Return object `ETag` headers from successful `PUT`.
+- [x] Return `201 Created` for new objects.
+- [x] Return `204 No Content` for updated objects.
+- [x] Implement `GET` for individual calendar objects.
 - [ ] Implement `GET` for calendar collections as aggregate `.ics` output.
 - [ ] Deduplicate `VTIMEZONE` entries in aggregate calendar output.
 - [ ] Include `X-WR-CALNAME` and `X-WR-CALDESC` in aggregate output when display metadata exists.
-- [ ] Implement `HEAD` using the same headers as `GET` without a response body.
-- [ ] Return `Content-Type: text/calendar;charset=utf-8;component=...` for calendar objects.
-- [ ] Return `Last-Modified` headers for `GET` and `HEAD`.
-- [ ] Return `ETag` headers for `GET` and `HEAD`.
-- [ ] Implement `DELETE` for individual calendar objects.
-- [ ] Implement `DELETE` for calendar collections with explicit authorization checks.
-- [ ] Implement `If-Match` handling for `DELETE`.
+- [x] Implement `HEAD` using the same headers as `GET` without a response body.
+- [x] Return `Content-Type: text/calendar;charset=utf-8;component=...` for calendar objects.
+- [x] Return `Last-Modified` headers for `GET` and `HEAD`.
+- [x] Return `ETag` headers for `GET` and `HEAD`.
+- [x] Implement `DELETE` for individual calendar objects.
+- [x] Implement `DELETE` for calendar collections with explicit authorization checks.
+- [x] Implement `If-Match` handling for `DELETE`.
 - [ ] Implement same-server object `MOVE`.
 - [ ] Reject remote-destination `MOVE`.
 - [ ] Reject collection `MOVE` with method-not-allowed unless full collection moves are intentionally implemented.

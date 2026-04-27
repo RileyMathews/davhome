@@ -16,6 +16,10 @@ const ROOT_ALLPROP: RequestedProps = RequestedProps {
     resourcetype: true,
     displayname: true,
     supported_calendar_component_set: false,
+    getetag: false,
+    getlastmodified: false,
+    getcontenttype: false,
+    getcontentlength: false,
 };
 
 #[derive(Template)]

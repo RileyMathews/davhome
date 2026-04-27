@@ -1,6 +1,7 @@
 use askama::Template;
 use axum::{
     Router,
+    http::Method,
     response::Html,
     routing::{get, post},
 };
@@ -162,6 +163,19 @@ pub fn build_app(pool: PgPool) -> Router {
                     crate::dav_method::DavMethod::Mkcol,
                     routes::dav::handle_collection_mkcol,
                 ),
+        )
+        .route_service(
+            "/dav/calendars/{username}/{binding}/{object}",
+            crate::custom_method_router::CustomMethodRouter::new(pool.clone())
+                .on(Method::OPTIONS, routes::dav::handle_object_options)
+                .on(Method::GET, routes::dav::handle_object_get)
+                .on(Method::HEAD, routes::dav::handle_object_head)
+                .on(Method::PUT, routes::dav::handle_object_put)
+                .on(
+                    crate::dav_method::DavMethod::Propfind,
+                    routes::dav::handle_object_propfind,
+                )
+                .on(Method::DELETE, routes::dav::handle_object_delete),
         )
         .layer(CookieManagerLayer::new())
         .layer(

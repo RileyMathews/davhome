@@ -23,6 +23,8 @@ rand = "0.8"
 dotenvy = "0.15"
 uuid = { version = "1.6", features = ["v4"] }
 chrono = { version = "0.4", features = ["serde"] }
+httpdate = "1.0"
+sha2 = "0.10"
 
 [dev-dependencies]
 http-body-util = "0.1"
